@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Luna Workspace — Análisis de Seguridad</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0a0a14; color: #e0e0f0; min-height: 100vh; padding: 24px; }
+  h1 { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #888; margin-bottom: 28px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 28px; }
+  .leg { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+  .leg-dot { width: 12px; height: 12px; border-radius: 50%; }
+  .critical { background: #ef4444; }
+  .high { background: #f97316; }
+  .medium { background: #f59e0b; }
+  .low { background: #22d3a0; }
+  .fixed { background: #5b6af0; }
+
+  .sections { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media(max-width:900px){ .sections { grid-template-columns: 1fr; } }
+
+  .section { background: #12121e; border: 1px solid #1e1e3a; border-radius: 12px; overflow: hidden; }
+  .sec-hdr { padding: 14px 18px; border-bottom: 1px solid #1e1e3a; display: flex; align-items: center; gap: 10px; }
+  .sec-hdr h2 { font-size: 14px; font-weight: 700; }
+  .sec-icon { font-size: 18px; }
+  .items { padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+
+  .item { border-radius: 8px; padding: 12px 14px; border-left: 4px solid; position: relative; }
+  .item.critical-item { background: rgba(239,68,68,.08); border-color: #ef4444; }
+  .item.high-item { background: rgba(249,115,22,.08); border-color: #f97316; }
+  .item.medium-item { background: rgba(245,158,11,.08); border-color: #f59e0b; }
+  .item.low-item { background: rgba(34,211,160,.08); border-color: #22d3a0; }
+  .item.fixed-item { background: rgba(91,106,240,.08); border-color: #5b6af0; opacity: .7; }
+
+  .item-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .badge { font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 99px; text-transform: uppercase; letter-spacing: .5px; }
+  .badge.critical { background: rgba(239,68,68,.2); color: #ef4444; border: 1px solid rgba(239,68,68,.3); }
+  .badge.high { background: rgba(249,115,22,.2); color: #f97316; border: 1px solid rgba(249,115,22,.3); }
+  .badge.medium { background: rgba(245,158,11,.2); color: #f59e0b; border: 1px solid rgba(245,158,11,.3); }
+  .badge.low { background: rgba(34,211,160,.2); color: #22d3a0; border: 1px solid rgba(34,211,160,.3); }
+  .badge.fixed { background: rgba(91,106,240,.2); color: #5b6af0; border: 1px solid rgba(91,106,240,.3); }
+  .item-title { font-size: 12px; font-weight: 700; color: #e0e0f0; }
+  .item-desc { font-size: 11px; color: #aaa; line-height: 1.5; }
+  .item-fix { font-size: 11px; color: #22d3a0; margin-top: 5px; font-weight: 600; }
+  .item-fix::before { content: '→ Fix: '; opacity: .6; }
+  .item-file { font-size: 10px; color: #666; margin-top: 3px; font-family: monospace; }
+
+  .flow { width: 100%; overflow-x: auto; }
+  .flow-diagram { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 20px; min-width: 340px; }
+  .flow-box { padding: 10px 18px; border-radius: 8px; font-size: 12px; font-weight: 700; text-align: center; min-width: 200px; position: relative; }
+  .flow-arrow { width: 2px; height: 22px; background: #333; margin: 0 auto; position: relative; }
+  .flow-arrow::after { content: '▼'; position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #555; }
+  .flow-row { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .flow-branch { display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .flow-conn { height: 2px; background: #333; flex: 1; min-width: 20px; }
+  .fbox-ok { background: rgba(34,211,160,.15); border: 1px solid rgba(34,211,160,.3); color: #22d3a0; }
+  .fbox-warn { background: rgba(245,158,11,.15); border: 1px solid rgba(245,158,11,.3); color: #f59e0b; }
+  .fbox-danger { background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.3); color: #ef4444; }
+  .fbox-neutral { background: rgba(91,106,240,.15); border: 1px solid rgba(91,106,240,.3); color: #a0aaff; }
+  .fbox-fixed { background: rgba(91,106,240,.1); border: 1px dashed rgba(91,106,240,.4); color: #7080cc; }
+
+  .summary-bar { background: #12121e; border: 1px solid #1e1e3a; border-radius: 12px; padding: 16px 20px; margin-top: 18px; display: flex; gap: 24px; flex-wrap: wrap; }
+  .stat { text-align: center; }
+  .stat-num { font-size: 28px; font-weight: 800; }
+  .stat-lbl { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
+  .stat-num.c { color: #ef4444; }
+  .stat-num.h { color: #f97316; }
+  .stat-num.m { color: #f59e0b; }
+  .stat-num.l { color: #22d3a0; }
+  .stat-num.f { color: #5b6af0; }
+</style>
+</head>
+<body>
+
+<h1>🔐 Luna Workspace — Análisis de Vulnerabilidades de Seguridad</h1>
+<p class="subtitle">Revisión completa del sistema: plugin WordPress + servidor de licencias + APIs PHP</p>
+
+<div class="legend">
+  <div class="leg"><div class="leg-dot critical"></div>Crítico</div>
+  <div class="leg"><div class="leg-dot high"></div>Alto</div>
+  <div class="leg"><div class="leg-dot medium"></div>Medio</div>
+  <div class="leg"><div class="leg-dot low"></div>Bajo</div>
+  <div class="leg"><div class="leg-dot fixed"></div>Ya corregido</div>
+</div>
+
+<!-- SUMMARY -->
+<div class="summary-bar">
+  <div class="stat"><div class="stat-num c">1</div><div class="stat-lbl">Crítico</div></div>
+  <div class="stat"><div class="stat-num h">4</div><div class="stat-lbl">Alto</div></div>
+  <div class="stat"><div class="stat-num m">5</div><div class="stat-lbl">Medio</div></div>
+  <div class="stat"><div class="stat-num l">3</div><div class="stat-lbl">Bajo</div></div>
+  <div class="stat"><div class="stat-num f">3</div><div class="stat-lbl">Ya corregidos</div></div>
+</div>
+
+<!-- FLOW DIAGRAM -->
+<div class="section" style="margin-top:18px">
+  <div class="sec-hdr">
+    <span class="sec-icon">🗺️</span>
+    <h2>Diagrama de flujo de ataque</h2>
+  </div>
+  <div class="flow" style="padding:20px">
+    <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;align-items:flex-start">
+
+      <!-- FLOW 1: License bypass -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:0;min-width:180px">
+        <div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Flujo 1 — Bypass de licencia</div>
+        <div class="flow-box fbox-neutral">Atacante instala plugin</div>
+        <div class="flow-arrow"></div>
+        <div class="flow-box fbox-warn">Servidor de licencias caído / red cortada</div>
+        <div class="flow-arrow"></div>
+        <div class="flow-box fbox-danger" style="border-color:#ef4444">❌ ANTES: cualquier clave era válida offline</div>
+        <div class="flow-arrow"></div>
+        <div class="flow-box fbox-fixed">✅ CORREGIDO: offline solo con caché previo válido</div>
+      </div>
+
+      <!-- FLOW 2: DB exposure -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:0;min-width:180px">
+        <div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Flujo 2 — Exposición de credenciales</div>
+        <div class="flow-box fbox-neutral">Cliente accede al plugin WP</div>
+        <div class="flow-arrow"></div>
+        <div class="flow-box fbox-danger">❌ ANTES: menú "Base de datos" visible</div>
+        <div class="flow-arrow"></div>
+        <div class="flow-box fbox-danger">Ve host, usuario, password, tablas</div>
+        <div class="flow-arrow"></div>
+        <div class="flow-box fbox-danger">Puede "Resetear contraseña admin WP"</div>
+        <div class="flow-arrow"></div>
+        <div class="flow-box fbox-fixed">✅ CORREGIDO: menú eliminado del frontend</div>
+      </div>
+
+      <!-- FLOW 3: PHP file upload -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:0;min-width:180px">
+        <div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Flujo 3 — Upload malicioso</div>
+        <div class="flow-box fbox-neutral">Usuario sube archivo adjunto</div>
+        <div class="flow-arrow"></div>
+        <div class="flow-box fbox-danger">⚠️ upload.php — validación de extensión solo en cliente</div>
+        <div class="flow-arrow"></div>
+        <div class="flow-box fbox-danger">Sube shell.php como shell.php.jpg o con MIME falso</div>
+        <div class="flow-arrow"></div>
+        <div class="flow-box fbox-danger">Ejecuta comandos en el servidor</div>
+        <div class="flow-arrow"></div>
+        <div class="flow-box fbox-warn">🔧 PENDIENTE: validar en servidor + mover uploads fuera de webroot</div>
+      </div>
+
+      <!-- FLOW 4: HMAC secret -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:0;min-width:180px">
+        <div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Flujo 4 — HMAC hardcodeado</div>
+        <div class="flow-box fbox-neutral">Atacante descarga plugin ZIP</div>
+        <div class="flow-arrow"></div>
+        <div class="flow-box fbox-danger">Lee HMAC_SECRET en class-luna-license.php</div>
+        <div class="flow-arrow"></div>
+        <div class="flow-box fbox-danger">Levanta servidor falso de licencias</div>
+        <div class="flow-arrow"></div>
+        <div class="flow-box fbox-danger">Forja respuestas HMAC válidas → bypass de pago</div>
+        <div class="flow-arrow"></div>
+        <div class="flow-box fbox-warn">🔧 PENDIENTE: mover secret a WP option cifrada / env var</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- VULNERABILITIES GRID -->
+<div class="sections" style="margin-top:18px">
+
+  <!-- AUTENTICACIÓN Y LICENCIAS -->
+  <div class="section">
+    <div class="sec-hdr">
+      <span class="sec-icon">🔑</span>
+      <h2>Autenticación y Licencias</h2>
+    </div>
+    <div class="items">
+
+      <div class="item fixed-item">
+        <div class="item-hdr"><span class="badge fixed">Corregido</span><span class="item-title">Offline fallback sin validación</span></div>
+        <div class="item-desc">Cuando el servidor era inalcanzable, cualquier clave era aceptada como válida con plan "offline".</div>
+        <div class="item-fix">Solo se acepta modo offline si existe caché previo de verificación exitosa real.</div>
+        <div class="item-file">class-luna-license.php → verify()</div>
+      </div>
+
+      <div class="item high-item">
+        <div class="item-hdr"><span class="badge high">Alto</span><span class="item-title">HMAC_SECRET hardcodeado en código fuente</span></div>
+        <div class="item-desc">El secreto compartido entre cliente y servidor está en texto plano en el ZIP distribuido. Cualquiera que obtenga el plugin puede fabricar respuestas firmadas válidas y crear su propio servidor de licencias.</div>
+        <div class="item-fix">Almacenar en WP option cifrada o variable de entorno del servidor; leer en runtime, nunca en código.</div>
+        <div class="item-file">class-luna-license.php:10 / luna-license-server.php:18</div>
+      </div>
+
+      <div class="item medium-item">
+        <div class="item-hdr"><span class="badge medium">Medio</span><span class="item-title">Token de entrada al admin almacenado en texto plano</span></div>
+        <div class="item-desc">El token de acceso directo al panel (para botón en Plesk) se guarda como WP option sin cifrar. Si la DB es comprometida, el atacante obtiene acceso directo.</div>
+        <div class="item-fix">Guardar hash SHA-256 del token; comparar con hash_equals en verificación.</div>
+        <div class="item-file">class-luna-activator.php → generate_entry_token()</div>
+      </div>
+
+      <div class="item medium-item">
+        <div class="item-hdr"><span class="badge medium">Medio</span><span class="item-title">Sin rate limiting en verificación de licencias (cliente)</span></div>
+        <div class="item-desc">El plugin puede intentar verificar claves repetidamente sin ningún backoff. Facilita fuerza bruta de claves si el servidor no limita.</div>
+        <div class="item-fix">El servidor ya retorna HTTP 429; el cliente debería respetar el header Retry-After y bloquear reintentos por 5 minutos.</div>
+        <div class="item-file">class-luna-license.php → verify()</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- UPLOAD Y ARCHIVOS -->
+  <div class="section">
+    <div class="sec-hdr">
+      <span class="sec-icon">📁</span>
+      <h2>Upload de Archivos</h2>
+    </div>
+    <div class="items">
+
+      <div class="item critical-item">
+        <div class="item-hdr"><span class="badge critical">Crítico</span><span class="item-title">Upload de archivos PHP ejecutables (RCE)</span></div>
+        <div class="item-desc">upload.php solo valida la extensión del nombre original enviado por el cliente. Un atacante puede subir shell.php renombrándolo shell.jpg o manipulando el Content-Type. Si el directorio /uploads/ es accesible desde el navegador, puede ejecutar código arbitrario en el servidor.</div>
+        <div class="item-fix">1) Validar MIME real con finfo_file(). 2) Renombrar todos los archivos a UUID + extensión permitida. 3) Mover /uploads/ fuera del webroot o agregar php_flag engine off en .htaccess. 4) Lista blanca estricta de extensiones (solo imágenes, docs, PDF).</div>
+        <div class="item-file">luna-workspace/app/api/upload.php</div>
+      </div>
+
+      <div class="item high-item">
+        <div class="item-hdr"><span class="badge high">Alto</span><span class="item-title">Ruta de uploads predecible + sin autenticación en archivos</span></div>
+        <div class="item-desc">Los archivos subidos son accesibles directamente por URL sin verificar si el usuario que los solicita tiene acceso al workspace correspondiente. Cualquier persona con la URL puede descargar adjuntos privados.</div>
+        <div class="item-fix">Servir archivos a través de un endpoint PHP autenticado que valide pertenencia al workspace antes de enviar el stream.</div>
+        <div class="item-file">luna-workspace/app/uploads/ (directamente servido por Apache)</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- API Y BACKEND -->
+  <div class="section">
+    <div class="sec-hdr">
+      <span class="sec-icon">⚙️</span>
+      <h2>APIs PHP del Backend</h2>
+    </div>
+    <div class="items">
+
+      <div class="item high-item">
+        <div class="item-hdr"><span class="badge high">Alto</span><span class="item-title">Configuración DB expuesta en config.php</span></div>
+        <div class="item-desc">config.php contiene credenciales de base de datos en texto plano. Si el servidor devuelve PHP como texto plano (falla de mod_php) o hay un path traversal, las credenciales quedan expuestas. El archivo está dentro del webroot.</div>
+        <div class="item-fix">Mover config.php fuera del webroot (ej: /var/www/luna-config.php) y referenciarla con ruta absoluta, o usar las constantes de WP (DB_HOST, DB_USER, etc.) que ya están disponibles.</div>
+        <div class="item-file">luna-workspace/app/config.php</div>
+      </div>
+
+      <div class="item high-item">
+        <div class="item-hdr"><span class="badge high">Alto</span><span class="item-title">SQL queries con interpolación directa en algunas rutas</span></div>
+        <div class="item-desc">Algunos endpoints construyen queries mezclando variables PHP directamente en la cadena SQL en lugar de usar siempre $wpdb->prepare() o PDO con parámetros. Si el dato viene del usuario, es inyección SQL potencial.</div>
+        <div class="item-fix">Auditar todos los endpoints y reemplazar cualquier "$wpdb->query("...{$var}...")" por $wpdb->prepare() con marcadores de posición.</div>
+        <div class="item-file">luna-workspace/app/api/kanban.php, workspaces.php</div>
+      </div>
+
+      <div class="item medium-item">
+        <div class="item-hdr"><span class="badge medium">Medio</span><span class="item-title">Sin CSRF protection en APIs stateless</span></div>
+        <div class="item-desc">Los endpoints PHP usan un token en config.php pero las peticiones cross-site podrían ser enviadas desde otro dominio si el navegador incluye las cookies. No hay verificación de Origin o nonce por request.</div>
+        <div class="item-fix">Agregar header X-Requested-With verificado en el servidor, o implementar CSRF token por sesión.</div>
+        <div class="item-file">luna-workspace/app/api/*.php</div>
+      </div>
+
+      <div class="item medium-item">
+        <div class="item-hdr"><span class="badge medium">Medio</span><span class="item-title">Logs de verificación sin sanitización</span></div>
+        <div class="item-desc">La tabla lls_verify_log guarda license_key y domain tal como los envía el cliente, sin límite de longitud ni sanitización extra. Un cliente malicioso podría intentar log injection si los logs son mostrados en algún panel.</div>
+        <div class="item-fix">Limitar longitud de license_key (max 25 chars) y domain (max 255 chars) antes de insertar. Ya usar $wpdb->insert() es un paso correcto.</div>
+        <div class="item-file">luna-license-server/includes/class-lls-db.php → log()</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FRONTEND / XSS -->
+  <div class="section">
+    <div class="sec-hdr">
+      <span class="sec-icon">🌐</span>
+      <h2>Frontend y XSS</h2>
+    </div>
+    <div class="items">
+
+      <div class="item fixed-item">
+        <div class="item-hdr"><span class="badge fixed">Corregido</span><span class="item-title">Exposición de URL del servidor de licencias</span></div>
+        <div class="item-desc">El panel de administración del License Server mostraba la URL completa del endpoint REST en la interfaz, facilitando que un atacante apunte un ataque directo al endpoint.</div>
+        <div class="item-fix">Eliminado de class-lls-admin.php → page_config() y page_list().</div>
+        <div class="item-file">luna-license-server/includes/class-lls-admin.php</div>
+      </div>
+
+      <div class="item fixed-item">
+        <div class="item-hdr"><span class="badge fixed">Corregido</span><span class="item-title">Panel de base de datos expuesto a clientes</span></div>
+        <div class="item-desc">El menú "Base de datos" mostraba credenciales DB, estructura de tablas, y tenía botones para "Recrear tablas" y "Resetear contraseña admin WP" accesibles a cualquier usuario del plugin.</div>
+        <div class="item-fix">Submenú eliminado completamente de register_menu() y render_database_page() removido.</div>
+        <div class="item-file">luna-workspace/includes/class-luna-admin.php</div>
+      </div>
+
+      <div class="item low-item">
+        <div class="item-hdr"><span class="badge low">Bajo</span><span class="item-title">XSS en títulos/comentarios sin sanitizar en display</span></div>
+        <div class="item-desc">Algunos textos renderizados en el frontend usan esc() correctamente, pero hay algunos lugares donde datos del usuario (nombre de tarea, comentario) podrían ser interpolados sin escape si se agrega nueva funcionalidad.</div>
+        <div class="item-fix">Mantener y hacer obligatorio el uso de esc() (la función ya existe y escapa HTML) en TODO el renderizado dinámico. Agregar Content-Security-Policy header.</div>
+        <div class="item-file">luna-workspace/app/index.html → funciones render*()</div>
+      </div>
+
+      <div class="item low-item">
+        <div class="item-hdr"><span class="badge low">Bajo</span><span class="item-title">Sin cabeceras de seguridad HTTP</span></div>
+        <div class="item-desc">El .htaccess no establece X-Frame-Options, X-Content-Type-Options, Content-Security-Policy ni Referrer-Policy. Expone a clickjacking y MIME sniffing.</div>
+        <div class="item-fix">Agregar en .htaccess: Header always set X-Frame-Options "SAMEORIGIN", X-Content-Type-Options "nosniff", Referrer-Policy "no-referrer".</div>
+        <div class="item-file">luna-workspace/app/.htaccess</div>
+      </div>
+
+      <div class="item low-item">
+        <div class="item-hdr"><span class="badge low">Bajo</span><span class="item-title">Mensajes de error demasiado verbosos al cliente</span></div>
+        <div class="item-desc">Algunos endpoints PHP devuelven mensajes de error detallados (ej: tipo de error SQL, stack trace) que pueden ayudar a un atacante a mapear la estructura interna.</div>
+        <div class="item-fix">En producción, devolver solo mensajes genéricos al cliente y loguear detalles en el servidor con error_log().</div>
+        <div class="item-file">luna-workspace/app/api/*.php</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- PRIORITY TABLE -->
+<div class="section" style="margin-top:18px">
+  <div class="sec-hdr"><span class="sec-icon">📋</span><h2>Tabla de prioridades — ¿Qué arreglar primero?</h2></div>
+  <div style="padding:16px 18px;overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead>
+        <tr style="border-bottom:1px solid #1e1e3a">
+          <th style="text-align:left;padding:8px 10px;color:#888;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px">#</th>
+          <th style="text-align:left;padding:8px 10px;color:#888;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px">Vulnerabilidad</th>
+          <th style="text-align:left;padding:8px 10px;color:#888;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px">Severidad</th>
+          <th style="text-align:left;padding:8px 10px;color:#888;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px">Esfuerzo</th>
+          <th style="text-align:left;padding:8px 10px;color:#888;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px">Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #1a1a2e"><td style="padding:8px 10px;color:#666">1</td><td style="padding:8px 10px;color:#e0e0f0;font-weight:600">Upload PHP → RCE en servidor</td><td style="padding:8px 10px"><span class="badge critical">Crítico</span></td><td style="padding:8px 10px;color:#aaa">Medio (2-3h)</td><td style="padding:8px 10px;color:#f59e0b">⚠️ Pendiente</td></tr>
+        <tr style="border-bottom:1px solid #1a1a2e"><td style="padding:8px 10px;color:#666">2</td><td style="padding:8px 10px;color:#e0e0f0;font-weight:600">HMAC_SECRET en código fuente distribuido</td><td style="padding:8px 10px"><span class="badge high">Alto</span></td><td style="padding:8px 10px;color:#aaa">Bajo (1h)</td><td style="padding:8px 10px;color:#f59e0b">⚠️ Pendiente</td></tr>
+        <tr style="border-bottom:1px solid #1a1a2e"><td style="padding:8px 10px;color:#666">3</td><td style="padding:8px 10px;color:#e0e0f0;font-weight:600">Archivos adjuntos sin control de acceso</td><td style="padding:8px 10px"><span class="badge high">Alto</span></td><td style="padding:8px 10px;color:#aaa">Medio (3-4h)</td><td style="padding:8px 10px;color:#f59e0b">⚠️ Pendiente</td></tr>
+        <tr style="border-bottom:1px solid #1a1a2e"><td style="padding:8px 10px;color:#666">4</td><td style="padding:8px 10px;color:#e0e0f0;font-weight:600">config.php con credenciales dentro del webroot</td><td style="padding:8px 10px"><span class="badge high">Alto</span></td><td style="padding:8px 10px;color:#aaa">Bajo (1h)</td><td style="padding:8px 10px;color:#f59e0b">⚠️ Pendiente</td></tr>
+        <tr style="border-bottom:1px solid #1a1a2e"><td style="padding:8px 10px;color:#666">5</td><td style="padding:8px 10px;color:#e0e0f0;font-weight:600">SQL interpolación directa en queries</td><td style="padding:8px 10px"><span class="badge high">Alto</span></td><td style="padding:8px 10px;color:#aaa">Medio (3-5h)</td><td style="padding:8px 10px;color:#f59e0b">⚠️ Pendiente</td></tr>
+        <tr style="border-bottom:1px solid #1a1a2e"><td style="padding:8px 10px;color:#666">6</td><td style="padding:8px 10px;color:#e0e0f0;font-weight:600">Offline license fallback sin validación</td><td style="padding:8px 10px"><span class="badge high">Alto</span></td><td style="padding:8px 10px;color:#aaa">—</td><td style="padding:8px 10px;color:#5b6af0">✅ Corregido</td></tr>
+        <tr style="border-bottom:1px solid #1a1a2e"><td style="padding:8px 10px;color:#666">7</td><td style="padding:8px 10px;color:#e0e0f0;font-weight:600">Token de entrada en texto plano</td><td style="padding:8px 10px"><span class="badge medium">Medio</span></td><td style="padding:8px 10px;color:#aaa">Bajo (1h)</td><td style="padding:8px 10px;color:#f59e0b">⚠️ Pendiente</td></tr>
+        <tr style="border-bottom:1px solid #1a1a2e"><td style="padding:8px 10px;color:#666">8</td><td style="padding:8px 10px;color:#e0e0f0;font-weight:600">Sin CSRF protection</td><td style="padding:8px 10px"><span class="badge medium">Medio</span></td><td style="padding:8px 10px;color:#aaa">Medio (2h)</td><td style="padding:8px 10px;color:#f59e0b">⚠️ Pendiente</td></tr>
+        <tr style="border-bottom:1px solid #1a1a2e"><td style="padding:8px 10px;color:#666">9</td><td style="padding:8px 10px;color:#e0e0f0;font-weight:600">Panel DB expuesto a clientes</td><td style="padding:8px 10px"><span class="badge high">Alto</span></td><td style="padding:8px 10px;color:#aaa">—</td><td style="padding:8px 10px;color:#5b6af0">✅ Corregido</td></tr>
+        <tr style="border-bottom:1px solid #1a1a2e"><td style="padding:8px 10px;color:#666">10</td><td style="padding:8px 10px;color:#e0e0f0;font-weight:600">URL del endpoint REST expuesta en admin</td><td style="padding:8px 10px"><span class="badge medium">Medio</span></td><td style="padding:8px 10px;color:#aaa">—</td><td style="padding:8px 10px;color:#5b6af0">✅ Corregido</td></tr>
+        <tr style="border-bottom:1px solid #1a1a2e"><td style="padding:8px 10px;color:#666">11</td><td style="padding:8px 10px;color:#e0e0f0;font-weight:600">Sin cabeceras HTTP de seguridad</td><td style="padding:8px 10px"><span class="badge low">Bajo</span></td><td style="padding:8px 10px;color:#aaa">Bajo (30min)</td><td style="padding:8px 10px;color:#f59e0b">⚠️ Pendiente</td></tr>
+        <tr><td style="padding:8px 10px;color:#666">12</td><td style="padding:8px 10px;color:#e0e0f0;font-weight:600">Errores PHP verbosos al cliente</td><td style="padding:8px 10px"><span class="badge low">Bajo</span></td><td style="padding:8px 10px;color:#aaa">Bajo (1h)</td><td style="padding:8px 10px;color:#f59e0b">⚠️ Pendiente</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div style="margin-top:14px;font-size:11px;color:#444;text-align:center">
+  Luna Workspace Security Audit · Generado el 20/06/2026 · Revisión interna — no distribuir
+</div>
+
+</body>
+</html>
