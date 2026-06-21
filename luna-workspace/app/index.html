@@ -3447,35 +3447,40 @@ function renderCalendar(){
   const weeks = Math.ceil(totalCells / 7);
   const isMobile = window.innerWidth <= 768;
 
-  // Build day→cards map — spans full range [start_date … due_date]
+  // Build day→cards map — each card appears only on its due_date (and start_date if different)
   const dayCards = {};
   const monthStart = new Date(CAL.year, CAL.month, 1);
   const monthEnd   = new Date(CAL.year, CAL.month + 1, 0);
+
+  const addToDay = (day, card, flags) => {
+    if (day < 1 || day > monthEnd.getDate()) return;
+    if (!dayCards[day]) dayCards[day] = [];
+    if (!dayCards[day].find(c => c.id === card.id && c._isStart === flags._isStart)) {
+      dayCards[day].push({ ...card, ...flags });
+    }
+  };
 
   CARDS.forEach(card => {
     const startD = card.start_date ? new Date(card.start_date + 'T00:00:00') : null;
     const dueD   = card.due_date   ? new Date(card.due_date   + 'T00:00:00') : null;
     if (!startD && !dueD) return;
 
-    const rangeStart = startD || dueD;
-    const rangeEnd   = dueD   || startD;
+    // Show on due_date (primary marker)
+    if (dueD && dueD >= monthStart && dueD <= monthEnd) {
+      addToDay(dueD.getDate(), card, { _isStart: false, _isEnd: true });
+    }
 
-    // Clip to current month
-    const clipStart = new Date(Math.max(rangeStart.getTime(), monthStart.getTime()));
-    const clipEnd   = new Date(Math.min(rangeEnd.getTime(),   monthEnd.getTime()));
-    if (clipStart > clipEnd) return;
-
-    for (let cur = new Date(clipStart); cur <= clipEnd; cur.setDate(cur.getDate() + 1)) {
-      const day = cur.getDate();
-      if (!dayCards[day]) dayCards[day] = [];
-      if (!dayCards[day].find(c => c.id === card.id)) {
-        dayCards[day].push({
-          ...card,
-          _isStart : startD && cur.getTime() === startD.getTime(),
-          _isEnd   : dueD   && cur.getTime() === dueD.getTime(),
-          _isRange : !(startD && cur.getTime() === startD.getTime()) && !(dueD && cur.getTime() === dueD.getTime()),
-        });
+    // Show on start_date only if it differs from due_date and falls in this month
+    if (startD && startD >= monthStart && startD <= monthEnd) {
+      const sameDay = dueD && startD.getTime() === dueD.getTime();
+      if (!sameDay) {
+        addToDay(startD.getDate(), card, { _isStart: true, _isEnd: false });
       }
+    }
+
+    // If only start_date (no due_date), show it
+    if (startD && !dueD && startD >= monthStart && startD <= monthEnd) {
+      addToDay(startD.getDate(), card, { _isStart: true, _isEnd: false });
     }
   });
 
@@ -3494,11 +3499,8 @@ function renderCalendar(){
     const chipsH = cards.slice(0,maxChips).map(c=>{
       const col = COLS.find(col=>col.id==c.column_id);
       const clr = c.priority ? {low:'#22d3a0',medium:'#f59e0b',high:'#f97316',critical:'#ef4444'}[c.priority] : col?.color||'#5b6af0';
-      const prefix = c._isStart ? '▶ ' : c._isEnd ? '⏰ ' : '';
-      const opacity = c._isRange ? '11' : '22';
-      const borderOp = c._isRange ? '22' : '44';
-      const extraStyle = c._isRange ? 'opacity:.7;' : '';
-      return `<div class="cal-chip" style="background:${clr}${opacity};color:${clr};border:1px solid ${clr}${borderOp};${extraStyle}" onclick="event.stopPropagation();openCardM(${c.id})" title="${esc(c.title)}">${prefix}${esc(c.title)}</div>`;
+      const prefix = c._isStart ? '▶ ' : '⏰ ';
+      return `<div class="cal-chip" style="background:${clr}22;color:${clr};border:1px solid ${clr}44;" onclick="event.stopPropagation();openCardM(${c.id})" title="${esc(c.title)}">${prefix}${esc(c.title)}</div>`;
     }).join('');
     const moreH = cards.length > maxChips ? `<div class="cal-more">+${cards.length-maxChips} más</div>` : '';
     html+=`<div class="cal-day${isToday?' today':''}${isSelected?' on':''}" onclick="selectCalDay(${d})">
