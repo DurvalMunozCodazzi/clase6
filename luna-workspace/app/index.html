@@ -880,6 +880,8 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 /* ── GLOBAL LABELS ── */
 #labels-panel{position:fixed;top:var(--th);right:0;width:360px;background:var(--elev);border-left:1px solid var(--bdrl);z-index:202;transform:translateX(100%);transition:transform .3s;box-shadow:var(--shl);bottom:0;display:flex;flex-direction:column;overflow-y:auto;padding:20px}
 #labels-panel.on{transform:translateX(0)}
+#license-panel{position:fixed;top:var(--th);right:0;width:340px;background:var(--elev);border-left:1px solid var(--bdrl);z-index:202;transform:translateX(100%);transition:transform .3s;box-shadow:var(--shl);bottom:0;overflow-y:auto}
+#license-panel.on{transform:translateX(0)}
 .glabel{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:700;cursor:pointer;transition:.15s;border:1px solid transparent}
 .glabel:hover{filter:brightness(1.1)}
 .glabel-del{background:none;border:none;color:inherit;cursor:pointer;opacity:.6;font-size:10px;padding:0;margin-left:2px;line-height:1}
@@ -6099,7 +6101,7 @@ function updateLicenseStatus(){
 </script>
 
   <!-- LICENSE PANEL -->
-  <div class="panel" id="license-panel" style="right:120px;width:320px">
+  <div id="license-panel">
     <div class="phd"><i class="fas fa-key" style="color:var(--acc)"></i> Licencia Luna</div>
     <div style="padding:16px">
       <div id="license-status-box" style="margin-bottom:12px"></div>
