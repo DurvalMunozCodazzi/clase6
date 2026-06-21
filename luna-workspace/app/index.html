@@ -600,7 +600,12 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 .cal-day.on{background:linear-gradient(145deg,rgba(91,106,240,.12),rgba(139,92,246,.08));border-color:var(--acc)}
 .cal-day.other-month{opacity:.3;background:transparent}
 
-.cal-day-num{font-size:12px;font-weight:800;margin-bottom:4px;flex-shrink:0;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:var(--t2);transition:.15s}
+.cal-day-num{font-size:12px;font-weight:800;margin-bottom:4px;flex-shrink:0;height:24px;display:inline-flex;align-items:center;gap:4px;border-radius:50%;color:var(--t2);transition:.15s}
+.cal-add-btn{display:none;width:18px;height:18px;border-radius:50%;border:none;background:var(--acc);color:#fff;font-size:9px;cursor:pointer;align-items:center;justify-content:center;flex-shrink:0;transition:.15s;padding:0;line-height:1}
+.cal-add-btn:hover{background:var(--acch);transform:scale(1.15)}
+.cal-day:hover .cal-add-btn{display:inline-flex}
+.cal-new-task-btn{width:100%;padding:9px 12px;margin-bottom:10px;border-radius:var(--rl);border:1.5px dashed var(--acc);background:var(--accg);color:var(--acc);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s;font-family:var(--f)}
+.cal-new-task-btn:hover{background:var(--acc);color:#fff;border-style:solid}
 
 .cal-chip{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;cursor:pointer;line-height:1.5;box-shadow:0 1px 3px rgba(0,0,0,.12);transition:transform .1s}
 .cal-chip:hover{transform:scale(1.03);opacity:.9}
@@ -2111,6 +2116,20 @@ async function addCard(colId){
     openCardM(d.card.id);
   }catch(e){notify('Error: '+e.message,'er')}
 }
+
+async function addCardFromCal(dateStr){
+  if(isVisitor())return;
+  if(!COLS.length){notify('No hay columnas disponibles','wa');return;}
+  try{
+    const d=await _wsApi('kanban.php?action=add_card','POST',{column_id:COLS[0].id,title:'Nueva tarea'});
+    const card=d.card;
+    await _wsApi(`kanban.php?action=save_card&id=${card.id}`,'PUT',{due_date:dateStr});
+    card.due_date=dateStr;
+    CARDS.push(card);
+    renderKanban();
+    openCardM(card.id);
+  }catch(e){notify('Error: '+e.message,'er')}
+}
 async function moveCard(cardId,newColId,newPos){
   if(isVisitor())return;
   const card=CARDS.find(c=>c.id==cardId);if(!card)return;
@@ -3500,6 +3519,8 @@ function renderCalendar(){
       return `<div class="cal-chip" style="background:${clr};color:#fff;" onclick="event.stopPropagation();openCardM(${c.id})" title="${esc(c.title)}">⏰ ${esc(c.title)}</div>`;
     }).join('');
     const moreH = cards.length > maxChips ? `<div class="cal-more">+${cards.length-maxChips} más</div>` : '';
+    const dateStr = `${CAL.year}-${String(CAL.month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const addBtn = !isVisitor() ? `<button class="cal-add-btn" onclick="event.stopPropagation();addCardFromCal('${dateStr}')" title="Nueva tarea"><i class="fas fa-plus"></i></button>` : '';
     const cls = [
       'cal-day',
       isToday    ? 'today'   : '',
@@ -3507,7 +3528,7 @@ function renderCalendar(){
       isWeekend  ? 'weekend' : '',
     ].filter(Boolean).join(' ');
     html+=`<div class="${cls}" onclick="selectCalDay(${d})">
-      <div class="cal-day-num">${d}</div>
+      <div class="cal-day-num">${d}${addBtn}</div>
       ${chipsH}${moreH}
     </div>`;
   }
@@ -3535,11 +3556,20 @@ function renderCalDayTasks(day, cards){
   const months=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   if(!day||!cards.length){
     const allWithDates = CARDS.filter(c=>c.due_date).sort((a,b)=>(a.due_date>b.due_date?1:-1));
+    const hdr = day
+      ? `${day} ${months[CAL.month]} ${CAL.year} — sin tareas`
+      : 'Próximas tareas';
+    const dateStr = day
+      ? `${CAL.year}-${String(CAL.month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+      : null;
+    const newBtn = !isVisitor() && dateStr
+      ? `<button class="cal-new-task-btn" onclick="addCardFromCal('${dateStr}')"><i class="fas fa-plus"></i> Nueva tarea para este día</button>`
+      : '';
     if(!allWithDates.length){
-      el.innerHTML=`<div class="cal-tasks-hdr">Próximas tareas</div><div class="cal-tasks-body" style="font-size:11px;color:var(--t3);padding:16px;text-align:center">Sin tareas con fecha límite</div>`;
+      el.innerHTML=`<div class="cal-tasks-hdr">${hdr}</div><div class="cal-tasks-body">${newBtn}<div style="font-size:11px;color:var(--t3);padding:16px;text-align:center">Sin tareas con fecha límite</div></div>`;
       return;
     }
-    el.innerHTML=`<div class="cal-tasks-hdr">Próximas tareas</div><div class="cal-tasks-body">`+
+    el.innerHTML=`<div class="cal-tasks-hdr">${hdr}</div><div class="cal-tasks-body">${newBtn}`+
       allWithDates.slice(0,12).map(c=>{
         const col=COLS.find(x=>x.id==c.column_id);
         const clr=c.priority?{low:'#22d3a0',medium:'#f59e0b',high:'#f97316',critical:'#ef4444'}[c.priority]:col?.color||'#5b6af0';
@@ -3553,18 +3583,19 @@ function renderCalDayTasks(day, cards){
       }).join('')+`</div>`;
     return;
   }
-  el.innerHTML=`<div class="cal-tasks-hdr">${day} ${months[CAL.month]} ${CAL.year} · ${cards.length} tarea${cards.length!=1?'s':''}</div><div class="cal-tasks-body">`+
+  const dateStr2 = `${CAL.year}-${String(CAL.month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  const newBtn2 = !isVisitor()
+    ? `<button class="cal-new-task-btn" onclick="addCardFromCal('${dateStr2}')"><i class="fas fa-plus"></i> Nueva tarea para este día</button>`
+    : '';
+  el.innerHTML=`<div class="cal-tasks-hdr">${day} ${months[CAL.month]} ${CAL.year} · ${cards.length} tarea${cards.length!=1?'s':''}</div><div class="cal-tasks-body">${newBtn2}`+
     cards.map(c=>{
       const col=COLS.find(x=>x.id==c.column_id);
       const clr=c.priority?{low:'#22d3a0',medium:'#f59e0b',high:'#f97316',critical:'#ef4444'}[c.priority]:col?.color||'#5b6af0';
-      const dateRange = c.start_date && c.due_date
-        ? `${c.start_date} → ${c.due_date}`
-        : c.due_date ? `Vence: ${c.due_date}` : '';
       return `<div class="cal-task-item" onclick="openCardM(${c.id})">
         <div class="cal-task-dot" style="background:${clr}"></div>
         <div style="flex:1;min-width:0">
           <div class="cal-task-name">${esc(c.title)}</div>
-          <div style="font-size:10px;color:var(--t3);margin-top:2px;font-family:var(--fm)">${esc(col?.title||'')}${dateRange?' · '+dateRange:''}</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:2px;font-family:var(--fm)">${esc(col?.title||'')} · Vence: ${c.due_date}</div>
         </div>
         <i class="fas fa-chevron-right" style="font-size:9px;color:var(--t3);flex-shrink:0"></i>
       </div>`;
