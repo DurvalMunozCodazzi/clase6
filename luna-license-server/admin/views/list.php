@@ -78,26 +78,26 @@
               </span>
             </td>
             <td>
-              <strong><?= esc_html($lic['customer_name'] ?: '—') ?></strong>
-              <?php if ($lic['customer_email']): ?>
+              <strong><?= esc_html(($lic['customer_name'] ?? '') ?: '—') ?></strong>
+              <?php if (!empty($lic['customer_email'])): ?>
                 <br><span class="lls-meta"><?= esc_html($lic['customer_email']) ?></span>
               <?php endif; ?>
             </td>
             <td>
-              <?php if ($lic['domain']): ?>
+              <?php if (!empty($lic['domain'])): ?>
                 <span class="lls-domain"><?= esc_html($lic['domain']) ?></span>
               <?php else: ?>
                 <span class="lls-meta">Sin dominio</span>
               <?php endif; ?>
             </td>
-            <td><span class="lls-plan lls-plan-<?= esc_attr($lic['plan']) ?>"><?= esc_html(LLS_License::plan_label($lic['plan'])) ?></span></td>
+            <td><span class="lls-plan lls-plan-<?= esc_attr($lic['plan'] ?? '') ?>"><?= esc_html(LLS_License::plan_label($lic['plan'] ?? '')) ?></span></td>
             <td>
               <span class="lls-badge lls-badge-<?= $status_cls ?>">
                 <?= esc_html($status_label) ?><?= ($expired && $lic['status']==='active') ? ' · Expirada' : '' ?>
               </span>
             </td>
             <td><?= $exp ? esc_html($exp) : '<span class="lls-meta">Sin límite</span>' ?></td>
-            <td><span class="lls-meta"><?= esc_html(substr($lic['created_at'],0,10)) ?></span></td>
+            <td><span class="lls-meta"><?= esc_html(substr($lic['created_at'] ?? '',0,10)) ?></span></td>
             <td class="lls-actions">
               <a href="<?= admin_url('admin.php?page=luna-licenses-new&edit='.urlencode($lic['license_key'])) ?>" class="lls-btn lls-btn-xs lls-btn-secondary">Editar</a>
               <!-- Toggle active/inactive -->

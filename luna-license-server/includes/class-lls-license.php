@@ -74,11 +74,27 @@ class LLS_License {
             $args[]  = $status;
         }
 
-        $sql_where = implode(' AND ', $where);
+        $sql_where  = implode(' AND ', $where);
         $args_paged = array_merge($args, [$per_page, $offset]);
 
-        $rows  = $wpdb->get_results($wpdb->prepare("SELECT * FROM `{$t}` WHERE {$sql_where} ORDER BY created_at DESC LIMIT %d OFFSET %d", ...$args_paged), ARRAY_A);
-        $total = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM `{$t}` WHERE {$sql_where}", ...$args));
+        // prepare() requires at least one placeholder — use it only when we have args
+        if ($args_paged) {
+            $rows = $wpdb->get_results(
+                $wpdb->prepare("SELECT * FROM `{$t}` WHERE {$sql_where} ORDER BY created_at DESC LIMIT %d OFFSET %d", ...$args_paged),
+                ARRAY_A
+            );
+        } else {
+            $rows = $wpdb->get_results(
+                "SELECT * FROM `{$t}` WHERE {$sql_where} ORDER BY created_at DESC LIMIT {$per_page} OFFSET {$offset}",
+                ARRAY_A
+            );
+        }
+
+        if ($args) {
+            $total = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM `{$t}` WHERE {$sql_where}", ...$args));
+        } else {
+            $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM `{$t}` WHERE {$sql_where}");
+        }
 
         return ['rows' => $rows ?: [], 'total' => $total];
     }
