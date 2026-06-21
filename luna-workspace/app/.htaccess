@@ -1,0 +1,5 @@
+Options -Indexes
+# Block direct access to config and cache files
+<FilesMatch "(luna-wp-config\.php|luna-license\.php|luna-license-cache\.json)$">
+    Require all denied
+</FilesMatch>
