@@ -14,8 +14,11 @@ define('ALLOWED_EXT', ['jpg','jpeg','png','gif','webp','pdf','doc','docx','xls',
 // Crear carpeta si no existe
 if (!is_dir(UPLOAD_DIR)) {
     mkdir(UPLOAD_DIR, 0755, true);
-    // Proteger la carpeta
-    file_put_contents(UPLOAD_DIR . '.htaccess', "Options -Indexes\n");
+}
+// Proteger la carpeta: deshabilitar ejecución PHP y listado de directorio
+$htaccess = UPLOAD_DIR . '.htaccess';
+if (!file_exists($htaccess)) {
+    file_put_contents($htaccess, "Options -Indexes\nphp_flag engine off\nAddType text/plain .php .php3 .php4 .php5 .phtml .phar\n");
 }
 
 $cardId = intval($_POST['card_id'] ?? 0);
@@ -40,15 +43,24 @@ $origName = $file['name'];
 $ext      = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
 if (!in_array($ext, ALLOWED_EXT)) jsonErr("Tipo de archivo no permitido: .$ext");
 
-// Validar MIME type para imágenes
-$allowedMimes = ['image/jpeg','image/png','image/gif','image/webp','application/pdf',
-    'application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'text/plain','text/csv','application/zip','application/x-rar-compressed',
-    'video/mp4','audio/mpeg','application/octet-stream'];
+// Validar MIME type con lista estricta (sin wildcards ni application/octet-stream)
+$allowedMimes = [
+    'image/jpeg','image/png','image/gif','image/webp',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain','text/csv',
+    'application/zip','application/x-zip-compressed',
+    'application/x-rar-compressed','application/vnd.rar',
+    'video/mp4','audio/mpeg','audio/mp3',
+];
 $mime = mime_content_type($file['tmp_name']);
-if (!in_array($mime, $allowedMimes) && strpos($mime, 'image/') !== 0 && strpos($mime, 'text/') !== 0) {
-    jsonErr("Tipo MIME no permitido: $mime");
+if (!in_array($mime, $allowedMimes, true)) {
+    jsonErr("Tipo de archivo no permitido");
 }
 
 // Nombre único para evitar colisiones

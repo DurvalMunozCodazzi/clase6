@@ -96,7 +96,7 @@ function buildReminderBody($data, $siteUrl, $plainText = '') {
     $prioColors = ['low'=>'#22d3a0','medium'=>'#f59e0b','high'=>'#f97316','critical'=>'#ef4444'];
     $prioLabels = ['low'=>'Baja','medium'=>'Media','high'=>'Alta','critical'=>'Crítica'];
 
-    $html = "<p>Hola <strong>{$data['user_name']}</strong>,</p>
+    $html = "<p>Hola <strong>" . htmlspecialchars($data['user_name'], ENT_QUOTES, 'UTF-8') . "</strong>,</p>
              <p>Aquí tu resumen de tareas por vencer:</p>";
 
     $sections = [
@@ -107,18 +107,22 @@ function buildReminderBody($data, $siteUrl, $plainText = '') {
 
     foreach ($sections as [$label, $cards]) {
         if (!$cards) continue;
-        $html .= "<h3 style='margin:20px 0 10px;font-size:14px;font-family:Syne,sans-serif'>{$label}</h3>";
+        $html .= "<h3 style='margin:20px 0 10px;font-size:14px;font-family:Syne,sans-serif'>" . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . "</h3>";
         $html .= "<div style='background:#f8f9fc;border-radius:8px;overflow:hidden;border:1px solid #e8eaf2'>";
         foreach ($cards as $c) {
-            $pColor = $prioColors[$c['priority']??''] ?? $c['col_color'];
+            // Validate $pColor is a safe hex color to prevent CSS injection
+            $rawColor = $prioColors[$c['priority']??''] ?? $c['col_color'] ?? '#5b6af0';
+            $pColor = preg_match('/^#[0-9a-fA-F]{3,6}$/', $rawColor) ? $rawColor : '#5b6af0';
             $pLabel = $prioLabels[$c['priority']??''] ?? '';
+            $eDueDate = htmlspecialchars($c['due_date'] ?? '', ENT_QUOTES, 'UTF-8');
+            $ePrioLabel = htmlspecialchars($pLabel, ENT_QUOTES, 'UTF-8');
             $html .= "<div style='display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #e8eaf2'>
                 <div style='width:3px;height:36px;border-radius:99px;background:{$pColor};flex-shrink:0'></div>
                 <div style='flex:1'>
-                  <div style='font-weight:700;font-size:13px'>" . htmlspecialchars($c['title']) . "</div>
-                  <div style='font-size:11px;color:#8888aa;margin-top:2px'>" . htmlspecialchars($c['ws_name']) . " · " . htmlspecialchars($c['col_title']) . ($pLabel?" · <span style='color:{$pColor}'>{$pLabel}</span>":'') . "</div>
+                  <div style='font-weight:700;font-size:13px'>" . htmlspecialchars($c['title'], ENT_QUOTES, 'UTF-8') . "</div>
+                  <div style='font-size:11px;color:#8888aa;margin-top:2px'>" . htmlspecialchars($c['ws_name'], ENT_QUOTES, 'UTF-8') . " · " . htmlspecialchars($c['col_title'], ENT_QUOTES, 'UTF-8') . ($ePrioLabel ? " · <span style='color:{$pColor}'>{$ePrioLabel}</span>" : '') . "</div>
                 </div>
-                <div style='font-size:11px;font-weight:700;color:{$pColor};font-family:monospace'>{$c['due_date']}</div>
+                <div style='font-size:11px;font-weight:700;color:{$pColor};font-family:monospace'>{$eDueDate}</div>
               </div>";
         }
         $html .= "</div>";

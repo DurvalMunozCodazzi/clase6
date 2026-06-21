@@ -17,12 +17,9 @@ if ($me['role'] !== 'admin') {
     $acc = $db->prepare("SELECT role FROM ".tb('workspace_members')." WHERE workspace_id=? AND user_id=?");
     $acc->execute([$wsId, $me['id']]);
     if (!$acc->fetch()) {
-        // Si no tiene acceso explícito, intentar workspace 1
-        $wsId = 1;
+        jsonErr('Sin acceso a este workspace', 403);
     }
 }
-
-requireAuth();
 
 // ── GET full board state ──────────────────────────────────────────
 if ($method === 'GET' && $action === 'board') {
@@ -46,9 +43,13 @@ if ($method === 'GET' && $action === 'board') {
     $allCards = $cards->fetchAll();
 
     // Tags
-    $tags = $db->query("SELECT ct.* FROM ".tb('card_tags')." ct JOIN ".tb('cards')." c ON c.id=ct.card_id WHERE c.workspace_id=$wsId")->fetchAll();
+    $tagsSt = $db->prepare("SELECT ct.* FROM ".tb('card_tags')." ct JOIN ".tb('cards')." c ON c.id=ct.card_id WHERE c.workspace_id=?");
+    $tagsSt->execute([$wsId]);
+    $tags = $tagsSt->fetchAll();
     // Assignees
-    $asn = $db->query("SELECT ca.card_id, ca.user_id, u.name, u.color FROM ".tb('card_assignees')." ca JOIN ".tb('users')." u ON u.id=ca.user_id JOIN ".tb('cards')." c ON c.id=ca.card_id WHERE c.workspace_id=$wsId")->fetchAll();
+    $asnSt = $db->prepare("SELECT ca.card_id, ca.user_id, u.name, u.color FROM ".tb('card_assignees')." ca JOIN ".tb('users')." u ON u.id=ca.user_id JOIN ".tb('cards')." c ON c.id=ca.card_id WHERE c.workspace_id=?");
+    $asnSt->execute([$wsId]);
+    $asn = $asnSt->fetchAll();
     // Workspace info
     $ws = $db->prepare("SELECT name, canvas FROM ".tb('workspaces')." WHERE id=?");
     $ws->execute([$wsId]);
@@ -66,7 +67,9 @@ if ($method === 'GET' && $action === 'board') {
 // ── POST create column ────────────────────────────────────────────
 if ($method === 'POST' && $action === 'add_column') {
     $b = json_decode(file_get_contents('php://input'), true);
-    $pos = $db->query("SELECT COALESCE(MAX(position),0)+1 FROM ".tb('columns_k')." WHERE workspace_id=$wsId")->fetchColumn();
+    $posSt = $db->prepare("SELECT COALESCE(MAX(position),0)+1 FROM ".tb('columns_k')." WHERE workspace_id=?");
+    $posSt->execute([$wsId]);
+    $pos = $posSt->fetchColumn();
     $st = $db->prepare("INSERT INTO ".tb('columns_k')." (workspace_id,title,color,position) VALUES (?,?,?,?)");
     $st->execute([$wsId, $b['title']??'Nueva columna', $b['color']??'#5b6af0', $pos]);
     $newId = $db->lastInsertId();
@@ -79,17 +82,17 @@ if ($method === 'POST' && $action === 'add_column') {
 if ($method === 'PUT' && $action === 'update_column') {
     $b = json_decode(file_get_contents('php://input'), true);
     $sets = []; $vals = [];
-    if (isset($b['title'])) { $sets[]='title=?'; $vals[]=$b['title']; }
-    if (isset($b['color'])) { $sets[]='color=?'; $vals[]=$b['color']; }
+    if (isset($b['title'])) { $sets[]='title=?'; $vals[]=substr(trim($b['title']),0,200); }
+    if (isset($b['color'])) { $sets[]='color=?'; $vals[]=substr(trim($b['color']),0,20); }
     if (!$sets) jsonErr('Nada que actualizar');
-    $vals[] = $id;
-    $db->prepare("UPDATE ".tb('columns_k')." SET ".implode(',',$sets)." WHERE id=?")->execute($vals);
+    $vals[] = $id; $vals[] = $wsId;
+    $db->prepare("UPDATE ".tb('columns_k')." SET ".implode(',',$sets)." WHERE id=? AND workspace_id=?")->execute($vals);
     jsonOut(['ok'=>true]);
 }
 
 // ── DELETE column ─────────────────────────────────────────────────
 if ($method === 'DELETE' && $action === 'delete_column') {
-    $db->prepare("DELETE FROM ".tb('columns_k')." WHERE id=?")->execute([$id]);
+    $db->prepare("DELETE FROM ".tb('columns_k')." WHERE id=? AND workspace_id=?")->execute([$id, $wsId]);
     jsonOut(['ok'=>true]);
 }
 
@@ -98,9 +101,15 @@ if ($method === 'POST' && $action === 'add_card') {
     $b = json_decode(file_get_contents('php://input'), true);
     $colId = intval($b['column_id'] ?? 0);
     if (!$colId) jsonErr('column_id requerido');
-    $pos = $db->query("SELECT COALESCE(MAX(position),0)+1 FROM ".tb('cards')." WHERE column_id=$colId")->fetchColumn();
+    // Verify column belongs to this workspace
+    $colChk = $db->prepare("SELECT id FROM ".tb('columns_k')." WHERE id=? AND workspace_id=?");
+    $colChk->execute([$colId, $wsId]);
+    if (!$colChk->fetch()) jsonErr('Columna inválida', 403);
+    $cardPosSt = $db->prepare("SELECT COALESCE(MAX(position),0)+1 FROM ".tb('cards')." WHERE column_id=?");
+    $cardPosSt->execute([$colId]);
+    $pos = $cardPosSt->fetchColumn();
     $st = $db->prepare("INSERT INTO ".tb('cards')." (column_id,workspace_id,title,description,priority,due_date,estimated,position) VALUES (?,?,?,?,?,?,?,?)");
-    $st->execute([$colId,$wsId,$b['title']??'Nueva tarea',$b['description']??'',$b['priority']??'',$b['due_date']??null,$b['estimated']??null,$pos]);
+    $st->execute([$colId,$wsId,substr(trim($b['title']??'Nueva tarea'),0,500),$b['description']??'',$b['priority']??'',$b['due_date']??null,$b['estimated']??null,$pos]);
     $newId = $db->lastInsertId();
     $card = $db->prepare("SELECT * FROM ".tb('cards')." WHERE id=?");
     $card->execute([$newId]);
@@ -112,7 +121,16 @@ if ($method === 'PUT' && ($action === 'update_card' || $action === 'save_card'))
     $b = json_decode(file_get_contents('php://input'), true);
     $fields = [];
     foreach (['title','description','priority','due_date','start_date','estimated','column_id','position','progress'] as $f) {
-        if (array_key_exists($f, $b)) $fields[$f] = $b[$f] ?: null;
+        if (array_key_exists($f, $b)) {
+            // Use null only for truly empty optional fields; preserve 0 and "0"
+            $fields[$f] = ($b[$f] !== '' && $b[$f] !== null) ? $b[$f] : null;
+        }
+    }
+    // Validate column_id belongs to this workspace
+    if (isset($fields['column_id']) && $fields['column_id']) {
+        $colChk = $db->prepare("SELECT id FROM ".tb('columns_k')." WHERE id=? AND workspace_id=?");
+        $colChk->execute([$fields['column_id'], $wsId]);
+        if (!$colChk->fetch()) jsonErr('Columna inválida', 403);
     }
     if ($fields) {
         $sets = implode(',', array_map(function($k){ return "$k=?"; }, array_keys($fields)));
@@ -179,7 +197,9 @@ if ($method === 'PUT' && ($action === 'update_card' || $action === 'save_card'))
             $col = $db->prepare("SELECT title, position FROM ".tb('columns_k')." WHERE id=?");
             $col->execute([$fields['column_id']]);
             $colRow = $col->fetch();
-            $maxPos = $db->query("SELECT MAX(position) FROM ".tb('columns_k')." WHERE workspace_id=$wsId")->fetchColumn();
+            $maxPosSt = $db->prepare("SELECT MAX(position) FROM ".tb('columns_k')." WHERE workspace_id=?");
+            $maxPosSt->execute([$wsId]);
+            $maxPos = $maxPosSt->fetchColumn();
             $isCompleted = $colRow && (
                 stripos($colRow['title'], 'complet') !== false ||
                 $colRow['position'] == $maxPos
@@ -211,7 +231,7 @@ if ($method === 'PUT' && ($action === 'update_card' || $action === 'save_card'))
 
 // ── DELETE card ───────────────────────────────────────────────────
 if ($method === 'DELETE' && $action === 'delete_card') {
-    $db->prepare("DELETE FROM ".tb('cards')." WHERE id=?")->execute([$id]);
+    $db->prepare("DELETE FROM ".tb('cards')." WHERE id=? AND workspace_id=?")->execute([$id, $wsId]);
     jsonOut(['ok'=>true]);
 }
 
@@ -255,7 +275,12 @@ if ($method === 'GET' && $action === 'card_detail') {
 // ── POST move card ────────────────────────────────────────────────
 if ($method === 'POST' && $action === 'move_card') {
     $b = json_decode(file_get_contents('php://input'), true);
-    $db->prepare("UPDATE ".tb('cards')." SET column_id=?,position=? WHERE id=?")->execute([$b['column_id'],$b['position'],$id]);
+    $destColId = intval($b['column_id'] ?? 0);
+    // Verify destination column belongs to this workspace
+    $mvChk = $db->prepare("SELECT id FROM ".tb('columns_k')." WHERE id=? AND workspace_id=?");
+    $mvChk->execute([$destColId, $wsId]);
+    if (!$mvChk->fetch()) jsonErr('Columna destino inválida', 403);
+    $db->prepare("UPDATE ".tb('cards')." SET column_id=?,position=? WHERE id=? AND workspace_id=?")->execute([$destColId, intval($b['position'] ?? 0), $id, $wsId]);
     jsonOut(['ok'=>true]);
 }
 
@@ -270,9 +295,8 @@ if ($method === 'PUT' && $action === 'reorder_columns') {
 
 // ── POST add chat message ─────────────────────────────────────────
 if ($method === 'POST' && $action === 'add_chat') {
-    $me = requireAuth();
     $b  = json_decode(file_get_contents('php://input'), true);
-    $msg = trim($b['message'] ?? '');
+    $msg = substr(trim($b['message'] ?? ''), 0, 5000);
     if (!$msg) jsonErr('Mensaje vacio');
     $db->prepare("INSERT INTO ".tb('chat_messages')." (card_id,user_id,message) VALUES (?,?,?)")->execute([$id, $me['id'], $msg]);
     $newId = $db->lastInsertId();
@@ -296,7 +320,9 @@ if ($method === 'GET' && $action === 'poll') {
     $ws = $db->prepare("SELECT updated_at FROM ".tb('workspaces')." WHERE id=?");
     $ws->execute([$wsId]);
     $r = $ws->fetch();
-    $lastCards = $db->query("SELECT MAX(updated_at) FROM ".tb('cards')." WHERE workspace_id=$wsId")->fetchColumn();
+    $lastCardsSt = $db->prepare("SELECT MAX(updated_at) FROM ".tb('cards')." WHERE workspace_id=?");
+    $lastCardsSt->execute([$wsId]);
+    $lastCards = $lastCardsSt->fetchColumn();
     jsonOut(['ts' => max($r['updated_at'], $lastCards ?? '')]);
 }
 

@@ -53,9 +53,9 @@ function sendSMTP($to, $toName, $subject, $htmlBody) {
     try {
         // Open socket
         $context = stream_context_create(['ssl' => [
-            'verify_peer'       => false,
-            'verify_peer_name'  => false,
-            'allow_self_signed' => true,
+            'verify_peer'       => true,
+            'verify_peer_name'  => true,
+            'allow_self_signed' => false,
         ]]);
 
         if ($enc === 'ssl') {
@@ -395,24 +395,30 @@ function createNotification($db, $userId, $fromUserId, $type, $cardId, $workspac
 
     $siteUrl = defined('SITE_URL') ? SITE_URL : ((isset($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!='off'?'https':'http').'://'.($_SERVER['HTTP_HOST']??''));
 
+    $eUser     = htmlspecialchars($user['name'],    ENT_QUOTES, 'UTF-8');
+    $eFrom     = htmlspecialchars($fromName,        ENT_QUOTES, 'UTF-8');
+    $eCard     = htmlspecialchars($cardTitle,       ENT_QUOTES, 'UTF-8');
+    $eWs       = htmlspecialchars($wsName,          ENT_QUOTES, 'UTF-8');
+    $eSiteUrl  = htmlspecialchars($siteUrl,         ENT_QUOTES, 'UTF-8');
+
     $subjects = [
         'assigned' => "✅ Te asignaron una tarea en {$wsName}",
         'comment'  => "💬 {$fromName} comentó en una tarea",
         'due_soon' => "⚠️ Tarea por vencer: {$cardTitle}",
     ];
     $bodies = [
-        'assigned' => "<p>Hola <strong>{$user['name']}</strong>,</p>
-            <p><strong>{$fromName}</strong> te asignó la tarea:</p>
-            <blockquote><strong>{$cardTitle}</strong></blockquote>
-            <p>en el workspace <strong>{$wsName}</strong>.</p>
-            <a href='{$siteUrl}' class='btn'>Ver en Luna →</a>",
-        'comment'  => "<p>Hola <strong>{$user['name']}</strong>,</p>
-            <p><strong>{$fromName}</strong> comentó en la tarea <strong>\"{$cardTitle}\"</strong>:</p>
-            <blockquote>" . htmlspecialchars(substr($message,0,200)) . "</blockquote>
-            <a href='{$siteUrl}' class='btn'>Ver comentario →</a>",
-        'due_soon' => "<p>Hola <strong>{$user['name']}</strong>,</p>
-            <p>La tarea <strong>\"{$cardTitle}\"</strong> vence pronto en <strong>{$wsName}</strong>.</p>
-            <a href='{$siteUrl}' class='btn'>Ver tarea →</a>",
+        'assigned' => "<p>Hola <strong>{$eUser}</strong>,</p>
+            <p><strong>{$eFrom}</strong> te asignó la tarea:</p>
+            <blockquote><strong>{$eCard}</strong></blockquote>
+            <p>en el workspace <strong>{$eWs}</strong>.</p>
+            <a href='{$eSiteUrl}' class='btn'>Ver en Luna →</a>",
+        'comment'  => "<p>Hola <strong>{$eUser}</strong>,</p>
+            <p><strong>{$eFrom}</strong> comentó en la tarea <strong>&quot;{$eCard}&quot;</strong>:</p>
+            <blockquote>" . htmlspecialchars(substr($message,0,200), ENT_QUOTES, 'UTF-8') . "</blockquote>
+            <a href='{$eSiteUrl}' class='btn'>Ver comentario →</a>",
+        'due_soon' => "<p>Hola <strong>{$eUser}</strong>,</p>
+            <p>La tarea <strong>&quot;{$eCard}&quot;</strong> vence pronto en <strong>{$eWs}</strong>.</p>
+            <a href='{$eSiteUrl}' class='btn'>Ver tarea →</a>",
     ];
 
     $subject = $subjects[$type] ?? "Nueva notificación en {$wsName}";

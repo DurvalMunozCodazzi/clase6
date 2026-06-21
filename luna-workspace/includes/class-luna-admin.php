@@ -36,6 +36,12 @@ class Luna_Admin {
     public function show_notices() {
         $screen = get_current_screen();
         if (!$screen || strpos($screen->id, 'luna') === false) return;
+        // Show initial admin password once after fresh installation
+        $initial_pass = get_option('luna_initial_admin_pass');
+        if ($initial_pass) {
+            echo '<div class="notice notice-warning"><p><strong>Luna Workspace — Contraseña inicial del admin:</strong> <code style="font-size:14px;background:#fff3cd;padding:2px 8px;border-radius:4px">' . esc_html($initial_pass) . '</code> — Cámbiala desde el perfil del usuario.</p></div>';
+            delete_option('luna_initial_admin_pass');
+        }
         $key = get_option('luna_license_key', '');
         if (empty($key)) {
             echo '<div class="notice notice-warning"><p><strong>Luna Workspace:</strong> No hay licencia configurada. <a href="' . admin_url('admin.php?page=luna-license') . '">Activar licencia →</a></p></div>';

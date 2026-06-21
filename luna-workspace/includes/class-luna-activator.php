@@ -4,14 +4,16 @@ defined('ABSPATH') || exit;
 class Luna_Activator {
 
     public static function activate() {
-        // Forzar siempre las credenciales correctas de admin_luna
-        update_option('luna_manual_db', [
-            'db_host'   => 'localhost',
-            'db_name'   => 'admin_luna',
-            'db_user'   => 'Luna',
-            'db_pass'   => '!?t1Kipek1qf3oYL',
-            'tb_prefix' => '',
-        ]);
+        // Solo inicializar luna_manual_db si no está configurado (preservar config existente)
+        if (!get_option('luna_manual_db')) {
+            update_option('luna_manual_db', [
+                'db_host'   => '',
+                'db_name'   => '',
+                'db_user'   => '',
+                'db_pass'   => '',
+                'tb_prefix' => '',
+            ]);
+        }
         self::create_tables();
         self::seed_initial_data();
         self::create_app_page();
@@ -324,10 +326,12 @@ class Luna_Activator {
                 (1,'Completado','#22d3a0',3)");
         }
 
-        // Admin user — credenciales iniciales: admin / admin (el cliente debe cambiarlas)
+        // Admin user — contraseña inicial aleatoria, se muestra una vez en pantalla de configuración
         $admin_exists = $wpdb->get_var("SELECT COUNT(*) FROM {$p}luna_users WHERE username='admin'");
         if (!$admin_exists) {
-            $hash = password_hash('admin', PASSWORD_BCRYPT);
+            $initial_pass = bin2hex(random_bytes(8)); // 16 chars hex
+            update_option('luna_initial_admin_pass', $initial_pass); // saved once to show in admin
+            $hash = password_hash($initial_pass, PASSWORD_BCRYPT);
             $wpdb->insert("{$p}luna_users", [
                 'username' => 'admin',
                 'email'    => get_option('admin_email'),

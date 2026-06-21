@@ -7,14 +7,20 @@ $id     = intval($_GET['id'] ?? 0);
 
 // GET all users (any authenticated user can see the list)
 if ($method === 'GET' && $action === 'list') {
-    requireAuth();
-    $st = $db->query("SELECT id,username,email,name,cargo,dept,role,color,active,notes,photo,created_at,last_login,phone,whatsapp_apikey,telegram_chat_id,notification_channel FROM ".tb('users')." ORDER BY role,name");
+    $me = requireAuth();
+    if ($me['role'] === 'admin') {
+        $st = $db->query("SELECT id,username,email,name,cargo,dept,role,color,active,notes,photo,created_at,last_login,phone,whatsapp_apikey,telegram_chat_id,notification_channel FROM ".tb('users')." ORDER BY role,name");
+    } else {
+        // Non-admins don't see API keys or private notes
+        $st = $db->query("SELECT id,username,email,name,cargo,dept,role,color,active,photo,created_at,last_login,notification_channel FROM ".tb('users')." ORDER BY role,name");
+    }
     jsonOut(['users' => $st->fetchAll()]);
 }
 
 // GET single user profile (self)
 if ($method === 'GET' && $action === 'me') {
     $me = requireAuth();
+    unset($me['password']);
     jsonOut(['user' => $me]);
 }
 
@@ -98,8 +104,8 @@ if ($method === 'PUT' && $action === 'update') {
 
     // Password change
     if (!empty($b['password'])) {
-        // Self: must verify old password
-        if ($targetId == $me['id'] && $me['role'] !== 'admin') {
+        // Anyone changing their own password must verify the current one (including admins)
+        if ($targetId == $me['id']) {
             if (empty($b['old_password']) || !password_verify($b['old_password'], $row['password']))
                 jsonErr('Contrasena actual incorrecta', 403);
         }

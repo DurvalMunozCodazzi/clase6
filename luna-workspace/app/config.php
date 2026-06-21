@@ -1,13 +1,17 @@
 <?php
-// ── Capturar cualquier error PHP y devolverlo como JSON (quitar en producción) ──
+// ── Capturar cualquier error PHP y devolverlo como JSON ──
 set_exception_handler(function($e) {
     http_response_code(500);
     @header('Content-Type: application/json');
-    echo json_encode([
-        'error' => 'PHP Exception: ' . $e->getMessage(),
-        'file'  => str_replace($_SERVER['DOCUMENT_ROOT'] ?? '', '', $e->getFile()),
-        'line'  => $e->getLine(),
-    ]);
+    if (defined('LUNA_DEBUG') && LUNA_DEBUG) {
+        echo json_encode([
+            'error' => 'PHP Exception: ' . $e->getMessage(),
+            'file'  => str_replace($_SERVER['DOCUMENT_ROOT'] ?? '', '', $e->getFile()),
+            'line'  => $e->getLine(),
+        ]);
+    } else {
+        echo json_encode(['error' => 'Error interno del servidor']);
+    }
     exit;
 });
 set_error_handler(function($errno, $errstr, $errfile, $errline) {
@@ -99,7 +103,10 @@ function getDB() {
     } catch (PDOException $e) {
         http_response_code(500);
         header('Content-Type: application/json');
-        die(json_encode(['error' => 'DB connection failed: ' . $e->getMessage()]));
+        if (defined('LUNA_DEBUG') && LUNA_DEBUG) {
+            die(json_encode(['error' => 'DB connection failed: ' . $e->getMessage()]));
+        }
+        die(json_encode(['error' => 'Error de conexión a la base de datos']));
     }
 }
 
@@ -120,7 +127,7 @@ function getBearerToken() {
             if (strtolower($k) === 'authorization') { $h = $v; break; }
     }
     if (preg_match('/Bearer\s+(.+)/i', $h, $m)) return trim($m[1]);
-    if (!empty($_GET['token']))         return trim($_GET['token']);
+    // Note: GET token is intentionally not supported (tokens in URLs leak via logs/referer)
     if (!empty($_COOKIE['luna_token'])) return trim($_COOKIE['luna_token']);
     return null;
 }
@@ -129,7 +136,7 @@ function requireAuth() {
     $token = getBearerToken();
     if (!$token) jsonErr('No autenticado', 401);
     $db = getDB();
-    $st = $db->prepare("SELECT u.* FROM " . tb('sessions') . " s
+    $st = $db->prepare("SELECT u.id,u.username,u.email,u.name,u.cargo,u.dept,u.role,u.color,u.active,u.notes,u.photo,u.phone,u.whatsapp_apikey,u.telegram_chat_id,u.notification_channel,u.last_login,u.created_at FROM " . tb('sessions') . " s
         JOIN " . tb('users') . " u ON u.id = s.user_id
         WHERE s.token=? AND s.expires_at>NOW() AND u.active=1");
     $st->execute([$token]);
@@ -155,7 +162,7 @@ function getLicenseInfo() {
         if ($c && isset($c['expires']) && $c['expires'] > time()) { $info = $c; return $info; }
     }
     try {
-        $domain  = $_SERVER['HTTP_HOST'] ?? '';
+        $domain  = defined('LUNA_SITE_URL') && LUNA_SITE_URL ? parse_url(LUNA_SITE_URL, PHP_URL_HOST) : ($_SERVER['SERVER_NAME'] ?? $_SERVER['HTTP_HOST'] ?? '');
         $payload = json_encode(['license_key' => $key, 'domain' => $domain]);
         $r       = null;
 
@@ -175,8 +182,12 @@ function getLicenseInfo() {
             $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
             if ($code === 429) {
-                $info = ['valid' => true, 'plan' => 'offline', 'max_workspaces' => 1,
-                         'message' => 'Rate limit del servidor de licencias.'];
+                // Rate limited — use cached data if available, otherwise deny
+                if (file_exists($cache_file)) {
+                    $c = json_decode(file_get_contents($cache_file), true);
+                    if ($c && is_array($c)) { $info = $c; return $info; }
+                }
+                $info = ['valid' => false, 'plan' => 'none', 'max_workspaces' => 0, 'reason' => 'rate_limited'];
                 return $info;
             }
             if (!$r || $code < 200 || $code >= 300) $r = null;
@@ -194,7 +205,14 @@ function getLicenseInfo() {
         $data = $r ? json_decode($r, true) : null;
 
         if ($data && isset($data['valid'])) {
-            // Verificar firma HMAC si está disponible
+            // Verificar firma HMAC — obligatoria si HMAC_SECRET está configurado
+            if (defined('LUNA_HMAC_SECRET') && LUNA_HMAC_SECRET) {
+                if (empty($data['hmac']) || empty($data['issued_at'])) {
+                    // Respuesta sin firma cuando el servidor requiere firma — rechazar
+                    $info = ['valid' => false, 'plan' => 'none', 'max_workspaces' => 0, 'reason' => 'missing_signature'];
+                    return $info;
+                }
+            }
             if (!empty($data['hmac']) && !empty($data['issued_at']) && defined('LUNA_HMAC_SECRET') && LUNA_HMAC_SECRET) {
                 $sign_payload = implode('|', [
                     $key,
@@ -221,22 +239,34 @@ function getLicenseInfo() {
                 $c = json_decode(file_get_contents($cache_file), true);
                 if ($c && is_array($c)) { $info = $c; return $info; }
             }
-            // Sin caché: plan más restrictivo (nunca 999 como fallback)
-            $info = ['valid' => true, 'plan' => 'offline', 'max_workspaces' => 1, 'max_sites' => 1];
+            // Sin caché y servidor inalcanzable: denegar acceso
+            $info = ['valid' => false, 'plan' => 'none', 'max_workspaces' => 0, 'reason' => 'server_unreachable'];
         }
     } catch (\Exception $e) {
         if (file_exists($cache_file)) {
             $c = @json_decode(@file_get_contents($cache_file), true);
             if ($c && is_array($c)) { $info = $c; return $info; }
         }
-        $info = ['valid' => true, 'plan' => 'offline', 'max_workspaces' => 1, 'max_sites' => 1];
+        $info = ['valid' => false, 'plan' => 'none', 'max_workspaces' => 0, 'reason' => 'exception'];
     }
     return $info;
 }
 
 // ── CORS headers ──────────────────────────────────────────────────────────────
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
-header("Access-Control-Allow-Origin: $origin");
+$_cors_origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$_cors_allowed = array_filter(array_map('trim', [
+    defined('LUNA_SITE_URL') ? LUNA_SITE_URL : '',
+    defined('LUNA_SITE_URL') ? rtrim(LUNA_SITE_URL, '/') : '',
+]));
+// Also allow same-origin requests (no Origin header) and WordPress admin origin if defined
+if (!$_cors_origin || in_array($_cors_origin, $_cors_allowed, true)) {
+    $origin = $_cors_origin ?: (defined('LUNA_SITE_URL') ? LUNA_SITE_URL : '');
+    if ($origin) header("Access-Control-Allow-Origin: $origin");
+} else {
+    // Origin not in allowlist — deny CORS (browsers will block the response)
+    $origin = defined('LUNA_SITE_URL') ? LUNA_SITE_URL : '';
+    if ($origin) header("Access-Control-Allow-Origin: $origin");
+}
 header('Access-Control-Allow-Credentials: true');
 header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Requested-With');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
