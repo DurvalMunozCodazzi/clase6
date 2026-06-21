@@ -3491,15 +3491,35 @@ function renderCalendar(){
   const weeks = Math.ceil(totalCells / 7);
   const isMobile = window.innerWidth <= 768;
 
-  // Build day→cards map
+  // Build day→cards map — spans full range [start_date … due_date]
   const dayCards = {};
+  const monthStart = new Date(CAL.year, CAL.month, 1);
+  const monthEnd   = new Date(CAL.year, CAL.month + 1, 0);
+
   CARDS.forEach(card => {
-    if(!card.due_date) return;
-    const d = new Date(card.due_date+'T00:00:00');
-    if(d.getFullYear()===CAL.year && d.getMonth()===CAL.month){
-      const day = d.getDate();
-      if(!dayCards[day]) dayCards[day]=[];
-      dayCards[day].push(card);
+    const startD = card.start_date ? new Date(card.start_date + 'T00:00:00') : null;
+    const dueD   = card.due_date   ? new Date(card.due_date   + 'T00:00:00') : null;
+    if (!startD && !dueD) return;
+
+    const rangeStart = startD || dueD;
+    const rangeEnd   = dueD   || startD;
+
+    // Clip to current month
+    const clipStart = new Date(Math.max(rangeStart.getTime(), monthStart.getTime()));
+    const clipEnd   = new Date(Math.min(rangeEnd.getTime(),   monthEnd.getTime()));
+    if (clipStart > clipEnd) return;
+
+    for (let cur = new Date(clipStart); cur <= clipEnd; cur.setDate(cur.getDate() + 1)) {
+      const day = cur.getDate();
+      if (!dayCards[day]) dayCards[day] = [];
+      if (!dayCards[day].find(c => c.id === card.id)) {
+        dayCards[day].push({
+          ...card,
+          _isStart : startD && cur.getTime() === startD.getTime(),
+          _isEnd   : dueD   && cur.getTime() === dueD.getTime(),
+          _isRange : !(startD && cur.getTime() === startD.getTime()) && !(dueD && cur.getTime() === dueD.getTime()),
+        });
+      }
     }
   });
 
@@ -3518,7 +3538,11 @@ function renderCalendar(){
     const chipsH = cards.slice(0,maxChips).map(c=>{
       const col = COLS.find(col=>col.id==c.column_id);
       const clr = c.priority ? {low:'#22d3a0',medium:'#f59e0b',high:'#f97316',critical:'#ef4444'}[c.priority] : col?.color||'#5b6af0';
-      return `<div class="cal-chip" style="background:${clr}22;color:${clr};border:1px solid ${clr}44" onclick="event.stopPropagation();openCardM(${c.id})" title="${esc(c.title)}">${esc(c.title)}</div>`;
+      const prefix = c._isStart ? '▶ ' : c._isEnd ? '⏰ ' : '';
+      const opacity = c._isRange ? '11' : '22';
+      const borderOp = c._isRange ? '22' : '44';
+      const extraStyle = c._isRange ? 'opacity:.7;' : '';
+      return `<div class="cal-chip" style="background:${clr}${opacity};color:${clr};border:1px solid ${clr}${borderOp};${extraStyle}" onclick="event.stopPropagation();openCardM(${c.id})" title="${esc(c.title)}">${prefix}${esc(c.title)}</div>`;
     }).join('');
     const moreH = cards.length > maxChips ? `<div class="cal-more">+${cards.length-maxChips} más</div>` : '';
     html+=`<div class="cal-day${isToday?' today':''}${isSelected?' on':''}" onclick="selectCalDay(${d})">
@@ -3548,19 +3572,23 @@ function selectCalDay(day){
 function renderCalDayTasks(day, cards){
   const el=document.getElementById('cal-tasks-list'); if(!el) return;
   if(!day||!cards.length){
-    const allWithDates = CARDS.filter(c=>c.due_date).sort((a,b)=>a.due_date>b.due_date?1:-1);
+    const allWithDates = CARDS.filter(c=>c.due_date||c.start_date).sort((a,b)=>{
+      const da = a.due_date||a.start_date; const db = b.due_date||b.start_date;
+      return da>db?1:-1;
+    });
     if(!allWithDates.length){
-      el.innerHTML='<div class="cal-tasks-hdr">Próximas tareas</div><div style="font-size:11px;color:var(--t3);padding:10px;text-align:center">Sin tareas con fecha límite</div>';
+      el.innerHTML='<div class="cal-tasks-hdr">Próximas tareas</div><div style="font-size:11px;color:var(--t3);padding:10px;text-align:center">Sin tareas con fechas</div>';
       return;
     }
     el.innerHTML=`<div class="cal-tasks-hdr">Próximas tareas</div>`+
       allWithDates.slice(0,10).map(c=>{
         const col=COLS.find(x=>x.id==c.column_id);
         const clr=c.priority?{low:'#22d3a0',medium:'#f59e0b',high:'#f97316',critical:'#ef4444'}[c.priority]:col?.color||'#5b6af0';
+        const dateStr = c.start_date && c.due_date ? `${c.start_date} → ${c.due_date}` : c.due_date||c.start_date;
         return `<div class="cal-task-item" onclick="openCardM(${c.id})">
           <div class="cal-task-dot" style="background:${clr}"></div>
           <div class="cal-task-name">${esc(c.title)}</div>
-          <div class="cal-task-date ${dueCls(c.due_date)}">${c.due_date}</div>
+          <div class="cal-task-date ${dueCls(c.due_date||c.start_date)}">${dateStr}</div>
         </div>`;
       }).join('');
     return;
@@ -3570,10 +3598,15 @@ function renderCalDayTasks(day, cards){
     cards.map(c=>{
       const col=COLS.find(x=>x.id==c.column_id);
       const clr=c.priority?{low:'#22d3a0',medium:'#f59e0b',high:'#f97316',critical:'#ef4444'}[c.priority]:col?.color||'#5b6af0';
+      const dateRange = c.start_date && c.due_date
+        ? `${c.start_date} → ${c.due_date}`
+        : c.due_date ? `Vence: ${c.due_date}` : c.start_date ? `Inicio: ${c.start_date}` : '';
       return `<div class="cal-task-item" onclick="openCardM(${c.id})">
         <div class="cal-task-dot" style="background:${clr}"></div>
-        <div class="cal-task-name">${esc(c.title)}</div>
-        <div style="font-size:10px;color:var(--t3)">${esc(col?.title||'')}</div>
+        <div style="flex:1;overflow:hidden">
+          <div class="cal-task-name">${esc(c.title)}</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:2px">${esc(col?.title||'')}${dateRange?' · '+dateRange:''}</div>
+        </div>
       </div>`;
     }).join('');
 }

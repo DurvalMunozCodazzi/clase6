@@ -91,7 +91,7 @@ function luna_handle_admin_enter() {
         'expires'  => time() + $hours * 3600,
         'path'     => '/',
         'secure'   => is_ssl(),
-        'httponly' => false,
+        'httponly' => true,
         'samesite' => 'Lax',
     ]);
 
@@ -115,7 +115,7 @@ function luna_handle_admin_enter_legacy() {
     $expires = date('Y-m-d H:i:s', time() + $hours * 3600);
     $wpdb->insert("{$p}sessions", ['token' => $token, 'user_id' => $admin['id'], 'expires_at' => $expires]);
     $wpdb->update("{$p}users", ['last_login' => current_time('mysql')], ['id' => $admin['id']]);
-    setcookie('luna_token', $token, ['expires' => time() + $hours * 3600, 'path' => '/', 'secure' => is_ssl(), 'httponly' => false, 'samesite' => 'Lax']);
+    setcookie('luna_token', $token, ['expires' => time() + $hours * 3600, 'path' => '/', 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
     wp_redirect(LUNA_APP_URL . 'index.html');
     exit;
 }

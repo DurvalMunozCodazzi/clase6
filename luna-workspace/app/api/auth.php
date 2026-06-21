@@ -37,7 +37,7 @@ if ($method === 'POST' && $action === 'login') {
         'expires'  => $cookieExpires,
         'path'     => '/',
         'secure'   => $secure,
-        'httponly' => false,   // necesita ser leído por JS también
+        'httponly' => true,
         'samesite' => 'Lax',
     ]);
 
