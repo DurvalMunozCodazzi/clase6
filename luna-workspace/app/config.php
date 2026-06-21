@@ -69,7 +69,7 @@ if (!defined('LUNA_TB_PREFIX')) define('LUNA_TB_PREFIX', 'wp_luna_');
 if (!defined('SESSION_HOURS'))  define('SESSION_HOURS',  24);
 if (!defined('LUNA_VERSION'))   define('LUNA_VERSION',   '2.0');
 if (!defined('LUNA_LICENSE_KEY'))    define('LUNA_LICENSE_KEY',    '');
-if (!defined('LUNA_LICENSE_SERVER')) define('LUNA_LICENSE_SERVER', 'https://websobreruedas.com/licencias/api/verify.php');
+if (!defined('LUNA_LICENSE_SERVER')) define('LUNA_LICENSE_SERVER', 'https://websobreruedas.com/wp-json/luna-licenses/v1/verify');
 if (!defined('LUNA_SITE_URL'))       define('LUNA_SITE_URL',   '');
 if (!defined('LUNA_UPLOAD_URL'))     define('LUNA_UPLOAD_URL', '');
 if (!defined('LUNA_CRON_SECRET'))    define('LUNA_CRON_SECRET', '');

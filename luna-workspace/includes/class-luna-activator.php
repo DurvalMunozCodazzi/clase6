@@ -420,7 +420,7 @@ class Luna_Activator {
         }
 
         $license_key    = get_option('luna_license_key', '');
-        $license_server = get_option('luna_license_server_url', 'https://TU-DOMINIO.com/licencias/api/verify.php');
+        $license_server = get_option('luna_license_server_url', 'https://websobreruedas.com/wp-json/luna-licenses/v1/verify');
         $site_url       = get_site_url();
         $upload_url     = LUNA_PLUGIN_URL . 'app/uploads/';
 
