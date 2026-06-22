@@ -43,6 +43,18 @@ class LLS_Activator {
             KEY idx_date (verified_at)
         ) {$charset};");
 
+        // Migration: add verified_at if table existed with old schema (created_at)
+        $cols = $wpdb->get_results("SHOW COLUMNS FROM `{$t_log}`", ARRAY_A);
+        $col_names = array_column($cols, 'Field');
+        if (!in_array('verified_at', $col_names)) {
+            if (in_array('created_at', $col_names)) {
+                $wpdb->query("ALTER TABLE `{$t_log}` CHANGE `created_at` `verified_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
+            } else {
+                $wpdb->query("ALTER TABLE `{$t_log}` ADD COLUMN `verified_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
+                $wpdb->query("ALTER TABLE `{$t_log}` ADD KEY `idx_date` (`verified_at`)");
+            }
+        }
+
         update_option('lls_version', LLS_VERSION);
     }
 
