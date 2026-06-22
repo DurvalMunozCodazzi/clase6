@@ -13,6 +13,8 @@ class Luna_Admin {
     }
 
     public function maybe_migrate(): void {
+        // Run at most once per day — prevents SHOW COLUMNS on every AJAX request
+        if (get_transient('luna_migration_done_' . LUNA_VERSION)) return;
         global $wpdb;
         $p = $wpdb->prefix . 'luna_';
         Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'phone',               "VARCHAR(30) DEFAULT ''");
@@ -25,6 +27,7 @@ class Luna_Admin {
         Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'photo',                "MEDIUMTEXT DEFAULT NULL");
         Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'notes',                "TEXT DEFAULT ''");
         Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'last_login',           "DATETIME NULL");
+        set_transient('luna_migration_done_' . LUNA_VERSION, 1, DAY_IN_SECONDS);
     }
 
     public function register_menu() {
@@ -568,40 +571,54 @@ class Luna_Admin {
             wp_send_json_success();
         }
 
-        // ── Email via PHP mail() nativo — sin SMTP externo ───────────────────────
+        // ── Email via Postfix local (localhost:25, sin SSL, sin auth) ─────────────
+        // Conecta directo al MTA del servidor — sin colgar, sin 504
         if (empty($user['email'])) wp_send_json_error('El usuario no tiene email configurado');
 
         $st  = $wpdb->get_row("SELECT meta_value FROM `{$p}app_settings` WHERE meta_key='email_settings' LIMIT 1");
         $cfg = $st ? (json_decode($st->meta_value, true) ?: []) : [];
 
-        $from_email = !empty($cfg['from_email']) ? $cfg['from_email'] : (!empty($cfg['smtp_user']) ? $cfg['smtp_user'] : 'noreply@' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
+        $from_email = !empty($cfg['from_email']) ? $cfg['from_email'] : (!empty($cfg['smtp_user']) ? $cfg['smtp_user'] : 'info@' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
         $from_name  = !empty($cfg['from_name'])  ? $cfg['from_name']  : 'Luna Workspace';
+        $to         = $user['email'];
 
-        $to   = $user['email'];
         $html = '<p>Hola <strong>' . esc_html($user['name']) . '</strong>,</p>'
               . '<p>Esta es una notificación de prueba de Luna Workspace. Si la recibís, todo está configurado correctamente.</p>';
 
-        // wp_mail() sin phpmailer_init usa PHP mail() nativo → va por el MTA local del servidor (Postfix/Plesk)
-        // No abre conexiones externas, no se cuelga, no da 504
-        $headers = [
-            'Content-Type: text/html; charset=UTF-8',
-            'From: ' . $from_name . ' <' . $from_email . '>',
-        ];
-
+        // Inyectar via localhost:25 (Postfix local — Plesk siempre lo tiene activo)
+        // Sin SSL, sin auth, timeout 5s → respuesta instantánea
         $mail_error = '';
+        add_action('phpmailer_init', function($m) use ($from_email, $from_name) {
+            $m->isSMTP();
+            $m->Host       = '127.0.0.1';
+            $m->Port       = 25;
+            $m->SMTPAuth   = false;
+            $m->SMTPSecure = '';
+            $m->Timeout    = 5;
+            $m->setFrom($from_email, $from_name);
+        });
         add_action('wp_mail_failed', function($e) use (&$mail_error) {
             $mail_error = $e->get_error_message();
         });
+        add_filter('wp_mail_content_type', fn() => 'text/html');
 
-        $sent = wp_mail($to, $subject, $html, $headers);
+        $sent = wp_mail($to, $subject, $html);
 
+        remove_all_actions('phpmailer_init');
         remove_all_actions('wp_mail_failed');
+        remove_all_filters('wp_mail_content_type');
 
         if ($sent) {
-            wp_send_json_success('Email enviado a ' . $to . ' desde ' . $from_email);
+            wp_send_json_success('✅ Email enviado a ' . $to . ' desde ' . $from_email);
         } else {
-            $detail = $mail_error ?: 'mail() devolvió false — verificá que PHP mail() esté habilitado en Plesk o que sendmail esté configurado en el servidor';
-            wp_send_json_error('Error: ' . $detail);
+            // Fallback: intentar PHP mail() directo
+            $headers  = "From: {$from_name} <{$from_email}>\r\nContent-Type: text/html; charset=UTF-8\r\n";
+            $fallback = @mail($to, $subject, $html, $headers);
+            if ($fallback) {
+                wp_send_json_success('✅ Email enviado (vía mail() nativo) a ' . $to);
+            } else {
+                wp_send_json_error('Error: ' . ($mail_error ?: 'No se pudo conectar al servidor de correo local (localhost:25). Verificá en Plesk → Mail → Mail Settings que el servicio de correo esté activo.'));
+            }
         }
     }
 
