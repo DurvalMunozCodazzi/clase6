@@ -5450,11 +5450,13 @@ async function showApp(){
   initTheme();
   detectOSDarkMode();
   startPolling();
-  initGantt();
-  addGanttExportBtn();
+  const ganttEnabled = !(window.LUNA_WP && window.LUNA_WP.showGantt === false);
+  document.getElementById('tv-gt').style.display = ganttEnabled ? '' : 'none';
+  document.getElementById('tv-bt').style.display = ganttEnabled ? '' : 'none';
+  if(ganttEnabled){ initGantt(); addGanttExportBtn(); }
   loadWipLimits();
   loadColComments();
-  sw('gt');
+  sw('kn');
   loadNotifications();
   setTimeout(checkShowTour, 1500);
   setTimeout(requestPushPermission, 3000);

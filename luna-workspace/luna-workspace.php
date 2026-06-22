@@ -141,7 +141,8 @@ function luna_render_shortcode($atts) {
           licenseKey: <?php echo json_encode($license) ?>,
           apiUrl:     <?php echo json_encode(LUNA_APP_URL . 'api') ?>,
           ajaxUrl:    <?php echo json_encode(admin_url('admin-ajax.php')) ?>,
-          nonce:      <?php echo json_encode(wp_create_nonce('luna_nonce')) ?>
+          nonce:      <?php echo json_encode(wp_create_nonce('luna_nonce')) ?>,
+          showGantt:  <?php echo get_option('luna_show_gantt', 1) ? 'true' : 'false' ?>
         };
       </script>
       <iframe src="<?php echo esc_url($app_url) ?>"
@@ -172,9 +173,10 @@ function luna_serve_app() {
         . '.ws-item .ws-actions{position:relative;z-index:2}'
         . '</style>'
         . '<script>window.LUNA_WP={licenseKey:' . json_encode($license)
-        . ',apiUrl:'  . json_encode(LUNA_APP_URL . 'api')
-        . ',ajaxUrl:' . json_encode(admin_url('admin-ajax.php'))
-        . ',nonce:'   . json_encode(wp_create_nonce('luna_nonce'))
+        . ',apiUrl:'    . json_encode(LUNA_APP_URL . 'api')
+        . ',ajaxUrl:'   . json_encode(admin_url('admin-ajax.php'))
+        . ',nonce:'     . json_encode(wp_create_nonce('luna_nonce'))
+        . ',showGantt:' . (get_option('luna_show_gantt', 1) ? 'true' : 'false')
         . '};</script>';
     $content = str_replace('</head>', $inject . '</head>', $content);
     // Fix relative API paths to absolute plugin paths

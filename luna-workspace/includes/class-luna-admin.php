@@ -54,13 +54,15 @@ class Luna_Admin {
     // ── Main settings page ────────────────────────────────────────────────────
     public function render_main_page() {
         if (isset($_POST['luna_save_settings']) && check_admin_referer('luna_settings')) {
-            update_option('luna_page_slug',   sanitize_text_field($_POST['luna_page_slug'] ?? 'luna-app'));
+            update_option('luna_page_slug',    sanitize_text_field($_POST['luna_page_slug'] ?? 'luna-app'));
             update_option('luna_session_hours', absint($_POST['luna_session_hours'] ?? 24));
+            update_option('luna_show_gantt',   isset($_POST['luna_show_gantt']) ? 1 : 0);
             Luna_Activator::regenerate_app_config();
             echo '<div class="notice notice-success"><p>Configuración guardada.</p></div>';
         }
         $slug        = get_option('luna_page_slug', 'luna-app');
         $hours       = get_option('luna_session_hours', 24);
+        $show_gantt  = get_option('luna_show_gantt', 1);
         $entry_token = get_option('luna_entry_token', '');
         // Generar token si todavía no existe (instalaciones anteriores)
         if (!$entry_token) {
@@ -124,6 +126,16 @@ class Luna_Admin {
                 <tr>
                   <th>Duración de sesión (horas)</th>
                   <td><input type="number" name="luna_session_hours" value="<?php echo esc_attr($hours) ?>" min="1" max="720" class="small-text"></td>
+                </tr>
+                <tr>
+                  <th>Vista Gantt</th>
+                  <td>
+                    <label>
+                      <input type="checkbox" name="luna_show_gantt" value="1" <?php checked(1, $show_gantt) ?>>
+                      Mostrar pestaña Gantt en la aplicación
+                    </label>
+                    <p class="description">Si está desactivada, solo se ve la pizarra Kanban.</p>
+                  </td>
                 </tr>
               </table>
               <p><button type="submit" name="luna_save_settings" class="button button-primary">Guardar cambios</button></p>
