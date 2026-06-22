@@ -75,11 +75,15 @@ function sendNativeMail($to, $toName, $subject, $htmlBody) {
 
 // ── SMTP send via socket ───────────────────────────────────────────────────────
 function sendSMTP($to, $toName, $subject, $htmlBody) {
-    $cfg = getEmailSettings();
+    // ALWAYS try localhost:25 first — fast, no SSL, no external connection
+    // External SMTP (websobreruedas.ar:465) hangs on SSL handshake and kills the process
+    $native = sendNativeMail($to, $toName, $subject, $htmlBody);
+    if (!empty($native['ok'])) return $native;
 
-    // Sin SMTP externo configurado → inyección local directa
+    // localhost:25 failed — try external SMTP as last resort
+    $cfg = getEmailSettings();
     if (empty($cfg['enabled']) || empty($cfg['smtp_user']) || empty($cfg['smtp_pass'])) {
-        return sendNativeMail($to, $toName, $subject, $htmlBody);
+        return $native; // nothing else to try
     }
 
     $host     = $cfg['smtp_host']  ?: 'smtp.gmail.com';
