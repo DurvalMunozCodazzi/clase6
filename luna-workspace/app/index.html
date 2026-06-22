@@ -2127,8 +2127,6 @@ async function addCardFromCal(dateStr){
     card.due_date=dateStr;
     CARDS.push(card);
     renderKanban();
-    // Cerrar el calendario antes de abrir el modal (z-index conflict)
-    document.getElementById('cal-panel')?.classList.remove('on');
     openCardM(card.id);
   }catch(e){notify('Error: '+e.message,'er')}
 }
