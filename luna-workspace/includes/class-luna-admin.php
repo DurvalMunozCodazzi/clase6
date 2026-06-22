@@ -20,7 +20,8 @@ class Luna_Admin {
             30
         );
         add_submenu_page('luna-workspace', 'Configuración', 'Configuración', 'manage_options', 'luna-workspace', [$this, 'render_main_page']);
-        add_submenu_page('luna-workspace', 'Licencia',      'Licencia',      'manage_options', 'luna-license',   [$this, 'render_license_page']);
+        add_submenu_page('luna-workspace', 'Licencia',      'Licencia',      'manage_options', 'luna-license',         [$this, 'render_license_page']);
+        add_submenu_page('luna-workspace', 'Notificaciones','Notificaciones','manage_options', 'luna-notifications',   [$this, 'render_notifications_page']);
     }
 
     public function enqueue_scripts($hook) {
@@ -31,6 +32,8 @@ class Luna_Admin {
             'nonce'   => wp_create_nonce('luna_admin_nonce'),
             'ajaxUrl' => admin_url('admin-ajax.php'),
         ]);
+        // AJAX handlers for notification test
+        add_action('wp_ajax_luna_test_notification', [$this, 'ajax_test_notification']);
     }
 
     public function show_notices() {
@@ -231,6 +234,222 @@ class Luna_Admin {
           </div>
         </div>
         <?php
+    }
+
+    // ── Notifications page ────────────────────────────────────────────────────
+    public function render_notifications_page() {
+        global $wpdb;
+        $p     = $wpdb->prefix . 'luna_';
+        $users = $wpdb->get_results(
+            "SELECT id, name, email, phone, whatsapp_apikey, telegram_chat_id, notification_channel, active
+             FROM `{$p}users` ORDER BY name ASC",
+            ARRAY_A
+        ) ?: [];
+
+        $channel_labels = [
+            'email'     => '📧 Email',
+            'whatsapp'  => '💬 WhatsApp',
+            'telegram'  => '✈️ Telegram',
+            'all'       => '📡 Todos',
+            'none'      => '🔕 Ninguno',
+        ];
+        ?>
+        <div class="wrap luna-wrap">
+          <h1>🔔 Luna Workspace — Notificaciones</h1>
+
+          <div class="luna-card" style="margin-bottom:20px">
+            <h2 style="margin-top:0">Cómo funciona cada canal</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:12px">
+              <div style="padding:14px;background:#eff6ff;border-radius:10px;border:1px solid #bfdbfe">
+                <strong>📧 Email</strong><br>
+                <span style="font-size:12px;color:#374151">Requiere SMTP configurado en Luna → Configuración → Email. Funciona sin datos extra en el perfil.</span>
+              </div>
+              <div style="padding:14px;background:#f0fdf4;border-radius:10px;border:1px solid #86efac">
+                <strong>💬 WhatsApp (CallMeBot)</strong><br>
+                <span style="font-size:12px;color:#374151">El usuario debe: 1) Enviar <code>I allow callmebot to send me messages</code> a <strong>+34 644 59 60 32</strong> en WhatsApp. 2) Ingresar su número y API Key en su perfil de Luna.</span>
+              </div>
+              <div style="padding:14px;background:#fdf4ff;border-radius:10px;border:1px solid #d8b4fe">
+                <strong>✈️ Telegram</strong><br>
+                <span style="font-size:12px;color:#374151">El usuario debe iniciar chat con el bot de Luna y copiar su Chat ID en su perfil.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="luna-card">
+            <h2 style="margin-top:0">Usuarios y estado de notificaciones</h2>
+            <table class="widefat fixed striped" style="font-size:13px">
+              <thead>
+                <tr>
+                  <th style="width:160px">Nombre</th>
+                  <th>Email</th>
+                  <th style="width:120px">Teléfono</th>
+                  <th style="width:110px">WA API Key</th>
+                  <th style="width:110px">Telegram ID</th>
+                  <th style="width:130px">Canal</th>
+                  <th style="width:220px">Probar</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($users as $u):
+                  $hasEmail    = !empty($u['email']);
+                  $hasPhone    = !empty($u['phone']);
+                  $hasWaKey    = !empty($u['whatsapp_apikey']);
+                  $hasTg       = !empty($u['telegram_chat_id']);
+                  $channel     = $u['notification_channel'] ?: 'email';
+                  $waReady     = $hasPhone && $hasWaKey;
+                  $tgReady     = $hasTg;
+                ?>
+                <tr style="<?= $u['active'] ? '' : 'opacity:.5' ?>">
+                  <td>
+                    <strong><?= esc_html($u['name']) ?></strong>
+                    <?= !$u['active'] ? ' <em style="color:#94a3b8;font-size:11px">(inactivo)</em>' : '' ?>
+                  </td>
+                  <td>
+                    <?php if ($hasEmail): ?>
+                      <span style="color:#166534">✓</span> <?= esc_html($u['email']) ?>
+                    <?php else: ?>
+                      <span style="color:#dc2626">✗ Sin email</span>
+                    <?php endif; ?>
+                  </td>
+                  <td>
+                    <?php if ($hasPhone): ?>
+                      <span style="color:#166534">✓</span> <?= esc_html($u['phone']) ?>
+                    <?php else: ?>
+                      <span style="color:#94a3b8">—</span>
+                    <?php endif; ?>
+                  </td>
+                  <td>
+                    <?php if ($hasWaKey): ?>
+                      <span style="color:#166534">✓ Configurado</span>
+                    <?php else: ?>
+                      <span style="color:#dc2626">✗ Falta</span>
+                    <?php endif; ?>
+                  </td>
+                  <td>
+                    <?php if ($hasTg): ?>
+                      <span style="color:#166534">✓</span> <?= esc_html($u['telegram_chat_id']) ?>
+                    <?php else: ?>
+                      <span style="color:#94a3b8">—</span>
+                    <?php endif; ?>
+                  </td>
+                  <td>
+                    <span style="font-weight:600"><?= esc_html($channel_labels[$channel] ?? $channel) ?></span>
+                    <?php
+                      $ok = false;
+                      if ($channel === 'email'    && $hasEmail)          $ok = true;
+                      if ($channel === 'whatsapp' && $waReady)           $ok = true;
+                      if ($channel === 'telegram' && $tgReady)           $ok = true;
+                      if ($channel === 'all'      && ($hasEmail||$waReady||$tgReady)) $ok = true;
+                      if ($channel === 'none')                            $ok = true;
+                    ?>
+                    <br><span style="font-size:11px;color:<?= $ok ? '#166534' : '#dc2626' ?>"><?= $ok ? '✓ Listo' : '⚠️ Faltan datos' ?></span>
+                  </td>
+                  <td>
+                    <?php if ($u['active'] && $channel !== 'none'): ?>
+                      <button class="button button-small luna-test-notif"
+                              data-uid="<?= (int)$u['id'] ?>"
+                              data-name="<?= esc_attr($u['name']) ?>"
+                              style="margin-right:4px">
+                        📧 Probar Email
+                      </button>
+                      <?php if ($waReady): ?>
+                      <button class="button button-small luna-test-notif-wa"
+                              data-uid="<?= (int)$u['id'] ?>"
+                              data-name="<?= esc_attr($u['name']) ?>">
+                        💬 Probar WA
+                      </button>
+                      <?php endif; ?>
+                    <?php else: ?>
+                      <span style="color:#94a3b8;font-size:11px">—</span>
+                    <?php endif; ?>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+                <?php if (empty($users)): ?>
+                  <tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">No hay usuarios en Luna Workspace todavía.</td></tr>
+                <?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+
+          <div id="luna-notif-result" style="display:none;margin-top:16px"></div>
+        </div>
+
+        <script>
+        jQuery(function($){
+          function testNotif(uid, name, channel) {
+            var btn = $('[data-uid="'+uid+'"]').filter(channel === 'wa' ? '.luna-test-notif-wa' : '.luna-test-notif');
+            btn.prop('disabled', true).text('Enviando…');
+            $.post(ajaxurl, {
+              action:  'luna_test_notification',
+              nonce:   '<?= wp_create_nonce('luna_admin_nonce') ?>',
+              user_id: uid,
+              channel: channel
+            }, function(res){
+              var box = $('#luna-notif-result');
+              if (res.success) {
+                box.html('<div class="notice notice-success" style="padding:10px 14px"><p>✅ Notificación de prueba enviada a <strong>'+name+'</strong> por ' + channel + '.</p></div>').show();
+              } else {
+                box.html('<div class="notice notice-error" style="padding:10px 14px"><p>❌ Error: ' + (res.data || 'No se pudo enviar') + '</p></div>').show();
+              }
+              btn.prop('disabled', false).text(channel === 'wa' ? '💬 Probar WA' : '📧 Probar Email');
+              $('html,body').animate({scrollTop: box.offset().top - 40}, 300);
+            });
+          }
+
+          $(document).on('click', '.luna-test-notif',    function(){ testNotif($(this).data('uid'), $(this).data('name'), 'email'); });
+          $(document).on('click', '.luna-test-notif-wa', function(){ testNotif($(this).data('uid'), $(this).data('name'), 'wa'); });
+        });
+        </script>
+        <?php
+    }
+
+    // ── AJAX: send test notification ──────────────────────────────────────────
+    public function ajax_test_notification() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Sin permisos');
+
+        $uid     = (int)($_POST['user_id'] ?? 0);
+        $channel = sanitize_text_field($_POST['channel'] ?? 'email');
+
+        global $wpdb;
+        $p    = $wpdb->prefix . 'luna_';
+        $user = $wpdb->get_row($wpdb->prepare(
+            "SELECT name, email, phone, whatsapp_apikey, telegram_chat_id, notification_channel FROM `{$p}users` WHERE id=%d AND active=1",
+            $uid
+        ), ARRAY_A);
+
+        if (!$user) wp_send_json_error('Usuario no encontrado');
+
+        require_once LUNA_APP_DIR . 'api/email.php';
+
+        $subject   = '🔔 Prueba de notificación — Luna Workspace';
+        $html      = '<p>Hola <strong>' . esc_html($user['name']) . '</strong>,</p><p>Esta es una notificación de prueba enviada desde el panel de WordPress de Luna Workspace. Si la recibís, todo está configurado correctamente.</p>';
+        $plain     = 'Hola ' . $user['name'] . ', esta es una notificación de prueba de Luna Workspace. Si la recibís, todo está correcto.';
+
+        if ($channel === 'wa') {
+            if (empty($user['phone']) || empty($user['whatsapp_apikey'])) {
+                wp_send_json_error('El usuario no tiene teléfono o API Key de CallMeBot configurado');
+            }
+            $url = 'https://api.callmebot.com/whatsapp.php?' . http_build_query([
+                'phone'  => $user['phone'],
+                'text'   => $plain,
+                'apikey' => $user['whatsapp_apikey'],
+            ]);
+            $ctx = stream_context_create(['http' => ['timeout' => 15, 'ignore_errors' => true]]);
+            $r   = @file_get_contents($url, false, $ctx);
+            if ($r === false) wp_send_json_error('CallMeBot no respondió. Verificá el número y el API Key.');
+            wp_send_json_success();
+        }
+
+        // Email
+        if (empty($user['email'])) wp_send_json_error('El usuario no tiene email configurado');
+        $result = sendSMTP($user['email'], $user['name'], $subject, $html);
+        if (!empty($result['ok'])) {
+            wp_send_json_success();
+        } else {
+            wp_send_json_error($result['error'] ?? 'No se pudo enviar el email. Verificá la configuración SMTP en Luna.');
+        }
     }
 
 }
