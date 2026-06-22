@@ -446,12 +446,10 @@ class Luna_Admin {
 
         if (!$user) wp_send_json_error('Usuario no encontrado');
 
-        require_once LUNA_APP_DIR . 'api/email.php';
+        $subject = '🔔 Prueba de notificación — Luna Workspace';
+        $plain   = 'Hola ' . $user['name'] . ', esta es una notificación de prueba de Luna Workspace. Si la recibís, todo está correcto.';
 
-        $subject   = '🔔 Prueba de notificación — Luna Workspace';
-        $html      = '<p>Hola <strong>' . esc_html($user['name']) . '</strong>,</p><p>Esta es una notificación de prueba enviada desde el panel de WordPress de Luna Workspace. Si la recibís, todo está configurado correctamente.</p>';
-        $plain     = 'Hola ' . $user['name'] . ', esta es una notificación de prueba de Luna Workspace. Si la recibís, todo está correcto.';
-
+        // ── WhatsApp ──────────────────────────────────────────────────────────
         if ($channel === 'wa') {
             if (empty($user['phone']) || empty($user['whatsapp_apikey'])) {
                 wp_send_json_error('El usuario no tiene teléfono o API Key de CallMeBot configurado');
@@ -461,19 +459,50 @@ class Luna_Admin {
                 'text'   => $plain,
                 'apikey' => $user['whatsapp_apikey'],
             ]);
-            $ctx = stream_context_create(['http' => ['timeout' => 15, 'ignore_errors' => true]]);
-            $r   = @file_get_contents($url, false, $ctx);
-            if ($r === false) wp_send_json_error('CallMeBot no respondió. Verificá el número y el API Key.');
+            $resp = wp_remote_get($url, ['timeout' => 15]);
+            if (is_wp_error($resp)) wp_send_json_error('CallMeBot no respondió: ' . $resp->get_error_message());
             wp_send_json_success();
         }
 
-        // Email
+        // ── Email: leer config SMTP de la tabla de Luna y enviar sin app/config.php ──
         if (empty($user['email'])) wp_send_json_error('El usuario no tiene email configurado');
-        $result = sendSMTP($user['email'], $user['name'], $subject, $html);
-        if (!empty($result['ok'])) {
+
+        $st  = $wpdb->get_row("SELECT meta_value FROM `{$p}app_settings` WHERE meta_key='email_settings' LIMIT 1");
+        $cfg = $st ? (json_decode($st->meta_value, true) ?: []) : [];
+
+        if (empty($cfg['enabled']) || empty($cfg['smtp_user']) || empty($cfg['smtp_pass'])) {
+            wp_send_json_error('SMTP no configurado o deshabilitado. Configuralo dentro de Luna → Configuración → Email.');
+        }
+
+        $html = '<p>Hola <strong>' . esc_html($user['name']) . '</strong>,</p>'
+              . '<p>Esta es una notificación de prueba de Luna Workspace. Si la recibís, todo está configurado correctamente.</p>';
+
+        // Usar wp_mail con configuración SMTP dinámica via phpmailer_init
+        $to      = $user['email'];
+        $to_name = $user['name'];
+        $smtp    = $cfg;
+
+        add_action('phpmailer_init', function($mailer) use ($smtp, $to, $to_name) {
+            $mailer->isSMTP();
+            $mailer->Host       = $smtp['smtp_host']  ?? 'smtp.gmail.com';
+            $mailer->SMTPAuth   = true;
+            $mailer->Username   = $smtp['smtp_user'];
+            $mailer->Password   = $smtp['smtp_pass'];
+            $mailer->SMTPSecure = ($smtp['encryption'] ?? 'tls') === 'ssl' ? 'ssl' : 'tls';
+            $mailer->Port       = (int)($smtp['smtp_port'] ?? 587);
+            $mailer->setFrom($smtp['from_email'] ?? $smtp['smtp_user'], $smtp['from_name'] ?? 'Luna Workspace');
+        });
+
+        add_filter('wp_mail_content_type', fn() => 'text/html');
+
+        $sent = wp_mail($to, $subject, $html);
+
+        remove_all_filters('wp_mail_content_type');
+
+        if ($sent) {
             wp_send_json_success();
         } else {
-            wp_send_json_error($result['error'] ?? 'No se pudo enviar el email. Verificá la configuración SMTP en Luna.');
+            wp_send_json_error('wp_mail() devolvió false. Verificá la configuración SMTP en Luna → Configuración → Email.');
         }
     }
 
