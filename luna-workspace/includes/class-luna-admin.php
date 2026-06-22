@@ -7,6 +7,7 @@ class Luna_Admin {
         add_action('admin_menu',            [$this, 'register_menu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts']);
         add_action('admin_notices',         [$this, 'show_notices']);
+        add_action('wp_ajax_luna_test_notification', [$this, 'ajax_test_notification']);
     }
 
     public function register_menu() {
@@ -32,8 +33,6 @@ class Luna_Admin {
             'nonce'   => wp_create_nonce('luna_admin_nonce'),
             'ajaxUrl' => admin_url('admin-ajax.php'),
         ]);
-        // AJAX handlers for notification test
-        add_action('wp_ajax_luna_test_notification', [$this, 'ajax_test_notification']);
     }
 
     public function show_notices() {
@@ -149,6 +148,9 @@ class Luna_Admin {
     public function render_license_page() {
         if (isset($_POST['luna_save_license_settings']) && check_admin_referer('luna_license_settings')) {
             $new_key = sanitize_text_field($_POST['luna_license_key'] ?? '');
+            if (!empty($_POST['luna_license_server_url'])) {
+                update_option('luna_license_server_url', esc_url_raw(trim($_POST['luna_license_server_url'])));
+            }
             update_option('luna_license_key', $new_key);
             Luna_Activator::regenerate_app_config();
             @unlink(LUNA_APP_DIR . 'luna-license-cache.json');
@@ -211,6 +213,15 @@ class Luna_Admin {
                       <p class="description" style="margin-top:6px">
                         Tu dominio: <code><?php echo esc_html($domain) ?></code> — se valida automáticamente.
                       </p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><label for="luna-server-url">URL del servidor de licencias</label></th>
+                    <td>
+                      <input type="url" id="luna-server-url" name="luna_license_server_url"
+                             value="<?php echo esc_attr(get_option('luna_license_server_url', Luna_License::SERVER)) ?>"
+                             class="large-text" style="font-family:monospace;font-size:12px">
+                      <p class="description">Dejá el valor por defecto si no cambiaste el servidor.</p>
                     </td>
                   </tr>
                 </table>
