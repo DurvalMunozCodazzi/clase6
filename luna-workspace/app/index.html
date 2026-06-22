@@ -2241,21 +2241,37 @@ async function saveCard(){
       .map(uid => USERS.find(u => u.id == uid))
       .filter(u => u && u.phone);
     if (waTargets.length > 0) {
-      showWAPrompt({title, priority:body.priority, due_date:body.due_date, start_date:body.start_date}, waTargets);
+      const col = COLS.find(c => c.id == newColId);
+      showWAPrompt({
+        title,
+        description : body.description,
+        priority    : body.priority,
+        start_date  : body.start_date,
+        due_date    : body.due_date,
+        status      : col ? col.title : '',
+        assignees   : mAsn.map(uid => USERS.find(u => u.id == uid)).filter(Boolean).map(u => u.name),
+        tags        : mTags.map(t => t.label).filter(Boolean),
+      }, waTargets);
     }
   }catch(e){notify('Error: '+e.message,'er')}
 }
 
 function showWAPrompt(task, targets) {
   document.getElementById('wa-prompt')?.remove();
-  const prio = {high:'🔴 Alta', medium:'🟡 Media', low:'🟢 Baja'}[task.priority] || '';
-  const due  = task.due_date ? '📅 Vence: ' + task.due_date : '';
-  const message =
-    '🔔 *Tarea asignada en Luna Workspace*\n' +
-    '📌 ' + task.title + '\n' +
-    (prio ? prio + '\n' : '') +
-    (due  ? due  + '\n' : '') +
-    '👤 Asignado por: ' + ME.name;
+  const prio  = {high:'🔴 Alta', medium:'🟡 Media', low:'🟢 Baja'}[task.priority] || '';
+  const lines = [
+    '🔔 *Tarea en Luna Workspace*',
+    '📌 *' + task.title + '*',
+    task.status      ? '📋 Estado: '      + task.status                      : '',
+    task.description ? '📝 '              + task.description                  : '',
+    prio             ? '⚡ Prioridad: '   + prio                              : '',
+    task.assignees?.length ? '👥 Asignado a: ' + task.assignees.join(', ')   : '',
+    '👤 Asignado por: '   + ME.name,
+    task.start_date  ? '🗓 Inicio: '      + task.start_date                  : '',
+    task.due_date    ? '⏰ Vence: '       + task.due_date                    : '',
+    task.tags?.length    ? '🏷 Etiquetas: '   + task.tags.join(', ')             : '',
+  ].filter(Boolean);
+  const message = lines.join('\n');
 
   const d = document.createElement('div');
   d.id = 'wa-prompt';
