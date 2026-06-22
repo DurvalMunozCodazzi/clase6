@@ -45,4 +45,33 @@ if ($method === 'GET' && $action === 'count') {
     jsonOut(['count' => (int)$count->fetchColumn()]);
 }
 
+// ── POST send WhatsApp via CallMeBot ─────────
+if ($method === 'POST' && $action === 'send_whatsapp') {
+    $b       = json_decode(file_get_contents('php://input'), true);
+    $userIds = array_map('intval', (array)($b['user_ids'] ?? []));
+    $message = trim($b['message'] ?? '');
+    if (empty($userIds) || !$message) jsonErr('Datos incompletos');
+
+    $results = [];
+    foreach ($userIds as $uid) {
+        $st = $db->prepare("SELECT name, phone, whatsapp_apikey FROM ".tb('users')." WHERE id=? AND active=1");
+        $st->execute([$uid]);
+        $u = $st->fetch();
+        if (!$u || empty($u['phone']) || empty($u['whatsapp_apikey'])) {
+            $results[] = ['id' => $uid, 'ok' => false, 'error' => 'Sin teléfono o API Key configurado'];
+            continue;
+        }
+        $url = 'https://api.callmebot.com/whatsapp.php?' . http_build_query([
+            'phone'  => $u['phone'],
+            'text'   => $message,
+            'apikey' => $u['whatsapp_apikey'],
+        ]);
+        $ctx  = stream_context_create(['http' => ['timeout' => 20, 'ignore_errors' => true]]);
+        $resp = @file_get_contents($url, false, $ctx);
+        $ok   = ($resp !== false && stripos($resp, 'Message Sent') !== false);
+        $results[] = ['id' => $uid, 'name' => $u['name'], 'ok' => $ok, 'error' => $ok ? null : 'CallMeBot no confirmó envío'];
+    }
+    jsonOut(['results' => $results]);
+}
+
 jsonErr('Acción no encontrada', 404);
