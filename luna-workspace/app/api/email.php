@@ -369,11 +369,11 @@ function createNotification($db, $userId, $fromUserId, $type, $cardId, $workspac
            ->execute([$userId, $fromUserId, $type, $cardId, $workspaceId, $message]);
     } catch (Exception $e) {}
 
-    // Get recipient
-    $u = $db->prepare("SELECT name,email FROM ".tb('users')." WHERE id=? AND active=1");
+    // Get recipient — fetch ALL fields needed for multi-channel dispatch
+    $u = $db->prepare("SELECT name,email,phone,whatsapp_apikey,telegram_chat_id,notification_channel FROM ".tb('users')." WHERE id=? AND active=1");
     $u->execute([$userId]);
     $user = $u->fetch();
-    if (!$user || !$user['email']) return;
+    if (!$user) return;
 
     // Get sender
     $f = $db->prepare("SELECT name FROM ".tb('users')." WHERE id=?");
@@ -395,18 +395,19 @@ function createNotification($db, $userId, $fromUserId, $type, $cardId, $workspac
 
     $siteUrl = defined('SITE_URL') ? SITE_URL : ((isset($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!='off'?'https':'http').'://'.($_SERVER['HTTP_HOST']??''));
 
-    $eUser     = htmlspecialchars($user['name'],    ENT_QUOTES, 'UTF-8');
-    $eFrom     = htmlspecialchars($fromName,        ENT_QUOTES, 'UTF-8');
-    $eCard     = htmlspecialchars($cardTitle,       ENT_QUOTES, 'UTF-8');
-    $eWs       = htmlspecialchars($wsName,          ENT_QUOTES, 'UTF-8');
-    $eSiteUrl  = htmlspecialchars($siteUrl,         ENT_QUOTES, 'UTF-8');
+    $eUser    = htmlspecialchars($user['name'],  ENT_QUOTES, 'UTF-8');
+    $eFrom    = htmlspecialchars($fromName,       ENT_QUOTES, 'UTF-8');
+    $eCard    = htmlspecialchars($cardTitle,      ENT_QUOTES, 'UTF-8');
+    $eWs      = htmlspecialchars($wsName,         ENT_QUOTES, 'UTF-8');
+    $eSiteUrl = htmlspecialchars($siteUrl,        ENT_QUOTES, 'UTF-8');
 
     $subjects = [
-        'assigned' => "✅ Te asignaron una tarea en {$wsName}",
-        'comment'  => "💬 {$fromName} comentó en una tarea",
-        'due_soon' => "⚠️ Tarea por vencer: {$cardTitle}",
+        'assigned'        => "✅ Te asignaron una tarea en {$wsName}",
+        'comment'         => "💬 {$fromName} comentó en una tarea",
+        'due_soon'        => "⚠️ Tarea por vencer: {$cardTitle}",
+        'dependency_done' => "🔓 Una tarea desbloqueada: {$cardTitle}",
     ];
-    $bodies = [
+    $htmlBodies = [
         'assigned' => "<p>Hola <strong>{$eUser}</strong>,</p>
             <p><strong>{$eFrom}</strong> te asignó la tarea:</p>
             <blockquote><strong>{$eCard}</strong></blockquote>
@@ -419,11 +420,21 @@ function createNotification($db, $userId, $fromUserId, $type, $cardId, $workspac
         'due_soon' => "<p>Hola <strong>{$eUser}</strong>,</p>
             <p>La tarea <strong>&quot;{$eCard}&quot;</strong> vence pronto en <strong>{$eWs}</strong>.</p>
             <a href='{$eSiteUrl}' class='btn'>Ver tarea →</a>",
+        'dependency_done' => "<p>Hola <strong>{$eUser}</strong>,</p>
+            <p>La tarea <strong>&quot;{$eCard}&quot;</strong> fue desbloqueada y está lista para continuar.</p>
+            <a href='{$eSiteUrl}' class='btn'>Ver tarea →</a>",
+    ];
+    $plainTexts = [
+        'assigned'        => "Hola {$user['name']}, {$fromName} te asignó la tarea \"{$cardTitle}\" en {$wsName}. Ver: {$siteUrl}",
+        'comment'         => "Hola {$user['name']}, {$fromName} comentó en \"{$cardTitle}\": " . substr($message,0,200) . " Ver: {$siteUrl}",
+        'due_soon'        => "Hola {$user['name']}, la tarea \"{$cardTitle}\" vence pronto en {$wsName}. Ver: {$siteUrl}",
+        'dependency_done' => "Hola {$user['name']}, la tarea \"{$cardTitle}\" fue desbloqueada. Ver: {$siteUrl}",
     ];
 
-    $subject = $subjects[$type] ?? "Nueva notificación en {$wsName}";
-    $body    = $bodies[$type]   ?? "<p>{$message}</p>";
+    $subject   = $subjects[$type]   ?? "Nueva notificación en {$wsName}";
+    $htmlBody  = $htmlBodies[$type] ?? "<p>{$message}</p>";
+    $plainText = $plainTexts[$type] ?? $message;
 
-    // Send async (ignore errors to not block the response)
-    sendSMTP($user['email'], $user['name'], $subject, $body);
+    // Dispatch via whichever channel the user has configured
+    sendNotificationToUser($user, $subject, $htmlBody, $plainText);
 }
