@@ -10,6 +10,37 @@ class LLS_Admin {
         add_action('admin_post_lls_update',  [$this, 'handle_update']);
         add_action('admin_post_lls_delete',  [$this, 'handle_delete']);
         add_action('admin_post_lls_toggle',  [$this, 'handle_toggle']);
+        // Run schema migrations on every admin load (not just on plugin activation)
+        add_action('admin_init', [$this, 'maybe_migrate']);
+    }
+
+    public function maybe_migrate(): void {
+        global $wpdb;
+        $t_lic = $wpdb->prefix . 'lls_licenses';
+        $t_log = $wpdb->prefix . 'lls_verify_log';
+
+        // Licenses table: add missing columns
+        $lic_cols = array_column($wpdb->get_results("SHOW COLUMNS FROM `{$t_lic}`", ARRAY_A), 'Field');
+        if (!in_array('max_workspaces', $lic_cols))
+            $wpdb->query("ALTER TABLE `{$t_lic}` ADD COLUMN `max_workspaces` SMALLINT UNSIGNED NOT NULL DEFAULT 1");
+        if (!in_array('max_sites', $lic_cols))
+            $wpdb->query("ALTER TABLE `{$t_lic}` ADD COLUMN `max_sites` SMALLINT UNSIGNED NOT NULL DEFAULT 1");
+        if (!in_array('notes', $lic_cols))
+            $wpdb->query("ALTER TABLE `{$t_lic}` ADD COLUMN `notes` TEXT NULL");
+        if (!in_array('updated_at', $lic_cols))
+            $wpdb->query("ALTER TABLE `{$t_lic}` ADD COLUMN `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+        // Ensure expires_at allows NULL
+        $wpdb->query("ALTER TABLE `{$t_lic}` MODIFY COLUMN `expires_at` DATE NULL DEFAULT NULL");
+
+        // Log table: add verified_at if missing
+        $log_cols = array_column($wpdb->get_results("SHOW COLUMNS FROM `{$t_log}`", ARRAY_A), 'Field');
+        if (!in_array('verified_at', $log_cols)) {
+            if (in_array('created_at', $log_cols)) {
+                $wpdb->query("ALTER TABLE `{$t_log}` CHANGE `created_at` `verified_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
+            } else {
+                $wpdb->query("ALTER TABLE `{$t_log}` ADD COLUMN `verified_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
+            }
+        }
     }
 
     public function add_menu(): void {
