@@ -136,6 +136,17 @@ if ($method === 'PUT' && ($action === 'update_card' || $action === 'save_card'))
         $sets = implode(',', array_map(function($k){ return "$k=?"; }, array_keys($fields)));
         $vals = array_values($fields); $vals[] = $id;
         $db->prepare("UPDATE ".tb('cards')." SET updated_at=NOW(),$sets WHERE id=?")->execute($vals);
+
+        // Notify existing assignees of relevant field changes (except the modifier)
+        $notifyFields = array_intersect_key($fields, array_flip(['title','due_date','priority','column_id']));
+        if ($notifyFields) {
+            $asnSt = $db->prepare("SELECT user_id FROM ".tb('card_assignees')." WHERE card_id=?");
+            $asnSt->execute([$id]);
+            foreach ($asnSt->fetchAll() as $row) {
+                if ((int)$row['user_id'] === (int)$me['id']) continue;
+                createNotification($db, (int)$row['user_id'], $me['id'], 'updated', $id, $wsId, '');
+            }
+        }
     }
     // Tags
     if (isset($b['tags'])) {
@@ -302,6 +313,15 @@ if ($method === 'POST' && $action === 'add_chat') {
     $newId = $db->lastInsertId();
     $row = $db->prepare("SELECT cm.*,u.name as user_name,u.color as user_color FROM ".tb('chat_messages')." cm JOIN ".tb('users')." u ON u.id=cm.user_id WHERE cm.id=?");
     $row->execute([$newId]);
+
+    // Notify all assignees of this card (except the commenter)
+    $asnSt = $db->prepare("SELECT user_id FROM ".tb('card_assignees')." WHERE card_id=?");
+    $asnSt->execute([$id]);
+    foreach ($asnSt->fetchAll() as $asnRow) {
+        if ((int)$asnRow['user_id'] === (int)$me['id']) continue;
+        createNotification($db, (int)$asnRow['user_id'], $me['id'], 'comment', $id, $wsId, substr($msg, 0, 200));
+    }
+
     jsonOut(['message' => $row->fetch()], 201);
 }
 

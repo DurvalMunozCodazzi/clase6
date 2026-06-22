@@ -36,13 +36,10 @@ if ($action === 'send') {
     }
 }
 
-// ── Obtener tareas que vencen hoy y esta semana ────────────
+// ── Obtener tareas vencidas, de hoy y de esta semana ──────
 function getUpcomingCards($db) {
-    $today    = date('Y-m-d');
-    $tomorrow = date('Y-m-d', strtotime('+1 day'));
     $nextWeek = date('Y-m-d', strtotime('+7 days'));
 
-    // Tareas vencidas (solo las de hoy para no spamear)
     $st = $db->prepare("
         SELECT c.id, c.title, c.due_date, c.priority,
                k.title as col_title, k.color as col_color,
@@ -54,18 +51,21 @@ function getUpcomingCards($db) {
         JOIN ".tb('workspaces')." w ON w.id = c.workspace_id
         JOIN ".tb('card_assignees')." ca ON ca.card_id = c.id
         JOIN ".tb('users')." u ON u.id = ca.user_id AND u.active=1 AND u.email != ''
-        WHERE c.due_date BETWEEN ? AND ?
+        WHERE c.due_date IS NOT NULL
+          AND c.due_date <= ?
           AND k.title NOT LIKE '%complet%'
           AND k.position < (SELECT MAX(position) FROM ".tb('columns_k')." WHERE workspace_id=w.id)
         ORDER BY c.due_date ASC, u.id ASC
     ");
-    $st->execute([$today, $nextWeek]);
+    $st->execute([$nextWeek]);
     return $st->fetchAll();
 }
 
 // ── Agrupar por usuario ────────────────────────────────────
 function groupByUser($cards) {
-    $byUser = [];
+    $byUser   = [];
+    $today    = date('Y-m-d');
+    $tomorrow = date('Y-m-d', strtotime('+1 day'));
     foreach ($cards as $c) {
         $uid = $c['user_id'];
         if (!isset($byUser[$uid])) {
@@ -77,16 +77,16 @@ function groupByUser($cards) {
                 'whatsapp_apikey'      => $c['whatsapp_apikey'] ?? '',
                 'telegram_chat_id'     => $c['telegram_chat_id'] ?? null,
                 'notification_channel' => $c['notification_channel'] ?? 'email',
+                'overdue'              => [],
                 'today'                => [],
                 'tomorrow'             => [],
                 'this_week'            => [],
             ];
         }
-        $today    = date('Y-m-d');
-        $tomorrow = date('Y-m-d', strtotime('+1 day'));
-        if ($c['due_date'] === $today)    $byUser[$uid]['today'][]      = $c;
-        elseif ($c['due_date'] === $tomorrow) $byUser[$uid]['tomorrow'][] = $c;
-        else                              $byUser[$uid]['this_week'][]  = $c;
+        if ($c['due_date'] < $today)          $byUser[$uid]['overdue'][]    = $c;
+        elseif ($c['due_date'] === $today)     $byUser[$uid]['today'][]      = $c;
+        elseif ($c['due_date'] === $tomorrow)  $byUser[$uid]['tomorrow'][]   = $c;
+        else                                   $byUser[$uid]['this_week'][]  = $c;
     }
     return $byUser;
 }
@@ -100,9 +100,10 @@ function buildReminderBody($data, $siteUrl, $plainText = '') {
              <p>Aquí tu resumen de tareas por vencer:</p>";
 
     $sections = [
-        'today'     => ['🔴 Vence HOY',       $data['today']],
-        'tomorrow'  => ['🟡 Vence mañana',    $data['tomorrow']],
-        'this_week' => ['📅 Esta semana',     $data['this_week']],
+        'overdue'   => ['⚠️ VENCIDAS',         $data['overdue'] ?? []],
+        'today'     => ['🔴 Vence HOY',         $data['today']],
+        'tomorrow'  => ['🟡 Vence mañana',      $data['tomorrow']],
+        'this_week' => ['📅 Esta semana',        $data['this_week']],
     ];
 
     foreach ($sections as [$label, $cards]) {
@@ -128,7 +129,7 @@ function buildReminderBody($data, $siteUrl, $plainText = '') {
         $html .= "</div>";
     }
 
-    $total = count($data['today']) + count($data['tomorrow']) + count($data['this_week']);
+    $total = count($data['overdue'] ?? []) + count($data['today']) + count($data['tomorrow']) + count($data['this_week']);
 
     // Botones de acción
     $html .= "<br><div style='display:flex;gap:12px;flex-wrap:wrap;margin-top:4px'>";
@@ -147,6 +148,7 @@ function buildReminderBody($data, $siteUrl, $plainText = '') {
 function buildReminderPlainText($data) {
     $lines = ["🌙 *Hola {$data['user_name']}* — Resumen de tareas por vencer:\n"];
     $sections = [
+        'overdue'   => '⚠️ *VENCIDAS*',
         'today'     => '🔴 *Vence HOY*',
         'tomorrow'  => '🟡 *Vence mañana*',
         'this_week' => '📅 *Esta semana*',
@@ -158,7 +160,7 @@ function buildReminderPlainText($data) {
             $lines[] = "  • " . $c['title'] . " ({$c['ws_name']}) — {$c['due_date']}";
         }
     }
-    $total = count($data['today']) + count($data['tomorrow']) + count($data['this_week']);
+    $total = count($data['overdue'] ?? []) + count($data['today']) + count($data['tomorrow']) + count($data['this_week']);
     $lines[] = "\n📊 Total: {$total} tarea(s)";
     return implode("\n", $lines);
 }
@@ -175,13 +177,16 @@ if ($action === 'send' || $action === 'preview') {
 
     foreach ($byUser as $userData) {
         if (!$userData['user_email']) continue;
-        $total = count($userData['today']) + count($userData['tomorrow']) + count($userData['this_week']);
+        $total = count($userData['overdue'] ?? []) + count($userData['today']) + count($userData['tomorrow']) + count($userData['this_week']);
         if ($total === 0) continue;
 
-        $hasToday = count($userData['today']) > 0;
-        $subject  = $hasToday
-            ? "🔴 Tenés {$total} tarea(s) que vencen hoy — Luna Workspace"
-            : "📅 Recordatorio: {$total} tarea(s) por vencer esta semana";
+        $hasOverdue = count($userData['overdue'] ?? []) > 0;
+        $hasToday   = count($userData['today']) > 0;
+        $subject = $hasOverdue
+            ? "⚠️ Tenés " . count($userData['overdue']) . " tarea(s) vencidas — Luna Workspace"
+            : ($hasToday
+                ? "🔴 Tenés {$total} tarea(s) que vencen hoy — Luna Workspace"
+                : "📅 Recordatorio: {$total} tarea(s) por vencer esta semana");
 
         $plain = buildReminderPlainText($userData);
         $body = buildReminderBody($userData, $siteUrl, $plain);
@@ -200,7 +205,7 @@ if ($action === 'send' || $action === 'preview') {
             if ($result['ok']) {
                 $sent++;
                 // Log notification
-                foreach (array_merge($userData['today'],$userData['tomorrow'],$userData['this_week']) as $c) {
+                foreach (array_merge($userData['overdue'] ?? [],$userData['today'],$userData['tomorrow'],$userData['this_week']) as $c) {
                     try{
                         $db->prepare("INSERT INTO ".tb('notifications')." (user_id,from_user_id,type,card_id,workspace_id,message) VALUES (?,0,'due_soon',?,?,?)")
                            ->execute([$userData['user_id'],$c['id'],$c['ws_id'],"Vence: {$c['due_date']}"]);
@@ -219,15 +224,17 @@ if ($action === 'send' || $action === 'preview') {
 
     // ── Send WhatsApp summary to admin ────────────
     if ($action === 'send') {
-        $todayTotal = 0; $weekTotal = 0;
+        $overdueTotal = 0; $todayTotal = 0; $weekTotal = 0;
         foreach ($byUser as $ud) {
-            $todayTotal += count($ud['today']);
-            $weekTotal  += count($ud['tomorrow']) + count($ud['this_week']);
+            $overdueTotal += count($ud['overdue'] ?? []);
+            $todayTotal   += count($ud['today']);
+            $weekTotal    += count($ud['tomorrow']) + count($ud['this_week']);
         }
-        if ($todayTotal + $weekTotal > 0) {
+        if ($overdueTotal + $todayTotal + $weekTotal > 0) {
             $waTxt = "🌙 *Luna Workspace — Recordatorio*\n";
-            if ($todayTotal > 0) $waTxt .= "🔴 *{$todayTotal}* tarea(s) vencen *HOY*\n";
-            if ($weekTotal  > 0) $waTxt .= "📅 *{$weekTotal}* tarea(s) vencen esta semana\n";
+            if ($overdueTotal > 0) $waTxt .= "⚠️ *{$overdueTotal}* tarea(s) *VENCIDAS*\n";
+            if ($todayTotal   > 0) $waTxt .= "🔴 *{$todayTotal}* tarea(s) vencen *HOY*\n";
+            if ($weekTotal    > 0) $waTxt .= "📅 *{$weekTotal}* tarea(s) vencen esta semana\n";
             $waTxt .= "📧 {$sent} recordatorio(s) enviado(s) por email";
             sendWhatsApp($waTxt);
         }

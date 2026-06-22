@@ -403,6 +403,7 @@ function createNotification($db, $userId, $fromUserId, $type, $cardId, $workspac
 
     $subjects = [
         'assigned'        => "✅ Te asignaron una tarea en {$wsName}",
+        'updated'         => "✏️ Se modificó una tarea: {$cardTitle}",
         'comment'         => "💬 {$fromName} comentó en una tarea",
         'due_soon'        => "⚠️ Tarea por vencer: {$cardTitle}",
         'dependency_done' => "🔓 Una tarea desbloqueada: {$cardTitle}",
@@ -413,6 +414,9 @@ function createNotification($db, $userId, $fromUserId, $type, $cardId, $workspac
             <blockquote><strong>{$eCard}</strong></blockquote>
             <p>en el workspace <strong>{$eWs}</strong>.</p>
             <a href='{$eSiteUrl}' class='btn'>Ver en Luna →</a>",
+        'updated'  => "<p>Hola <strong>{$eUser}</strong>,</p>
+            <p><strong>{$eFrom}</strong> modificó la tarea <strong>&quot;{$eCard}&quot;</strong> en <strong>{$eWs}</strong>.</p>
+            <a href='{$eSiteUrl}' class='btn'>Ver tarea →</a>",
         'comment'  => "<p>Hola <strong>{$eUser}</strong>,</p>
             <p><strong>{$eFrom}</strong> comentó en la tarea <strong>&quot;{$eCard}&quot;</strong>:</p>
             <blockquote>" . htmlspecialchars(substr($message,0,200), ENT_QUOTES, 'UTF-8') . "</blockquote>
@@ -426,6 +430,7 @@ function createNotification($db, $userId, $fromUserId, $type, $cardId, $workspac
     ];
     $plainTexts = [
         'assigned'        => "Hola {$user['name']}, {$fromName} te asignó la tarea \"{$cardTitle}\" en {$wsName}. Ver: {$siteUrl}",
+        'updated'         => "Hola {$user['name']}, {$fromName} modificó la tarea \"{$cardTitle}\" en {$wsName}. Ver: {$siteUrl}",
         'comment'         => "Hola {$user['name']}, {$fromName} comentó en \"{$cardTitle}\": " . substr($message,0,200) . " Ver: {$siteUrl}",
         'due_soon'        => "Hola {$user['name']}, la tarea \"{$cardTitle}\" vence pronto en {$wsName}. Ver: {$siteUrl}",
         'dependency_done' => "Hola {$user['name']}, la tarea \"{$cardTitle}\" fue desbloqueada. Ver: {$siteUrl}",
