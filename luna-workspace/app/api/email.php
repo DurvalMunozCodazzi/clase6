@@ -35,11 +35,27 @@ function saveEmailSettings($settings) {
        ->execute([json_encode($settings), json_encode($settings)]);
 }
 
-// ── SMTP send via socket (no PHPMailer needed) ─
+// ── Native PHP mail() — uses server's local MTA (Postfix/Plesk) ──────────────
+function sendNativeMail($to, $toName, $subject, $htmlBody) {
+    $cfg      = getEmailSettings();
+    $from     = $cfg['from_email'] ?: ('noreply@' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
+    $fromName = $cfg['from_name']  ?: 'Luna Workspace';
+    $body     = emailTemplate($subject, $htmlBody, $fromName);
+    $headers  = "MIME-Version: 1.0\r\n"
+              . "Content-Type: text/html; charset=UTF-8\r\n"
+              . "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$from}>\r\n"
+              . "X-Mailer: Luna-Workspace";
+    $ok = @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', $body, $headers);
+    return $ok ? ['ok' => true] : ['ok' => false, 'error' => 'mail() falló — verificá que sendmail esté habilitado en el servidor'];
+}
+
+// ── SMTP send via socket ───────────────────────────────────────────────────────
 function sendSMTP($to, $toName, $subject, $htmlBody) {
     $cfg = getEmailSettings();
+
+    // Sin SMTP configurado → usar mail() nativo (más confiable en Plesk/cPanel)
     if (empty($cfg['enabled']) || empty($cfg['smtp_user']) || empty($cfg['smtp_pass'])) {
-        return ['ok' => false, 'error' => 'SMTP no configurado o deshabilitado'];
+        return sendNativeMail($to, $toName, $subject, $htmlBody);
     }
 
     $host     = $cfg['smtp_host']  ?: 'smtp.gmail.com';
@@ -51,20 +67,24 @@ function sendSMTP($to, $toName, $subject, $htmlBody) {
     $enc      = $cfg['encryption'] ?: 'tls';
 
     try {
-        // Open socket
         $context = stream_context_create(['ssl' => [
             'verify_peer'       => true,
             'verify_peer_name'  => true,
             'allow_self_signed' => false,
         ]]);
 
-        if ($enc === 'ssl') {
-            $sock = stream_socket_client("ssl://{$host}:{$port}", $errno, $errstr, 15, STREAM_CLIENT_CONNECT, $context);
-        } else {
-            $sock = stream_socket_client("tcp://{$host}:{$port}", $errno, $errstr, 15);
+        $sock = $enc === 'ssl'
+            ? @stream_socket_client("ssl://{$host}:{$port}", $errno, $errstr, 10, STREAM_CLIENT_CONNECT, $context)
+            : @stream_socket_client("tcp://{$host}:{$port}", $errno, $errstr, 10);
+
+        // Si SMTP no conecta, caer a mail() nativo
+        if (!$sock) {
+            error_log("Luna SMTP: no se pudo conectar a {$host}:{$port} ({$errstr}), usando mail() nativo");
+            return sendNativeMail($to, $toName, $subject, $htmlBody);
         }
 
-        if (!$sock) return ['ok' => false, 'error' => "No se pudo conectar a {$host}:{$port} — {$errstr}"];
+        // Timeout de 10s en todas las operaciones de lectura/escritura
+        stream_set_timeout($sock, 10);
 
         $read = fgets($sock, 512);
         if (strpos($read, '220') !== 0) return smtpErr($sock, "Saludo fallido: {$read}");
@@ -72,7 +92,6 @@ function sendSMTP($to, $toName, $subject, $htmlBody) {
         smtpCmd($sock, "EHLO " . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
         $ehlo = smtpReadAll($sock);
 
-        // STARTTLS for port 587
         if ($enc === 'tls') {
             smtpCmd($sock, "STARTTLS");
             $tls = fgets($sock, 512);
@@ -83,7 +102,6 @@ function sendSMTP($to, $toName, $subject, $htmlBody) {
             smtpReadAll($sock);
         }
 
-        // Auth LOGIN
         smtpCmd($sock, "AUTH LOGIN");
         $r = fgets($sock, 512);
         if (strpos($r, '334') !== 0) return smtpErr($sock, "AUTH fallido: {$r}");
@@ -92,9 +110,8 @@ function sendSMTP($to, $toName, $subject, $htmlBody) {
         if (strpos($r, '334') !== 0) return smtpErr($sock, "Usuario fallido");
         smtpCmd($sock, base64_encode($pass));
         $r = fgets($sock, 512);
-        if (strpos($r, '235') !== 0) return smtpErr($sock, "Contraseña incorrecta. Verificá que usés Contraseña de App de Google.");
+        if (strpos($r, '235') !== 0) return smtpErr($sock, "Contraseña incorrecta");
 
-        // Send
         smtpCmd($sock, "MAIL FROM:<{$from}>");
         fgets($sock, 512);
         smtpCmd($sock, "RCPT TO:<{$to}>");
@@ -103,16 +120,11 @@ function sendSMTP($to, $toName, $subject, $htmlBody) {
         smtpCmd($sock, "DATA");
         fgets($sock, 512);
 
-        // Build message
-        $boundary = md5(uniqid());
         $msg  = "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$from}>\r\n";
         $msg .= "To: =?UTF-8?B?" . base64_encode($toName) . "?= <{$to}>\r\n";
         $msg .= "Subject: =?UTF-8?B?" . base64_encode($subject) . "?=\r\n";
-        $msg .= "MIME-Version: 1.0\r\n";
-        $msg .= "Content-Type: text/html; charset=UTF-8\r\n";
-        $msg .= "Content-Transfer-Encoding: base64\r\n";
-        $msg .= "X-Mailer: Luna Workspace\r\n";
-        $msg .= "\r\n";
+        $msg .= "MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n";
+        $msg .= "Content-Transfer-Encoding: base64\r\nX-Mailer: Luna Workspace\r\n\r\n";
         $msg .= chunk_split(base64_encode(emailTemplate($subject, $htmlBody, $fromName)));
         $msg .= "\r\n.";
         smtpCmd($sock, $msg);
@@ -124,7 +136,9 @@ function sendSMTP($to, $toName, $subject, $htmlBody) {
         return ['ok' => true];
 
     } catch (Exception $e) {
-        return ['ok' => false, 'error' => $e->getMessage()];
+        // Fallar a mail() nativo si SMTP lanza excepción
+        error_log("Luna SMTP exception: " . $e->getMessage() . ", usando mail() nativo");
+        return sendNativeMail($to, $toName, $subject, $htmlBody);
     }
 }
 

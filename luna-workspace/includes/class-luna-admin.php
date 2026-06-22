@@ -568,54 +568,40 @@ class Luna_Admin {
             wp_send_json_success();
         }
 
-        // ── Email: leer config SMTP de la tabla de Luna y enviar sin app/config.php ──
+        // ── Email via PHP mail() nativo — sin SMTP externo ───────────────────────
         if (empty($user['email'])) wp_send_json_error('El usuario no tiene email configurado');
 
         $st  = $wpdb->get_row("SELECT meta_value FROM `{$p}app_settings` WHERE meta_key='email_settings' LIMIT 1");
         $cfg = $st ? (json_decode($st->meta_value, true) ?: []) : [];
 
-        if (empty($cfg['enabled']) || empty($cfg['smtp_user']) || empty($cfg['smtp_pass'])) {
-            wp_send_json_error('SMTP no configurado o deshabilitado. Configuralo dentro de Luna → Configuración → Email.');
-        }
+        $from_email = !empty($cfg['from_email']) ? $cfg['from_email'] : (!empty($cfg['smtp_user']) ? $cfg['smtp_user'] : 'noreply@' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
+        $from_name  = !empty($cfg['from_name'])  ? $cfg['from_name']  : 'Luna Workspace';
 
+        $to   = $user['email'];
         $html = '<p>Hola <strong>' . esc_html($user['name']) . '</strong>,</p>'
               . '<p>Esta es una notificación de prueba de Luna Workspace. Si la recibís, todo está configurado correctamente.</p>';
 
-        // Usar wp_mail con configuración SMTP dinámica via phpmailer_init
-        $to      = $user['email'];
-        $to_name = $user['name'];
-        $smtp    = $cfg;
+        // wp_mail() sin phpmailer_init usa PHP mail() nativo → va por el MTA local del servidor (Postfix/Plesk)
+        // No abre conexiones externas, no se cuelga, no da 504
+        $headers = [
+            'Content-Type: text/html; charset=UTF-8',
+            'From: ' . $from_name . ' <' . $from_email . '>',
+        ];
 
-        add_action('phpmailer_init', function($mailer) use ($smtp) {
-            $mailer->isSMTP();
-            $mailer->Host       = $smtp['smtp_host']  ?? 'smtp.gmail.com';
-            $mailer->SMTPAuth   = true;
-            $mailer->Username   = $smtp['smtp_user'];
-            $mailer->Password   = $smtp['smtp_pass'];
-            $mailer->SMTPSecure = ($smtp['encryption'] ?? 'tls') === 'ssl' ? PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS : PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-            $mailer->Port       = (int)($smtp['smtp_port'] ?? 587);
-            $mailer->Timeout    = 10; // fail fast — avoid 504 gateway timeout
-            $mailer->setFrom($smtp['from_email'] ?? $smtp['smtp_user'], $smtp['from_name'] ?? 'Luna Workspace');
-        });
-
-        add_filter('wp_mail_content_type', fn() => 'text/html');
-
-        // Capture PHPMailer exceptions so we can return a useful error instead of a 504
         $mail_error = '';
-        add_action('wp_mail_failed', function($wp_error) use (&$mail_error) {
-            $mail_error = $wp_error->get_error_message();
+        add_action('wp_mail_failed', function($e) use (&$mail_error) {
+            $mail_error = $e->get_error_message();
         });
 
-        $sent = wp_mail($to, $subject, $html);
+        $sent = wp_mail($to, $subject, $html, $headers);
 
-        remove_all_filters('wp_mail_content_type');
         remove_all_actions('wp_mail_failed');
 
         if ($sent) {
-            wp_send_json_success('Email enviado correctamente a ' . $to);
+            wp_send_json_success('Email enviado a ' . $to . ' desde ' . $from_email);
         } else {
-            $detail = $mail_error ?: 'wp_mail() devolvió false';
-            wp_send_json_error('Error al enviar: ' . $detail . ' — Host: ' . ($smtp['smtp_host'] ?? '?') . ':' . ($smtp['smtp_port'] ?? '?'));
+            $detail = $mail_error ?: 'mail() devolvió false — verificá que PHP mail() esté habilitado en Plesk o que sendmail esté configurado en el servidor';
+            wp_send_json_error('Error: ' . $detail);
         }
     }
 
