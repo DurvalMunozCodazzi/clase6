@@ -1441,6 +1441,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
       <div class="cal-hdr-inner">
         <i class="fas fa-calendar-alt" style="color:rgba(255,255,255,.9);font-size:20px"></i>
         <h3>Calendario</h3>
+        <span style="font-size:10px;opacity:.6;font-family:monospace">v2.1</span>
         <button class="cal-hdr-close" onclick="toggleCalPanel()"><i class="fas fa-times"></i></button>
       </div>
     </div>
@@ -3513,7 +3514,7 @@ function renderCalendar(){
     }).join('');
     const moreH = cards.length > maxChips ? `<div class="cal-more">+${cards.length-maxChips} más</div>` : '';
     const dateStr = `${CAL.year}-${String(CAL.month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const addBtn = !isVisitor() ? `<button class="cal-add-btn" onclick="event.stopPropagation();addCardFromCal('${dateStr}')" title="Nueva tarea"><i class="fas fa-plus"></i></button>` : '';
+    const addBtn = !isVisitor() ? `<button class="cal-add-btn" onclick="event.stopPropagation();selectCalDay(${d})" title="Nueva tarea aquí"><i class="fas fa-plus"></i></button>` : '';
     const cls = [
       'cal-day',
       isToday    ? 'today'   : '',

@@ -158,6 +158,11 @@ function luna_serve_app() {
     if (!file_exists($index)) {
         wp_die('Luna Workspace: el archivo app/index.html no está instalado en el plugin.');
     }
+    // Prevent browser and proxy caching of the app shell
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+
     $license = get_option('luna_license_key', '');
     $content = file_get_contents($index);
     // Inject LUNA_WP config before </head>
