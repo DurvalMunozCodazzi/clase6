@@ -494,21 +494,35 @@ class Luna_Admin {
           // Test notifications
           function testNotif(uid, name, channel) {
             var btn = $('[data-uid="'+uid+'"]').filter(channel === 'wa' ? '.luna-test-notif-wa' : '.luna-test-notif');
-            btn.prop('disabled', true).text('…');
-            $.post(ajaxurl, {
-              action:  'luna_test_notification',
-              nonce:   nonce,
-              user_id: uid,
-              channel: channel
-            }, function(res){
-              var box = $('#luna-notif-result');
-              if (res.success) {
-                box.html('<div class="notice notice-success" style="padding:10px 14px"><p>✅ Notificación de prueba enviada a <strong>'+name+'</strong>.</p></div>').show();
-              } else {
-                box.html('<div class="notice notice-error" style="padding:10px 14px"><p>❌ Error: ' + (res.data || 'No se pudo enviar') + '</p></div>').show();
+            btn.prop('disabled', true).text('Enviando…');
+            $.ajax({
+              url:     ajaxurl,
+              type:    'POST',
+              timeout: 25000,
+              data: {
+                action:  'luna_test_notification',
+                nonce:   nonce,
+                user_id: uid,
+                channel: channel
+              },
+              success: function(res){
+                var box = $('#luna-notif-result');
+                if (res.success) {
+                  box.html('<div class="notice notice-success" style="padding:10px 14px"><p>✅ Notificación de prueba enviada a <strong>'+name+'</strong>.</p></div>').show();
+                } else {
+                  box.html('<div class="notice notice-error" style="padding:10px 14px"><p>❌ Error: ' + (res.data || 'No se pudo enviar') + '</p></div>').show();
+                }
+                btn.prop('disabled', false).text(channel === 'wa' ? '💬' : '📧');
+                $('html,body').animate({scrollTop: box.offset().top - 40}, 300);
+              },
+              error: function(xhr, status){
+                var box = $('#luna-notif-result');
+                var msg = status === 'timeout'
+                  ? 'Tiempo de espera agotado (504). El servidor no pudo conectarse al SMTP. Verificá Host/Puerto/SSL en Configuración → SMTP.'
+                  : 'Error HTTP ' + xhr.status + '. Revisá los logs de PHP en el hosting.';
+                box.html('<div class="notice notice-error" style="padding:10px 14px"><p>❌ ' + msg + '</p></div>').show();
+                btn.prop('disabled', false).text(channel === 'wa' ? '💬' : '📧');
               }
-              btn.prop('disabled', false).text(channel === 'wa' ? '💬' : '📧');
-              $('html,body').animate({scrollTop: box.offset().top - 40}, 300);
             });
           }
 
@@ -572,27 +586,36 @@ class Luna_Admin {
         $to_name = $user['name'];
         $smtp    = $cfg;
 
-        add_action('phpmailer_init', function($mailer) use ($smtp, $to, $to_name) {
+        add_action('phpmailer_init', function($mailer) use ($smtp) {
             $mailer->isSMTP();
             $mailer->Host       = $smtp['smtp_host']  ?? 'smtp.gmail.com';
             $mailer->SMTPAuth   = true;
             $mailer->Username   = $smtp['smtp_user'];
             $mailer->Password   = $smtp['smtp_pass'];
-            $mailer->SMTPSecure = ($smtp['encryption'] ?? 'tls') === 'ssl' ? 'ssl' : 'tls';
+            $mailer->SMTPSecure = ($smtp['encryption'] ?? 'tls') === 'ssl' ? PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS : PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
             $mailer->Port       = (int)($smtp['smtp_port'] ?? 587);
+            $mailer->Timeout    = 10; // fail fast — avoid 504 gateway timeout
             $mailer->setFrom($smtp['from_email'] ?? $smtp['smtp_user'], $smtp['from_name'] ?? 'Luna Workspace');
         });
 
         add_filter('wp_mail_content_type', fn() => 'text/html');
 
+        // Capture PHPMailer exceptions so we can return a useful error instead of a 504
+        $mail_error = '';
+        add_action('wp_mail_failed', function($wp_error) use (&$mail_error) {
+            $mail_error = $wp_error->get_error_message();
+        });
+
         $sent = wp_mail($to, $subject, $html);
 
         remove_all_filters('wp_mail_content_type');
+        remove_all_actions('wp_mail_failed');
 
         if ($sent) {
-            wp_send_json_success();
+            wp_send_json_success('Email enviado correctamente a ' . $to);
         } else {
-            wp_send_json_error('wp_mail() devolvió false. Verificá la configuración SMTP en Luna → Configuración → Email.');
+            $detail = $mail_error ?: 'wp_mail() devolvió false';
+            wp_send_json_error('Error al enviar: ' . $detail . ' — Host: ' . ($smtp['smtp_host'] ?? '?') . ':' . ($smtp['smtp_port'] ?? '?'));
         }
     }
 
