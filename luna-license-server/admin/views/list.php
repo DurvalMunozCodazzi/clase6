@@ -6,9 +6,12 @@
   </h1>
 
   <?php if (isset($_GET['msg'])): ?>
-    <?php $msgs = ['created'=>'Licencia creada correctamente.','updated'=>'Licencia actualizada.','deleted'=>'Licencia eliminada.','error'=>'Ocurrió un error.']; ?>
+    <?php $msgs = ['created'=>'Licencia creada correctamente.','updated'=>'Licencia actualizada.','deleted'=>'Licencia eliminada.','error'=>'Error al guardar la licencia.']; ?>
     <div class="lls-notice <?= $_GET['msg']==='error'?'lls-notice-error':'lls-notice-success' ?>">
       <?= esc_html($msgs[$_GET['msg']] ?? 'Operación realizada.') ?>
+      <?php if ($_GET['msg']==='error' && !empty($_GET['dberr'])): ?>
+        <br><small><strong>Detalle:</strong> <?= esc_html(urldecode($_GET['dberr'])) ?></small>
+      <?php endif; ?>
     </div>
   <?php endif; ?>
 

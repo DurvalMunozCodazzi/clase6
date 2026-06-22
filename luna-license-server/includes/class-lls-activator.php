@@ -11,6 +11,7 @@ class LLS_Activator {
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
+        // Create/update tables via dbDelta
         dbDelta("CREATE TABLE {$t_lic} (
             id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             license_key   VARCHAR(64)  NOT NULL,
@@ -43,26 +44,26 @@ class LLS_Activator {
             KEY idx_date (verified_at)
         ) {$charset};");
 
-        // Migration: add missing columns to licenses table if created from old schema
+        // Force-migrate licenses table — dbDelta doesn't modify existing column definitions
+        $migrations_lic = [
+            "max_workspaces" => "ALTER TABLE `{$t_lic}` ADD COLUMN `max_workspaces` SMALLINT UNSIGNED NOT NULL DEFAULT 1",
+            "max_sites"      => "ALTER TABLE `{$t_lic}` ADD COLUMN `max_sites` SMALLINT UNSIGNED NOT NULL DEFAULT 1",
+            "notes"          => "ALTER TABLE `{$t_lic}` ADD COLUMN `notes` TEXT NULL",
+            "updated_at"     => "ALTER TABLE `{$t_lic}` ADD COLUMN `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+        ];
         $lic_cols = array_column($wpdb->get_results("SHOW COLUMNS FROM `{$t_lic}`", ARRAY_A), 'Field');
-        if (!in_array('max_workspaces', $lic_cols)) {
-            $wpdb->query("ALTER TABLE `{$t_lic}` ADD COLUMN `max_workspaces` SMALLINT UNSIGNED NOT NULL DEFAULT 1");
+        foreach ($migrations_lic as $col => $sql) {
+            if (!in_array($col, $lic_cols)) {
+                $wpdb->query($sql);
+            }
         }
-        if (!in_array('max_sites', $lic_cols)) {
-            $wpdb->query("ALTER TABLE `{$t_lic}` ADD COLUMN `max_sites` SMALLINT UNSIGNED NOT NULL DEFAULT 1");
-        }
-        if (!in_array('notes', $lic_cols)) {
-            $wpdb->query("ALTER TABLE `{$t_lic}` ADD COLUMN `notes` TEXT NULL");
-        }
-        if (!in_array('updated_at', $lic_cols)) {
-            $wpdb->query("ALTER TABLE `{$t_lic}` ADD COLUMN `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
-        }
+        // Always ensure expires_at allows NULL (old schemas may have had NOT NULL)
+        $wpdb->query("ALTER TABLE `{$t_lic}` MODIFY COLUMN `expires_at` DATE NULL DEFAULT NULL");
 
-        // Migration: add verified_at if table existed with old schema (created_at)
-        $cols = $wpdb->get_results("SHOW COLUMNS FROM `{$t_log}`", ARRAY_A);
-        $col_names = array_column($cols, 'Field');
-        if (!in_array('verified_at', $col_names)) {
-            if (in_array('created_at', $col_names)) {
+        // Force-migrate log table
+        $log_cols = array_column($wpdb->get_results("SHOW COLUMNS FROM `{$t_log}`", ARRAY_A), 'Field');
+        if (!in_array('verified_at', $log_cols)) {
+            if (in_array('created_at', $log_cols)) {
                 $wpdb->query("ALTER TABLE `{$t_log}` CHANGE `created_at` `verified_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
             } else {
                 $wpdb->query("ALTER TABLE `{$t_log}` ADD COLUMN `verified_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");

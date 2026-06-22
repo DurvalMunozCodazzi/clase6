@@ -83,7 +83,13 @@ class LLS_Admin {
         ]);
 
         $redirect = admin_url('admin.php?page=luna-licenses');
-        wp_redirect($redirect . ($id ? '&msg=created' : '&msg=error'));
+        if ($id) {
+            wp_redirect($redirect . '&msg=created');
+        } else {
+            global $wpdb;
+            $err = urlencode($wpdb->last_error ?: 'Error desconocido al insertar en la base de datos.');
+            wp_redirect($redirect . '&msg=error&dberr=' . $err);
+        }
         exit;
     }
 
