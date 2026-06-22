@@ -2239,7 +2239,7 @@ async function saveCard(){
     // Offer WA notification for assignees that have a phone number
     const waTargets = mAsn
       .map(uid => USERS.find(u => u.id == uid))
-      .filter(u => u && u.phone && u.id != ME.id);
+      .filter(u => u && u.phone);
     if (waTargets.length > 0) {
       showWAPrompt({title, priority:body.priority, due_date:body.due_date, start_date:body.start_date}, waTargets);
     }

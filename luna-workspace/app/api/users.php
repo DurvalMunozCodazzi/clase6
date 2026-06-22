@@ -11,8 +11,8 @@ if ($method === 'GET' && $action === 'list') {
     if ($me['role'] === 'admin') {
         $st = $db->query("SELECT id,username,email,name,cargo,dept,role,color,active,notes,photo,created_at,last_login,phone,whatsapp_apikey,telegram_chat_id,notification_channel FROM ".tb('users')." ORDER BY role,name");
     } else {
-        // Non-admins don't see API keys or private notes
-        $st = $db->query("SELECT id,username,email,name,cargo,dept,role,color,active,photo,created_at,last_login,notification_channel FROM ".tb('users')." ORDER BY role,name");
+        // Non-admins don't see API keys or private notes, but do see phone for WA prompts
+        $st = $db->query("SELECT id,username,email,name,cargo,dept,role,color,active,photo,created_at,last_login,phone,notification_channel FROM ".tb('users')." ORDER BY role,name");
     }
     jsonOut(['users' => $st->fetchAll()]);
 }
