@@ -1,24 +1,26 @@
 <?php
 // ── Capturar cualquier error PHP y devolverlo como JSON ──
-set_exception_handler(function($e) {
-    http_response_code(500);
-    @header('Content-Type: application/json');
-    if (defined('LUNA_DEBUG') && LUNA_DEBUG) {
-        echo json_encode([
-            'error' => 'PHP Exception: ' . $e->getMessage(),
-            'file'  => str_replace($_SERVER['DOCUMENT_ROOT'] ?? '', '', $e->getFile()),
-            'line'  => $e->getLine(),
-        ]);
-    } else {
-        echo json_encode(['error' => 'Error interno del servidor']);
-    }
-    exit;
-});
-set_error_handler(function($errno, $errstr, $errfile, $errline) {
-    // Respect @ operator: when error_reporting() returns 0 the error was suppressed
-    if (!(error_reporting() & $errno)) return false;
-    throw new \ErrorException($errstr, $errno, 0, $errfile, $errline);
-}, E_ALL & ~E_NOTICE & ~E_DEPRECATED);
+// Solo instalar handlers propios cuando NO estamos dentro de WordPress
+if (!defined('ABSPATH')) {
+    set_exception_handler(function($e) {
+        http_response_code(500);
+        @header('Content-Type: application/json');
+        if (defined('LUNA_DEBUG') && LUNA_DEBUG) {
+            echo json_encode([
+                'error' => 'PHP Exception: ' . $e->getMessage(),
+                'file'  => str_replace($_SERVER['DOCUMENT_ROOT'] ?? '', '', $e->getFile()),
+                'line'  => $e->getLine(),
+            ]);
+        } else {
+            echo json_encode(['error' => 'Error interno del servidor']);
+        }
+        exit;
+    });
+    set_error_handler(function($errno, $errstr, $errfile, $errline) {
+        if (!(error_reporting() & $errno)) return false;
+        throw new \ErrorException($errstr, $errno, 0, $errfile, $errline);
+    }, E_ALL & ~E_NOTICE & ~E_DEPRECATED);
+}
 
 // 1) Intentar cargar credenciales generadas por el plugin WP
 $_luna_cred = __DIR__ . '/luna-wp-config.php';
