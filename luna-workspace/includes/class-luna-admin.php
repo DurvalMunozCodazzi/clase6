@@ -183,6 +183,8 @@ class Luna_Admin {
                 $detail = '';
                 if ($reason === 'server_unreachable') {
                     $detail = '<br><small style="color:#999">Servidor: <code>' . esc_html(get_option('luna_license_server_url', Luna_License::SERVER)) . '</code> — verificá que el plugin Luna Licencias esté activo en ese dominio y que el dominio sea accesible.</small>';
+                } else {
+                    $detail = '<br><small style="color:#999">Razón: <code>' . esc_html($reason ?: 'sin_razón') . '</code> — Dominio enviado: <code>' . esc_html($domain) . '</code></small>';
                 }
                 $status_html = '<div class="notice notice-error inline" style="margin:0"><p>❌ ' . esc_html($msg) . $detail . '</p></div>';
             }
