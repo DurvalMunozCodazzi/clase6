@@ -43,6 +43,21 @@ class LLS_Activator {
             KEY idx_date (verified_at)
         ) {$charset};");
 
+        // Migration: add missing columns to licenses table if created from old schema
+        $lic_cols = array_column($wpdb->get_results("SHOW COLUMNS FROM `{$t_lic}`", ARRAY_A), 'Field');
+        if (!in_array('max_workspaces', $lic_cols)) {
+            $wpdb->query("ALTER TABLE `{$t_lic}` ADD COLUMN `max_workspaces` SMALLINT UNSIGNED NOT NULL DEFAULT 1");
+        }
+        if (!in_array('max_sites', $lic_cols)) {
+            $wpdb->query("ALTER TABLE `{$t_lic}` ADD COLUMN `max_sites` SMALLINT UNSIGNED NOT NULL DEFAULT 1");
+        }
+        if (!in_array('notes', $lic_cols)) {
+            $wpdb->query("ALTER TABLE `{$t_lic}` ADD COLUMN `notes` TEXT NULL");
+        }
+        if (!in_array('updated_at', $lic_cols)) {
+            $wpdb->query("ALTER TABLE `{$t_lic}` ADD COLUMN `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+        }
+
         // Migration: add verified_at if table existed with old schema (created_at)
         $cols = $wpdb->get_results("SHOW COLUMNS FROM `{$t_log}`", ARRAY_A);
         $col_names = array_column($cols, 'Field');
