@@ -403,7 +403,9 @@ function sendNotificationToUser($user, $subject, $htmlBody, $plainText) {
 
 // ── Create notification + send email ──────────
 function createNotification($db, $userId, $fromUserId, $type, $cardId, $workspaceId, $message) {
-    if ($userId == $fromUserId) return;
+    // Allow self-assignment notifications — user needs confirmation when assigning tasks to themselves
+    // Only skip if it's a modification/comment triggered by the same user on someone else's card
+    if ($userId == $fromUserId && in_array($type, ['updated', 'comment'])) return;
 
     // Save to DB
     try {
