@@ -906,8 +906,8 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
     </div>
     <div class="sep"></div>
     <div class="vtabs">
-      <button class="vtab" id="tv-kn" onclick="sw('kn')" title="Tablero Kanban — gestión de tareas"><i class="fas fa-columns"></i> Tareas</button>
-      <button class="vtab on" id="tv-gt" onclick="sw('gt')" title="Cronograma Gantt — visualización de fechas"><i class="fas fa-stream"></i> Gantt</button>
+      <button class="vtab on" id="tv-kn" onclick="sw('kn')" title="Tablero Kanban — gestión de tareas"><i class="fas fa-columns"></i> Tareas</button>
+      <button class="vtab" id="tv-gt" onclick="sw('gt')" title="Cronograma Gantt — visualización de fechas"><i class="fas fa-stream"></i> Gantt</button>
       <button class="vtab" id="tv-bt" onclick="sw('bt')" title="Ver Kanban y Gantt juntos"><i class="fas fa-table-columns"></i> Ambos</button>
     </div>
     <button id="mobile-sb-btn" onclick="toggleMobileSB()" title="Herramientas"><i class="fas fa-pen-ruler"></i></button>
@@ -1757,7 +1757,7 @@ const COLORS=['#5b6af0','#06b6d4','#f59e0b','#22d3a0','#ec4899','#8b5cf6','#f973
 const ROLES={admin:'Admin',member:'Miembro',visitor:'Visitante'};
 const RCOL={admin:'#818cf8',member:'#34d399',visitor:'#8888aa'};
 let TOKEN=null, ME=null;
-let S={view:'bt',tool:'select',stroke:'#5b6af0',fill:'#18182a',sw:2,snap:false,sg:20,undo:[],redo:[],pan:false,lpx:0,lpy:0,driveOn:false,dToken:null};
+let S={view:'kn',tool:'select',stroke:'#5b6af0',fill:'#18182a',sw:2,snap:false,sg:20,undo:[],redo:[],pan:false,lpx:0,lpy:0,driveOn:false,dToken:null};
 let COLS=[], CARDS=[], TAGS=[], ASGN=[], USERS=[];
 let isDS=false,DSS=null,DSC=null,saveT=null,pollT=null,lastPollTs='';
 let editCardId=null,editCardData=null,editUserId=null,mTags=[],mAtts=[],mAsn=[];
