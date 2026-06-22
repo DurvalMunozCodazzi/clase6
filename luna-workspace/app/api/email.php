@@ -35,25 +35,49 @@ function saveEmailSettings($settings) {
        ->execute([json_encode($settings), json_encode($settings)]);
 }
 
-// ── Native PHP mail() — uses server's local MTA (Postfix/Plesk) ──────────────
+// ── Local SMTP injection via localhost:25 (Postfix/Plesk, no SSL, no auth) ──
+// Same approach that works in WP admin test. Fast, no external connections.
 function sendNativeMail($to, $toName, $subject, $htmlBody) {
     $cfg      = getEmailSettings();
-    $from     = $cfg['from_email'] ?: ('noreply@' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
+    $from     = $cfg['from_email'] ?: ('info@' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
     $fromName = $cfg['from_name']  ?: 'Luna Workspace';
     $body     = emailTemplate($subject, $htmlBody, $fromName);
-    $headers  = "MIME-Version: 1.0\r\n"
-              . "Content-Type: text/html; charset=UTF-8\r\n"
-              . "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$from}>\r\n"
-              . "X-Mailer: Luna-Workspace";
+
+    // Try localhost:25 first (Postfix local injection — instant, no SSL)
+    $sock = @stream_socket_client('tcp://127.0.0.1:25', $errno, $errstr, 5);
+    if ($sock) {
+        stream_set_timeout($sock, 5);
+        fgets($sock, 512); // 220 greeting
+        fwrite($sock, "EHLO localhost\r\n"); smtpReadAll($sock);
+        fwrite($sock, "MAIL FROM:<{$from}>\r\n"); fgets($sock, 512);
+        fwrite($sock, "RCPT TO:<{$to}>\r\n");
+        $rcpt = fgets($sock, 512);
+        fwrite($sock, "DATA\r\n"); fgets($sock, 512);
+        $msg  = "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$from}>\r\n";
+        $msg .= "To: <{$to}>\r\n";
+        $msg .= "Subject: =?UTF-8?B?" . base64_encode($subject) . "?=\r\n";
+        $msg .= "MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n";
+        $msg .= "Content-Transfer-Encoding: base64\r\n\r\n";
+        $msg .= chunk_split(base64_encode($body)) . "\r\n.";
+        fwrite($sock, $msg . "\r\n");
+        $r = fgets($sock, 512);
+        fwrite($sock, "QUIT\r\n");
+        fclose($sock);
+        if (strpos($r, '250') === 0) return ['ok' => true];
+    }
+
+    // Fallback: PHP mail() nativo
+    $headers = "MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n"
+             . "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$from}>\r\n";
     $ok = @mail($to, '=?UTF-8?B?' . base64_encode($subject) . '?=', $body, $headers);
-    return $ok ? ['ok' => true] : ['ok' => false, 'error' => 'mail() falló — verificá que sendmail esté habilitado en el servidor'];
+    return $ok ? ['ok' => true] : ['ok' => false, 'error' => 'No se pudo enviar (localhost:25 ni mail())'];
 }
 
 // ── SMTP send via socket ───────────────────────────────────────────────────────
 function sendSMTP($to, $toName, $subject, $htmlBody) {
     $cfg = getEmailSettings();
 
-    // Sin SMTP configurado → usar mail() nativo (más confiable en Plesk/cPanel)
+    // Sin SMTP externo configurado → inyección local directa
     if (empty($cfg['enabled']) || empty($cfg['smtp_user']) || empty($cfg['smtp_pass'])) {
         return sendNativeMail($to, $toName, $subject, $htmlBody);
     }
