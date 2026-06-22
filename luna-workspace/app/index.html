@@ -2236,7 +2236,47 @@ async function saveCard(){
     mAsn.forEach(uid=>{const u=USERS.find(x=>x.id==uid);if(u)ASGN.push({card_id:editCardId,user_id:uid,name:u.name,color:u.color})});
     closeCardM();renderKanban();if(S.view==='kn')renderFK();
     notify('Tarea guardada','ok');
+    // Offer WA notification for assignees that have a phone number
+    const waTargets = mAsn
+      .map(uid => USERS.find(u => u.id == uid))
+      .filter(u => u && u.phone && u.id != ME.id);
+    if (waTargets.length > 0) {
+      showWAPrompt({title, priority:body.priority, due_date:body.due_date, start_date:body.start_date}, waTargets);
+    }
   }catch(e){notify('Error: '+e.message,'er')}
+}
+
+function showWAPrompt(task, targets) {
+  document.getElementById('wa-prompt')?.remove();
+  const prio = {high:'🔴 Alta', medium:'🟡 Media', low:'🟢 Baja'}[task.priority] || '';
+  const due  = task.due_date ? '📅 Vence: ' + task.due_date : '';
+  const msg  = encodeURIComponent(
+    '🔔 *Tarea asignada en Luna Workspace*\n' +
+    '📌 ' + task.title + '\n' +
+    (prio ? prio + '\n' : '') +
+    (due  ? due  + '\n' : '') +
+    '👤 Asignado por: ' + ME.name
+  );
+  const btns = targets.map(u => {
+    const phone = u.phone.replace(/\D/g,'');
+    return `<a href="https://wa.me/${phone}?text=${msg}" target="_blank" class="btn bp" style="display:flex;align-items:center;gap:6px;text-decoration:none">
+      💬 Notificar a ${esc(u.name)}
+    </a>`;
+  }).join('');
+  const d = document.createElement('div');
+  d.id = 'wa-prompt';
+  d.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;background:var(--bg);border:1px solid var(--brd);border-radius:14px;padding:18px 20px;box-shadow:0 8px 32px rgba(0,0,0,.18);max-width:320px';
+  d.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <strong style="font-size:14px">💬 ¿Notificar por WhatsApp?</strong>
+      <span onclick="this.closest('#wa-prompt').remove()" style="cursor:pointer;color:var(--t2);font-size:18px;line-height:1">×</span>
+    </div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:12px">Abre WhatsApp Web con el mensaje listo. Solo hacé clic en Enviar.</div>
+    <div style="display:flex;flex-direction:column;gap:8px">${btns}</div>
+    <button onclick="this.closest('#wa-prompt').remove()" class="btn" style="width:100%;margin-top:8px;font-size:12px">Omitir</button>
+  `;
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), 30000);
 }
 async function delCard(){
   if(isVisitor())return;
