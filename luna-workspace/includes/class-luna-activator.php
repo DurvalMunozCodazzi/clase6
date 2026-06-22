@@ -39,6 +39,14 @@ class Luna_Activator {
         flush_rewrite_rules();
     }
 
+    // MySQL 5.x-compatible ADD COLUMN: checks SHOW COLUMNS before altering
+    public static function add_column_if_missing($wpdb, string $table, string $col, string $definition): void {
+        $exists = $wpdb->get_results("SHOW COLUMNS FROM `{$table}` LIKE '{$col}'");
+        if (empty($exists)) {
+            $wpdb->query("ALTER TABLE `{$table}` ADD COLUMN `{$col}` {$definition}");
+        }
+    }
+
     // ── DB tables (same schema as setup.php) ────────────────────────────────
     private static function create_tables() {
         global $wpdb;
@@ -241,22 +249,23 @@ class Luna_Activator {
         }
 
         // Migrate existing tables: add columns that may be missing from older installs
+        // Uses SHOW COLUMNS to check first — compatible with MySQL 5.x (no IF NOT EXISTS support)
         $p = $wpdb->prefix;
-        $wpdb->query("ALTER TABLE `{$p}luna_users` ADD COLUMN IF NOT EXISTS cargo VARCHAR(120) DEFAULT ''");
-        $wpdb->query("ALTER TABLE `{$p}luna_users` ADD COLUMN IF NOT EXISTS dept VARCHAR(120) DEFAULT ''");
-        $wpdb->query("ALTER TABLE `{$p}luna_users` ADD COLUMN IF NOT EXISTS photo MEDIUMTEXT DEFAULT NULL");
-        $wpdb->query("ALTER TABLE `{$p}luna_users` ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT ''");
-        $wpdb->query("ALTER TABLE `{$p}luna_users` ADD COLUMN IF NOT EXISTS last_login DATETIME NULL");
-        $wpdb->query("ALTER TABLE `{$p}luna_workspace_templates` ADD COLUMN IF NOT EXISTS icon VARCHAR(50) DEFAULT 'fa-project-diagram'");
-        $wpdb->query("ALTER TABLE `{$p}luna_workspace_templates` ADD COLUMN IF NOT EXISTS color VARCHAR(10) DEFAULT '#5b6af0'");
-        $wpdb->query("ALTER TABLE `{$p}luna_workspace_templates` ADD COLUMN IF NOT EXISTS is_default TINYINT(1) DEFAULT 0");
-        $wpdb->query("ALTER TABLE `{$p}luna_workspace_templates` ADD COLUMN IF NOT EXISTS `columns` TEXT DEFAULT '[]'");
-        $wpdb->query("ALTER TABLE `{$p}luna_cards` ADD COLUMN IF NOT EXISTS start_date DATE NULL");
-        $wpdb->query("ALTER TABLE `{$p}luna_cards` ADD COLUMN IF NOT EXISTS estimated DECIMAL(5,1) DEFAULT NULL");
-        $wpdb->query("ALTER TABLE `{$p}luna_cards` ADD COLUMN IF NOT EXISTS progress INT DEFAULT 0");
-        $wpdb->query("ALTER TABLE `{$p}luna_workspaces` ADD COLUMN IF NOT EXISTS canvas LONGTEXT DEFAULT NULL");
-        $wpdb->query("ALTER TABLE `{$p}luna_workspaces` ADD COLUMN IF NOT EXISTS image MEDIUMTEXT DEFAULT NULL");
-        $wpdb->query("ALTER TABLE `{$p}luna_workspaces` ADD COLUMN IF NOT EXISTS created_by INT DEFAULT 0");
+        self::add_column_if_missing($wpdb, "{$p}luna_users", 'cargo',                "VARCHAR(120) DEFAULT ''");
+        self::add_column_if_missing($wpdb, "{$p}luna_users", 'dept',                 "VARCHAR(120) DEFAULT ''");
+        self::add_column_if_missing($wpdb, "{$p}luna_users", 'photo',                "MEDIUMTEXT DEFAULT NULL");
+        self::add_column_if_missing($wpdb, "{$p}luna_users", 'notes',                "TEXT DEFAULT ''");
+        self::add_column_if_missing($wpdb, "{$p}luna_users", 'last_login',           "DATETIME NULL");
+        self::add_column_if_missing($wpdb, "{$p}luna_workspace_templates", 'icon',       "VARCHAR(50) DEFAULT 'fa-project-diagram'");
+        self::add_column_if_missing($wpdb, "{$p}luna_workspace_templates", 'color',      "VARCHAR(10) DEFAULT '#5b6af0'");
+        self::add_column_if_missing($wpdb, "{$p}luna_workspace_templates", 'is_default', "TINYINT(1) DEFAULT 0");
+        self::add_column_if_missing($wpdb, "{$p}luna_workspace_templates", 'columns',    "TEXT DEFAULT '[]'");
+        self::add_column_if_missing($wpdb, "{$p}luna_cards", 'start_date', "DATE NULL");
+        self::add_column_if_missing($wpdb, "{$p}luna_cards", 'estimated',  "DECIMAL(5,1) DEFAULT NULL");
+        self::add_column_if_missing($wpdb, "{$p}luna_cards", 'progress',   "INT DEFAULT 0");
+        self::add_column_if_missing($wpdb, "{$p}luna_workspaces", 'canvas',     "LONGTEXT DEFAULT NULL");
+        self::add_column_if_missing($wpdb, "{$p}luna_workspaces", 'image',      "MEDIUMTEXT DEFAULT NULL");
+        self::add_column_if_missing($wpdb, "{$p}luna_workspaces", 'created_by', "INT DEFAULT 0");
 
         // Fix luna_app_settings: if meta_key column doesn't exist the table has old schema — recreate it
         $has_meta_key = $wpdb->get_results("SHOW COLUMNS FROM `{$p}luna_app_settings` LIKE 'meta_key'");
@@ -266,22 +275,22 @@ class Luna_Activator {
         }
 
         // Notification channel columns
-        $wpdb->query("ALTER TABLE `{$p}luna_users` ADD COLUMN IF NOT EXISTS phone VARCHAR(30) DEFAULT ''");
-        $wpdb->query("ALTER TABLE `{$p}luna_users` ADD COLUMN IF NOT EXISTS whatsapp_apikey VARCHAR(20) DEFAULT ''");
-        $wpdb->query("ALTER TABLE `{$p}luna_users` ADD COLUMN IF NOT EXISTS telegram_chat_id VARCHAR(50) DEFAULT NULL");
-        $wpdb->query("ALTER TABLE `{$p}luna_users` ADD COLUMN IF NOT EXISTS notification_channel ENUM('email','whatsapp','telegram','all','none') DEFAULT 'email'");
+        self::add_column_if_missing($wpdb, "{$p}luna_users", 'phone',                "VARCHAR(30) DEFAULT ''");
+        self::add_column_if_missing($wpdb, "{$p}luna_users", 'whatsapp_apikey',       "VARCHAR(100) DEFAULT ''");
+        self::add_column_if_missing($wpdb, "{$p}luna_users", 'telegram_chat_id',      "VARCHAR(50) DEFAULT NULL");
+        self::add_column_if_missing($wpdb, "{$p}luna_users", 'notification_channel',  "ENUM('email','whatsapp','telegram','all','none') DEFAULT 'email'");
         // Attachment timestamp column (added in later schema versions)
-        $wpdb->query("ALTER TABLE `{$p}luna_attachments` ADD COLUMN IF NOT EXISTS added_at DATETIME DEFAULT CURRENT_TIMESTAMP");
+        self::add_column_if_missing($wpdb, "{$p}luna_attachments", 'added_at', "DATETIME DEFAULT CURRENT_TIMESTAMP");
         // Cards columns that may be missing in older installs
-        $wpdb->query("ALTER TABLE `{$p}luna_cards` ADD COLUMN IF NOT EXISTS start_date DATE DEFAULT NULL");
-        $wpdb->query("ALTER TABLE `{$p}luna_cards` ADD COLUMN IF NOT EXISTS progress INT DEFAULT 0");
-        $wpdb->query("ALTER TABLE `{$p}luna_cards` ADD COLUMN IF NOT EXISTS estimated INT DEFAULT NULL");
+        self::add_column_if_missing($wpdb, "{$p}luna_cards", 'start_date', "DATE DEFAULT NULL");
+        self::add_column_if_missing($wpdb, "{$p}luna_cards", 'progress',   "INT DEFAULT 0");
+        self::add_column_if_missing($wpdb, "{$p}luna_cards", 'estimated',  "INT DEFAULT NULL");
         // Workspaces columns
-        $wpdb->query("ALTER TABLE `{$p}luna_workspaces` ADD COLUMN IF NOT EXISTS color VARCHAR(10) DEFAULT ''");
-        $wpdb->query("ALTER TABLE `{$p}luna_workspaces` ADD COLUMN IF NOT EXISTS icon VARCHAR(10) DEFAULT ''");
-        $wpdb->query("ALTER TABLE `{$p}luna_workspaces` ADD COLUMN IF NOT EXISTS image TEXT DEFAULT NULL");
-        $wpdb->query("ALTER TABLE `{$p}luna_workspaces` ADD COLUMN IF NOT EXISTS description TEXT DEFAULT NULL");
-        $wpdb->query("ALTER TABLE `{$p}luna_workspaces` ADD COLUMN IF NOT EXISTS canvas TEXT DEFAULT NULL");
+        self::add_column_if_missing($wpdb, "{$p}luna_workspaces", 'color',       "VARCHAR(10) DEFAULT ''");
+        self::add_column_if_missing($wpdb, "{$p}luna_workspaces", 'icon',        "VARCHAR(10) DEFAULT ''");
+        self::add_column_if_missing($wpdb, "{$p}luna_workspaces", 'image',       "TEXT DEFAULT NULL");
+        self::add_column_if_missing($wpdb, "{$p}luna_workspaces", 'description', "TEXT DEFAULT NULL");
+        self::add_column_if_missing($wpdb, "{$p}luna_workspaces", 'canvas',      "TEXT DEFAULT NULL");
         // Activity log table (may not exist in old installs)
         $wpdb->query("CREATE TABLE IF NOT EXISTS `{$p}luna_activity_log` (
             id INT AUTO_INCREMENT PRIMARY KEY,

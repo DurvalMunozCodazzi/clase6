@@ -7,7 +7,23 @@ class Luna_Admin {
         add_action('admin_menu',            [$this, 'register_menu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts']);
         add_action('admin_notices',         [$this, 'show_notices']);
+        add_action('admin_init',            [$this, 'maybe_migrate']);
         add_action('wp_ajax_luna_test_notification', [$this, 'ajax_test_notification']);
+    }
+
+    public function maybe_migrate(): void {
+        global $wpdb;
+        $p = $wpdb->prefix . 'luna_';
+        Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'phone',               "VARCHAR(30) DEFAULT ''");
+        Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'whatsapp_apikey',      "VARCHAR(100) DEFAULT ''");
+        Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'telegram_chat_id',     "VARCHAR(50) DEFAULT NULL");
+        Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'notification_channel', "ENUM('email','whatsapp','telegram','all','none') DEFAULT 'email'");
+        Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'cargo',                "VARCHAR(120) DEFAULT ''");
+        Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'dept',                 "VARCHAR(120) DEFAULT ''");
+        Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'color',                "VARCHAR(10) DEFAULT '#5b6af0'");
+        Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'photo',                "MEDIUMTEXT DEFAULT NULL");
+        Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'notes',                "TEXT DEFAULT ''");
+        Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'last_login',           "DATETIME NULL");
     }
 
     public function register_menu() {
@@ -138,6 +154,82 @@ class Luna_Admin {
                 </tr>
               </table>
               <p><button type="submit" name="luna_save_settings" class="button button-primary">Guardar cambios</button></p>
+            </form>
+          </div>
+
+          <?php
+          // ── SMTP settings ────────────────────────────────────────────────────
+          global $wpdb;
+          $smtp_p = $wpdb->prefix . 'luna_';
+          if (isset($_POST['luna_save_smtp']) && check_admin_referer('luna_settings')) {
+              $smtp_cfg = [
+                  'enabled'    => !empty($_POST['smtp_enabled']),
+                  'smtp_host'  => sanitize_text_field($_POST['smtp_host']  ?? 'smtp.gmail.com'),
+                  'smtp_port'  => absint($_POST['smtp_port']  ?? 587),
+                  'encryption' => sanitize_text_field($_POST['smtp_enc']   ?? 'tls'),
+                  'smtp_user'  => sanitize_text_field($_POST['smtp_user']  ?? ''),
+                  'smtp_pass'  => $_POST['smtp_pass'] ?? '',
+                  'from_email' => sanitize_email($_POST['from_email']      ?? ''),
+                  'from_name'  => sanitize_text_field($_POST['from_name']  ?? 'Luna Workspace'),
+              ];
+              $existing = $wpdb->get_var("SELECT meta_value FROM `{$smtp_p}app_settings` WHERE meta_key='email_settings'");
+              if ($existing !== null) {
+                  $wpdb->update("{$smtp_p}app_settings", ['meta_value' => wp_json_encode($smtp_cfg)], ['meta_key' => 'email_settings']);
+              } else {
+                  $wpdb->insert("{$smtp_p}app_settings", ['meta_key' => 'email_settings', 'meta_value' => wp_json_encode($smtp_cfg)]);
+              }
+              echo '<div class="notice notice-success"><p>✅ Configuración SMTP guardada.</p></div>';
+          }
+          $smtp_row = $wpdb->get_var("SELECT meta_value FROM `{$smtp_p}app_settings` WHERE meta_key='email_settings'");
+          $smtp_cfg = $smtp_row ? (json_decode($smtp_row, true) ?: []) : [];
+          ?>
+          <div class="luna-card" style="margin-top:20px">
+            <h2 style="margin-top:0">📧 Configuración SMTP (Email)</h2>
+            <p style="color:#666;font-size:13px;margin-top:-8px">Estos datos se usan para enviar notificaciones por email desde Luna Workspace.</p>
+            <form method="POST">
+              <?php wp_nonce_field('luna_settings') ?>
+              <table class="form-table">
+                <tr>
+                  <th>Activar SMTP</th>
+                  <td><label><input type="checkbox" name="smtp_enabled" value="1" <?php checked(!empty($smtp_cfg['enabled'])) ?>> Enviar emails via SMTP personalizado</label></td>
+                </tr>
+                <tr>
+                  <th>Host SMTP</th>
+                  <td><input type="text" name="smtp_host" value="<?php echo esc_attr($smtp_cfg['smtp_host'] ?? 'smtp.gmail.com') ?>" class="regular-text" placeholder="smtp.gmail.com"></td>
+                </tr>
+                <tr>
+                  <th>Puerto</th>
+                  <td><input type="number" name="smtp_port" value="<?php echo esc_attr($smtp_cfg['smtp_port'] ?? 587) ?>" class="small-text" placeholder="587">
+                      <span class="description"> (587 para TLS, 465 para SSL)</span></td>
+                </tr>
+                <tr>
+                  <th>Cifrado</th>
+                  <td>
+                    <select name="smtp_enc">
+                      <option value="tls" <?php selected(($smtp_cfg['encryption'] ?? 'tls'), 'tls') ?>>TLS (recomendado)</option>
+                      <option value="ssl" <?php selected(($smtp_cfg['encryption'] ?? 'tls'), 'ssl') ?>>SSL</option>
+                    </select>
+                  </td>
+                </tr>
+                <tr>
+                  <th>Usuario SMTP</th>
+                  <td><input type="text" name="smtp_user" value="<?php echo esc_attr($smtp_cfg['smtp_user'] ?? '') ?>" class="regular-text" placeholder="tu@gmail.com"></td>
+                </tr>
+                <tr>
+                  <th>Contraseña SMTP</th>
+                  <td><input type="password" name="smtp_pass" value="<?php echo esc_attr($smtp_cfg['smtp_pass'] ?? '') ?>" class="regular-text" placeholder="contraseña o app-password">
+                      <p class="description">Para Gmail usá una <a href="https://myaccount.google.com/apppasswords" target="_blank">App Password</a> (requiere 2FA activo).</p></td>
+                </tr>
+                <tr>
+                  <th>Email remitente</th>
+                  <td><input type="email" name="from_email" value="<?php echo esc_attr($smtp_cfg['from_email'] ?? '') ?>" class="regular-text" placeholder="notificaciones@tudominio.com"></td>
+                </tr>
+                <tr>
+                  <th>Nombre remitente</th>
+                  <td><input type="text" name="from_name" value="<?php echo esc_attr($smtp_cfg['from_name'] ?? 'Luna Workspace') ?>" class="regular-text"></td>
+                </tr>
+              </table>
+              <p><button type="submit" name="luna_save_smtp" class="button button-primary">Guardar configuración SMTP</button></p>
             </form>
           </div>
         </div>
