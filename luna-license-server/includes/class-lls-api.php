@@ -33,7 +33,9 @@ class LLS_Api {
         }
 
         $result = LLS_License::verify($key, $domain);
-        $code   = $result['valid'] ? 200 : 403;
-        return new WP_REST_Response($result, $code);
+        // Always return 200 — callers check the 'valid' field in the JSON body.
+        // Returning 4xx causes security layers (Wordfence, mod_security) to intercept
+        // the response and replace our JSON with their own error page.
+        return new WP_REST_Response($result, 200);
     }
 }
