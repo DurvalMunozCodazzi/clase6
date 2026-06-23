@@ -485,69 +485,9 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 .preview-close:hover{background:rgba(255,255,255,.3)}
 .preview-name{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);color:#fff;font-size:12px;font-weight:600;padding:6px 16px;border-radius:99px;max-width:80vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* ══════════════════════════════════════════════
-   GANTT CHART
-══════════════════════════════════════════════ */
+
 #garea{flex:1;min-width:0;position:relative;overflow:hidden;background:var(--bg);display:none;isolation:isolate}
 #garea.on{display:flex}
-#gantt-container{display:flex;flex-direction:column;width:100%;height:100%;overflow:hidden;position:relative;z-index:1}
-#gantt-toolbar{height:44px;background:var(--surf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:12px;padding:0 14px;flex-shrink:0;flex-wrap:wrap}
-.gtb{height:26px;padding:0 10px;border-radius:var(--r);font-size:11px;font-weight:700;font-family:var(--f);cursor:pointer;border:1px solid var(--bdr);background:transparent;color:var(--t3);transition:.15s;white-space:nowrap}
-.gtb:hover{border-color:var(--bdrl);color:var(--t1);background:var(--hov)}
-.gtb.on{background:var(--acc);border-color:var(--acc);color:#fff}
-.gt-period{font-size:13px;font-weight:700;color:var(--t1);min-width:120px}
-#gantt-wrap{display:flex;flex:1;overflow:hidden}
-#gantt-left{width:240px;flex-shrink:0;border-right:1px solid var(--bdr);display:flex;flex-direction:column;background:var(--surf)}
-#gantt-left-header{height:40px;display:flex;align-items:center;padding:0 14px;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--bdr);flex-shrink:0}
-#gantt-tasks{flex:1;overflow-y:auto;overflow-x:hidden}
-#gantt-right{flex:1;overflow:auto;position:relative;cursor:grab}
-#gantt-right:active{cursor:grabbing}
-#gantt-header{height:40px;position:sticky;top:0;z-index:10;background:var(--surf);border-bottom:1px solid var(--bdr);display:flex;align-items:stretch}
-#gantt-bars{position:relative}
-.gantt-row{display:flex;align-items:center;height:44px;border-bottom:1px solid var(--bdr);position:relative}
-.gantt-row:hover{background:var(--hov)}
-.gantt-row.group-header{height:32px;background:var(--elev);cursor:default}
-.gantt-row.group-header:hover{background:var(--elev)}
-/* Left panel rows */
-.gantt-task-row{height:44px;display:flex;align-items:center;padding:0 10px;border-bottom:1px solid var(--bdr);gap:8px;cursor:pointer;transition:.15s}
-.gantt-task-row:hover{background:var(--hov)}
-.gantt-task-row.group-header{height:32px;background:var(--elev);padding:0 10px;cursor:default;font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px}
-.gantt-task-row.group-header:hover{background:var(--elev)}
-.gt-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.gt-name{font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.gt-due{font-size:9px;font-family:var(--fm);color:var(--t3);flex-shrink:0}
-/* Header cells */
-.gh-month{display:flex;align-items:center;padding:0 10px;font-size:11px;font-weight:700;color:var(--t2);border-right:1px solid var(--bdr);white-space:nowrap;flex-shrink:0}
-.gh-day{display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--t3);border-right:1px solid var(--bdr);flex-shrink:0;flex-direction:column;gap:1px}
-.gh-day.today{background:rgba(91,106,240,.12);color:var(--acc)}
-.gh-day.weekend{background:rgba(0,0,0,.03)}
-/* Gantt bars */
-.gantt-bar-wrap{position:absolute;top:8px;height:28px;cursor:pointer;z-index:2}
-.gantt-bar{height:100%;border-radius:6px;position:relative;display:flex;align-items:center;padding:0 8px;overflow:hidden;transition:filter .15s}
-.gantt-bar:hover{filter:brightness(1.15)}
-.gantt-bar-label{font-size:10px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 3px rgba(0,0,0,.4)}
-.gantt-bar-resize{position:absolute;right:0;top:0;width:8px;height:100%;cursor:ew-resize;background:rgba(255,255,255,.2);border-radius:0 6px 6px 0;opacity:0;transition:opacity .15s}
-.gantt-bar-wrap:hover .gantt-bar-resize{opacity:1}
-/* Today line */
-.gantt-today-line{position:absolute;top:0;bottom:0;width:2px;background:var(--acc);z-index:5;pointer-events:none}
-.gantt-today-line::before{content:'HOY';position:absolute;top:4px;left:4px;font-size:8px;font-weight:700;color:var(--acc);white-space:nowrap;font-family:var(--fm)}
-/* Grid lines */
-.gantt-grid-line{position:absolute;top:0;bottom:0;width:1px;background:var(--bdr);z-index:1;pointer-events:none}
-.gantt-grid-line.weekend{background:rgba(0,0,0,.04)}
-.gantt-grid-line.month-start{background:var(--bdrl)}
-/* No dates placeholder */
-.gantt-no-dates{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;color:var(--t3);gap:10px}
-/* Legend */
-#gantt-legend{height:32px;background:var(--surf);border-top:1px solid var(--bdr);display:flex;align-items:center;gap:16px;padding:0 14px;font-size:10px;color:var(--t3);flex-shrink:0;flex-wrap:wrap}
-.gl-item{display:flex;align-items:center;gap:5px}
-.gl-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
-/* Drag feedback */
-.gantt-bar-wrap.dragging .gantt-bar{opacity:.8;box-shadow:0 4px 20px rgba(0,0,0,.4)}
-.gantt-bar-drop-target{background:rgba(91,106,240,.08)!important}
-/* Tooltip */
-.gantt-tooltip{position:fixed;background:var(--elev);border:1px solid var(--bdrl);border-radius:var(--r);padding:8px 12px;font-size:11px;z-index:9999;pointer-events:none;box-shadow:var(--sh);max-width:220px}
-.gantt-tooltip strong{display:block;font-size:12px;margin-bottom:4px}
-.gantt-tooltip span{color:var(--t3);font-size:10px;display:block;line-height:1.6}
 
 /* ── NOTIFICATIONS ── */
 .notif-bell{position:relative;cursor:pointer}
@@ -664,10 +604,6 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 .spark-bar{flex:1;border-radius:3px 3px 0 0;min-height:4px;transition:height .4s ease;position:relative}
 .spark-bar:hover::after{content:attr(data-val);position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:var(--t1);background:var(--elev);padding:2px 6px;border-radius:4px;white-space:nowrap}
 .assignee-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-/* Gantt presentation mode */
-#gantt-present-btn{position:absolute;bottom:16px;right:16px;z-index:10}
-.present-mode #gantt-toolbar,.present-mode #gantt-legend{display:none!important}
-.present-mode #gantt-wrap{height:100vh}
 @media(max-width:768px){
   .metrics-grid{grid-template-columns:1fr 1fr}
   .charts-grid{grid-template-columns:1fr}
@@ -732,8 +668,6 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 .activity-time{font-size:9px;color:var(--t3);font-family:var(--fm);margin-top:1px}
 .activity-action{font-weight:700}
 
-/* ── GANTT start_date ── */
-.gantt-bar-start{border-left:3px solid rgba(255,255,255,.5)}
 
 /* ── @MENCIONES ── */
 .mention-popup{position:absolute;background:var(--elev);border:1px solid var(--bdrl);border-radius:var(--rl);box-shadow:var(--shl);z-index:9999;min-width:200px;max-height:200px;overflow-y:auto;display:none}
@@ -789,7 +723,6 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 .dep-type{font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--accg);color:var(--acc);flex-shrink:0;font-family:var(--f)}
 .dep-title{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dep-status{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.gantt-dep-arrow{position:absolute;pointer-events:none;z-index:6}
 
 /* ── ONBOARDING TOUR ── */
 #tour-overlay{position:fixed;inset:0;z-index:9990;pointer-events:none}
@@ -817,14 +750,10 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 
 /* ── EXPORT PDF ── */
 @media print{
-  nav,#topbar,#kpanel,.vtab-bar,#filter-bar,#gantt-toolbar,#gantt-legend,
+  nav,#topbar,#kpanel,.vtab-bar,#filter-bar,
   #mobile-nav,.vis-bar,#tour-overlay,#notif-panel,#cal-panel,#smtp-panel,
   #metrics-panel,#theme-panel,#upanel,#dpanel,#ws-panel{display:none!important}
   #garea{position:static!important;width:100%!important;height:auto!important}
-  #gantt-container{width:100%!important;overflow:visible!important}
-  #gantt-wrap{overflow:visible!important;height:auto!important}
-  #gantt-right{overflow:visible!important}
-  #gantt-bars{min-height:auto!important}
   body{background:#fff!important}
 }
 
@@ -907,8 +836,6 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
     <div class="sep"></div>
     <div class="vtabs">
       <button class="vtab on" id="tv-kn" onclick="sw('kn')" title="Tablero Kanban — gestión de tareas"><i class="fas fa-columns"></i> Tareas</button>
-      <button class="vtab" id="tv-gt" onclick="sw('gt')" title="Cronograma Gantt — visualización de fechas"><i class="fas fa-stream"></i> Gantt</button>
-      <button class="vtab" id="tv-bt" onclick="sw('bt')" title="Ver Kanban y Gantt juntos"><i class="fas fa-table-columns"></i> Ambos</button>
     </div>
     <button id="mobile-sb-btn" onclick="toggleMobileSB()" title="Herramientas"><i class="fas fa-pen-ruler"></i></button>
     <div id="search-wrap">
@@ -951,43 +878,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
   <div id="inner-app">
 
     <div id="garea">
-      <!-- GANTT CHART -->
-      <div id="gantt-container">
-        <div id="gantt-toolbar">
-          <div style="display:flex;align-items:center;gap:8px">
-            <button class="gtb" onclick="ganttPrev()" title="Período anterior"><i class="fas fa-chevron-left"></i></button>
-            <button class="gtb" onclick="ganttToday()" title="Ir a hoy"><i class="fas fa-crosshairs"></i> Hoy</button>
-            <button class="gtb" onclick="ganttNext()" title="Período siguiente"><i class="fas fa-chevron-right"></i></button>
-            <div class="gt-period" id="gantt-period-label">Mayo 2026</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:11px;color:var(--t3)">Zoom:</span>
-            <button class="gtb on" id="gz-week" onclick="setGanttZoom('week')">Semana</button>
-            <button class="gtb" id="gz-month" onclick="setGanttZoom('month')">Mes</button>
-            <button class="gtb" id="gz-quarter" onclick="setGanttZoom('quarter')">Trimestre</button>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:11px;color:var(--t3)">Agrupar:</span>
-            <button class="gtb on" id="gg-col" onclick="setGanttGroup('column')">Columna</button>
-            <button class="gtb" id="gg-asgn" onclick="setGanttGroup('assignee')">Responsable</button>
-          </div>
-          <button class="gtb" onclick="addCardFromGantt()" title="Nueva tarea"><i class="fas fa-plus"></i> Tarea</button>
-        </div>
-        <div id="gantt-wrap">
-          <div id="gantt-left">
-            <div id="gantt-left-header">Tarea</div>
-            <div id="gantt-tasks"></div>
-          </div>
-          <div id="gantt-right">
-            <div id="gantt-header"></div>
-            <div id="gantt-bars"></div>
-          </div>
-        </div>
-        <div id="gantt-legend"></div>
-      <button class="tbtn" id="gantt-present-btn" onclick="togglePresentMode()" title="Modo presentación" style="position:absolute;bottom:50px;right:16px;z-index:10"><i class="fas fa-tv"></i></button>
-      </div>
-    </div>
-    <!-- KANBAN FULL VIEW (inside garea so it overlays gantt) -->
+    <!-- KANBAN FULL VIEW -->
     <div id="kfull"></div>
     <div id="kpanel">
       <div id="khdr"><i class="fas fa-columns" style="color:var(--acc);font-size:12px"></i><h2>Kanban</h2><button class="khb" onclick="addCol()"><i class="fas fa-plus"></i></button><button class="khb" onclick="showKM(event)"><i class="fas fa-ellipsis-h"></i></button></div>
@@ -1466,7 +1357,6 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
       <i class="fas fa-chart-bar" style="color:var(--acc);font-size:18px"></i>
       <h2>Dashboard de Métricas</h2>
       <select class="fse" id="metrics-ws-sel" style="width:auto;padding:6px 10px" onchange="loadMetrics()"></select>
-      <button class="btn bp" onclick="togglePresentMode()" id="present-btn"><i class="fas fa-tv"></i> Presentar Gantt</button>
       <button class="mx" style="width:32px;height:32px" onclick="closeMetrics()"><i class="fas fa-times"></i></button>
     </div>
     <div id="metrics-content">
@@ -1734,7 +1624,6 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 
   <!-- MOBILE BOTTOM NAV -->
   <div id="mobile-nav">
-    <button class="mob-nav-btn on" id="mob-gt" onclick="mobileNav('gt')"><i class="fas fa-stream"></i>Gantt</button>
     <button class="mob-nav-btn" id="mob-kn" onclick="mobileNav('kn')"><i class="fas fa-columns"></i>Tareas</button>
     <button class="mob-nav-btn" id="mob-usr" onclick="openUP()"><i class="fas fa-users"></i>Equipo</button>
     <button class="mob-nav-btn" id="mob-thm" onclick="toggleTP()"><i class="fas fa-palette"></i>Tema</button>
@@ -1880,7 +1769,6 @@ async function loadBoard(silent=false){
     }
     renderKanban();
     if(S.view==='kn') renderFK();
-    if(S.view==='gt'||S.view==='bt') renderGantt();
     updTopTeam();
     if(!silent) notify('Tablero cargado','ok');
   }catch(e){
@@ -1919,14 +1807,6 @@ function sw(v){
     if(ga) ga.classList.add('on');
     if(kf) kf.classList.add('on');
     renderFK();
-  } else if(v==='gt'){
-    if(ga) ga.classList.add('on');
-    renderGantt();
-  } else if(v==='bt'){
-    if(ga) ga.classList.add('on');
-    if(kp) kp.classList.remove('off');
-    // Don't show kfull in 'bt' mode - just the side panel
-    renderGantt();
   }
   document.querySelectorAll('.mob-nav-btn').forEach(b=>b.classList.remove('on'));
   const mob=document.getElementById('mob-'+v);if(mob)mob.classList.add('on');
@@ -2923,442 +2803,6 @@ function confirmDelWS(wsId, event) {
 
 
 // ══════════════════════════════════════════════
-//  GANTT CHART — Interactive
-// ══════════════════════════════════════════════
-const GANTT = {
-  zoom:      'week',    // 'week' | 'month' | 'quarter'
-  group:     'column',  // 'column' | 'assignee'
-  startDate: null,      // Date — left edge of viewport
-  colW:      28,        // px per day (week), 14 (month), 7 (quarter)
-  dragging:  null,      // { cardId, type:'move'|'resize', startX, origStart, origEnd }
-  tooltip:   null,
-};
-
-// ── Zoom configs ──────────────────────────────
-const ZOOM_CFG = {
-  week:    { days: 56,  colW: 28, fmt: 'ddd D' },
-  month:   { days: 120, colW: 14, fmt: 'D'     },
-  quarter: { days: 270, colW:  7, fmt: ''       },
-};
-
-// ── Init ──────────────────────────────────────
-function initGantt() {
-  GANTT.startDate = startOfWeek(new Date());
-  renderGantt();
-}
-
-function startOfWeek(d) {
-  const dt = new Date(d);
-  dt.setHours(0,0,0,0);
-  dt.setDate(dt.getDate() - dt.getDay()); // Sunday
-  return dt;
-}
-
-function addDays(d, n) {
-  const dt = new Date(d);
-  dt.setDate(dt.getDate() + n);
-  return dt;
-}
-
-function diffDays(a, b) {
-  return Math.round((b - a) / 86400000);
-}
-
-function fmtDate(d) {
-  return d.toISOString().split('T')[0];
-}
-
-function parseDate(s) {
-  if (!s) return null;
-  const dt = new Date(s + 'T00:00:00');
-  return isNaN(dt) ? null : dt;
-}
-
-// ── View switch ───────────────────────────────
-function setGanttZoom(z) {
-  GANTT.zoom = z;
-  GANTT.colW = ZOOM_CFG[z].colW;
-  document.querySelectorAll('[id^=gz-]').forEach(b => b.classList.remove('on'));
-  const el = document.getElementById('gz-' + z); if (el) el.classList.add('on');
-  renderGantt();
-}
-
-function setGanttGroup(g) {
-  GANTT.group = g;
-  document.querySelectorAll('[id^=gg-]').forEach(b => b.classList.remove('on'));
-  const el = document.getElementById('gg-' + g); if (el) el.classList.add('on');
-  renderGantt();
-}
-
-function ganttPrev() {
-  const days = ZOOM_CFG[GANTT.zoom].days;
-  GANTT.startDate = addDays(GANTT.startDate, -Math.round(days / 2));
-  renderGantt();
-}
-function ganttNext() {
-  const days = ZOOM_CFG[GANTT.zoom].days;
-  GANTT.startDate = addDays(GANTT.startDate, Math.round(days / 2));
-  renderGantt();
-}
-function ganttToday() {
-  GANTT.startDate = startOfWeek(new Date());
-  renderGantt();
-}
-
-// ── Main render ───────────────────────────────
-function renderGantt() {
-  if (!GANTT.startDate) GANTT.startDate = startOfWeek(new Date());
-  const cfg   = ZOOM_CFG[GANTT.zoom];
-  const days  = cfg.days;
-  const colW  = GANTT.colW;
-  const start = GANTT.startDate;
-  const today = new Date(); today.setHours(0,0,0,0);
-  const totalW = days * colW;
-
-  // Update period label
-  const endDate = addDays(start, days - 1);
-  const months  = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  const lbl = document.getElementById('gantt-period-label');
-  if (lbl) {
-    const sm = months[start.getMonth()], em = months[endDate.getMonth()];
-    const sy = start.getFullYear(), ey = endDate.getFullYear();
-    lbl.textContent = sm === em
-      ? `${sm} ${sy}`
-      : sy === ey ? `${sm} – ${em} ${sy}` : `${sm} ${sy} – ${em} ${ey}`;
-  }
-
-  // ── Build header ──
-  const header = document.getElementById('gantt-header');
-  if (!header) return;
-  header.style.width = totalW + 'px';
-  header.innerHTML = '';
-
-  // Month labels row
-  const monthRow = document.createElement('div');
-  monthRow.style.cssText = `display:flex;height:20px;width:${totalW}px;border-bottom:1px solid var(--bdr)`;
-  let currentMonth = -1, monthEl = null, monthW = 0;
-  for (let i = 0; i < days; i++) {
-    const d = addDays(start, i);
-    if (d.getMonth() !== currentMonth) {
-      if (monthEl) { monthEl.style.width = monthW + 'px'; monthRow.appendChild(monthEl); }
-      currentMonth = d.getMonth();
-      monthEl = document.createElement('div');
-      monthEl.className = 'gh-month';
-      monthEl.textContent = months[d.getMonth()] + ' ' + d.getFullYear();
-      monthW = 0;
-    }
-    monthW += colW;
-  }
-  if (monthEl) { monthEl.style.width = monthW + 'px'; monthRow.appendChild(monthEl); }
-  header.appendChild(monthRow);
-
-  // Day labels row
-  const dayRow = document.createElement('div');
-  dayRow.style.cssText = `display:flex;height:20px;width:${totalW}px`;
-  const dayNames = ['D','L','M','M','J','V','S'];
-  for (let i = 0; i < days; i++) {
-    const d   = addDays(start, i);
-    const dow = d.getDay();
-    const isToday   = diffDays(today, d) === 0;
-    const isWeekend = dow === 0 || dow === 6;
-    const el = document.createElement('div');
-    el.className = 'gh-day' + (isToday?' today':'') + (isWeekend?' weekend':'');
-    el.style.width = colW + 'px';
-    if (GANTT.zoom === 'week') {
-      el.innerHTML = `<span style="font-size:8px">${dayNames[dow]}</span><span>${d.getDate()}</span>`;
-    } else if (GANTT.zoom === 'month') {
-      el.textContent = d.getDate() % 5 === 0 || d.getDate() === 1 ? d.getDate() : '';
-    }
-    dayRow.appendChild(el);
-  }
-  header.appendChild(dayRow);
-
-  // ── Build grid + bars ──
-  const barsEl  = document.getElementById('gantt-bars');
-  const tasksEl = document.getElementById('gantt-tasks');
-  if (!barsEl || !tasksEl) return;
-  barsEl.innerHTML  = '';
-  tasksEl.innerHTML = '';
-  barsEl.style.width = totalW + 'px';
-
-  // Grid lines
-  for (let i = 0; i < days; i++) {
-    const d = addDays(start, i);
-    const dow = d.getDay();
-    const isWeekend = dow === 0 || dow === 6;
-    const isMonthStart = d.getDate() === 1;
-    const line = document.createElement('div');
-    line.className = 'gantt-grid-line' + (isWeekend?' weekend':'') + (isMonthStart?' month-start':'');
-    line.style.left = (i * colW) + 'px';
-    barsEl.appendChild(line);
-  }
-
-  // Today line
-  const todayOffset = diffDays(start, today);
-  if (todayOffset >= 0 && todayOffset < days) {
-    const tl = document.createElement('div');
-    tl.className = 'gantt-today-line';
-    tl.style.left = (todayOffset * colW + colW/2) + 'px';
-    barsEl.appendChild(tl);
-  }
-
-  // ── Group tasks ──
-  let groups = [];
-  if (GANTT.group === 'column') {
-    COLS.sort((a,b) => a.position - b.position).forEach(col => {
-      const colCards = CARDS.filter(c => c.column_id == col.id);
-      if (colCards.length) groups.push({ label: col.title, color: col.color, cards: colCards });
-    });
-  } else {
-    // Group by assignee
-    const assigned = {};
-    CARDS.forEach(card => {
-      const asn = ASGN.filter(a => a.card_id == card.id);
-      if (asn.length) {
-        asn.forEach(a => {
-          if (!assigned[a.user_id]) assigned[a.user_id] = { label: a.name, color: a.color, cards: [] };
-          assigned[a.user_id].cards.push(card);
-        });
-      } else {
-        if (!assigned[0]) assigned[0] = { label: 'Sin asignar', color: '#8888aa', cards: [] };
-        assigned[0].cards.push(card);
-      }
-    });
-    groups = Object.values(assigned);
-  }
-
-  let rowIndex = 0;
-
-  groups.forEach(group => {
-    // Group header row
-    const gh = document.createElement('div');
-    gh.className = 'gantt-task-row group-header';
-    gh.innerHTML = `<div class="gt-dot" style="background:${group.color}"></div><span>${esc(group.label)}</span><span style="margin-left:auto;opacity:.6">${group.cards.length}</span>`;
-    tasksEl.appendChild(gh);
-
-    const gbr = document.createElement('div');
-    gbr.className = 'gantt-row group-header';
-    gbr.style.width = totalW + 'px';
-    barsEl.appendChild(gbr);
-    rowIndex++;
-
-    group.cards.forEach(card => {
-      const startD = parseDate(card.start_date) || parseDate(card.created_at?.split('T')[0] || card.created_at);
-      const endD   = parseDate(card.due_date) || addDays(startD || today, 3);
-      const effStart = startD || today;
-
-      // Task row (left panel)
-      const tr = document.createElement('div');
-      tr.className = 'gantt-task-row';
-      tr.dataset.cardId = card.id;
-      const dueStr = card.due_date ? card.due_date : '';
-      const dueCl  = card.due_date ? dueCls(card.due_date) : '';
-      tr.innerHTML = `
-        <div class="gt-dot" style="background:${group.color}"></div>
-        <span class="gt-name" title="${esc(card.title)}">${esc(card.title)}</span>
-        <span class="gt-due ${dueCl}">${dueStr}</span>`;
-      tr.addEventListener('click', () => openCardM(card.id));
-      tasksEl.appendChild(tr);
-
-      // Bar row (right panel)
-      const br = document.createElement('div');
-      br.className = 'gantt-row';
-      br.style.width = totalW + 'px';
-      br.dataset.cardId = card.id;
-      barsEl.appendChild(br);
-
-      // Calculate bar position
-      const barStart = diffDays(start, effStart);
-      const barEnd   = diffDays(start, endD);
-      const barLeft  = barStart * colW;
-      const barWidth = Math.max(colW, (barEnd - barStart + 1) * colW);
-
-      if (barStart < days && barEnd >= 0) {
-        const clampedLeft  = Math.max(0, barLeft);
-        const clampedWidth = Math.min(totalW - clampedLeft, barWidth - Math.max(0, -barLeft));
-
-        const bwrap = document.createElement('div');
-        bwrap.className = 'gantt-bar-wrap';
-        bwrap.style.left  = clampedLeft + 'px';
-        bwrap.style.width = clampedWidth + 'px';
-        bwrap.style.top   = rowIndex * 44 + 8 + 'px';
-        bwrap.dataset.cardId = card.id;
-
-        // Priority color or column color
-        const prioColors = {low:'#22d3a0',medium:'#f59e0b',high:'#f97316',critical:'#ef4444'};
-        const barColor   = card.priority ? prioColors[card.priority] : group.color;
-
-        bwrap.innerHTML = `
-          <div class="gantt-bar" style="background:${barColor};width:100%">
-            <span class="gantt-bar-label">${esc(card.title)}</span>
-            <div class="gantt-bar-resize" data-type="resize" data-card-id="${card.id}"></div>
-          </div>`;
-
-        // Click to open card
-        bwrap.addEventListener('click', e => {
-          if (e.target.classList.contains('gantt-bar-resize')) return;
-          openCardM(card.id);
-        });
-
-        // Drag to move
-        bwrap.addEventListener('mousedown', e => startBarDrag(e, card, effStart, endD, 'move', colW, start));
-        // Resize handle
-        const resizeHandle = bwrap.querySelector('.gantt-bar-resize');
-        if (resizeHandle) {
-          resizeHandle.addEventListener('mousedown', e => {
-            e.stopPropagation();
-            startBarDrag(e, card, effStart, endD, 'resize', colW, start);
-          });
-        }
-
-        // Tooltip
-        bwrap.addEventListener('mouseenter', e => showGanttTooltip(e, card, effStart, endD, group.color));
-        bwrap.addEventListener('mouseleave', hideGanttTooltip);
-
-        br.appendChild(bwrap);
-      }
-
-      rowIndex++;
-    });
-  });
-
-  // Empty state
-  if (CARDS.length === 0) {
-    barsEl.innerHTML += `<div class="gantt-no-dates"><i class="fas fa-stream" style="font-size:32px;opacity:.3"></i><div style="font-size:13px">No hay tareas aún</div><div style="font-size:11px;color:var(--t3)">Creá tareas en el Kanban para verlas aquí</div></div>`;
-  }
-
-  // ── Legend ──
-  const legend = document.getElementById('gantt-legend');
-  if (legend) {
-    const prios = [{c:'#22d3a0',l:'Baja'},{c:'#f59e0b',l:'Media'},{c:'#f97316',l:'Alta'},{c:'#ef4444',l:'Crítica'}];
-    legend.innerHTML = '<span style="font-weight:700;color:var(--t2);margin-right:4px">Prioridad:</span>' +
-      prios.map(p=>`<div class="gl-item"><div class="gl-dot" style="background:${p.c}"></div>${p.l}</div>`).join('') +
-      '<div style="margin-left:auto;font-size:10px;color:var(--t3)">Arrastrá las barras para cambiar fechas · Clic para abrir tarea</div>';
-  }
-
-  // Sync scroll between left and right panels
-  const rightEl = document.getElementById('gantt-right');
-  if (rightEl) {
-    rightEl.onscroll = () => {
-      if (tasksEl) tasksEl.scrollTop = rightEl.scrollTop;
-    };
-  }
-
-  barsEl.style.minHeight = (rowIndex * 44 + 20) + 'px';
-}
-
-// ── Drag & Drop bars ──────────────────────────
-function startBarDrag(e, card, startD, endD, type, colW, viewStart) {
-  if (isVisitor()) return;
-  e.preventDefault();
-  e.stopPropagation();
-
-  const origStartMs = startD.getTime();
-  const origEndMs   = endD.getTime();
-  const startX      = e.clientX;
-
-  GANTT.dragging = { card, type, startX, origStartMs, origEndMs, colW, viewStart };
-
-  const onMove = e => {
-    const dx   = e.clientX - startX;
-    const days = Math.round(dx / colW);
-    if (days === 0) return;
-
-    if (type === 'move') {
-      const newStart = new Date(origStartMs + days * 86400000);
-      const newEnd   = new Date(origEndMs   + days * 86400000);
-      updateCardDatesLocal(card.id, fmtDate(newStart), fmtDate(newEnd));
-    } else {
-      // resize: only move end date
-      const newEnd = new Date(origEndMs + days * 86400000);
-      if (newEnd > new Date(origStartMs)) {
-        updateCardDatesLocal(card.id, null, fmtDate(newEnd));
-      }
-    }
-  };
-
-  const onUp = async e => {
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
-    const dx   = e.clientX - startX;
-    const days = Math.round(dx / colW);
-    if (days === 0) { GANTT.dragging = null; return; }
-
-    const updCard = CARDS.find(c => c.id == card.id);
-    if (!updCard) { GANTT.dragging = null; return; }
-
-    // Save to server
-    try {
-      const body = {};
-      if (type === 'move') {
-        const newStart = new Date(origStartMs + days * 86400000);
-        const newEnd   = new Date(origEndMs   + days * 86400000);
-        body.due_date  = fmtDate(newEnd);
-      } else {
-        const newEnd  = new Date(origEndMs + days * 86400000);
-        body.due_date = fmtDate(newEnd);
-      }
-      await _wsApi(`kanban.php?action=save_card&id=${card.id}`, 'PUT', body);
-      // Update local
-      if (body.due_date) updCard.due_date = body.due_date;
-      renderGantt();
-      notify('Fecha actualizada ✓', 'ok');
-    } catch(err) {
-      // Revert
-      renderGantt();
-      notify('Error: ' + err.message, 'er');
-    }
-    GANTT.dragging = null;
-  };
-
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
-}
-
-function updateCardDatesLocal(cardId, start, end) {
-  // Temporary visual update while dragging
-  renderGantt();
-}
-
-// ── Tooltip ───────────────────────────────────
-function showGanttTooltip(e, card, startD, endD, color) {
-  hideGanttTooltip();
-  const col = COLS.find(c => c.id == card.column_id);
-  const asn = ASGN.filter(a => a.card_id == card.id).map(a => a.name).join(', ');
-  const duration = diffDays(startD, endD) + 1;
-  const tt = document.createElement('div');
-  tt.className = 'gantt-tooltip';
-  tt.id = 'gantt-tt';
-  tt.innerHTML = `
-    <strong>${esc(card.title)}</strong>
-    <span>📋 ${esc(col?.title||'Sin columna')}</span>
-    ${card.due_date ? `<span>📅 Vence: ${card.due_date}</span>` : '<span style="color:var(--wa)">⚠️ Sin fecha límite</span>'}
-    <span>⏱ ${duration} día${duration!=1?'s':''}</span>
-    ${asn ? `<span>👤 ${esc(asn)}</span>` : ''}
-    ${card.priority ? `<span>🔴 Prioridad: ${card.priority}</span>` : ''}`;
-  tt.style.left = (e.clientX + 12) + 'px';
-  tt.style.top  = (e.clientY + 8) + 'px';
-  document.body.appendChild(tt);
-  GANTT.tooltip = tt;
-}
-function hideGanttTooltip() {
-  if (GANTT.tooltip) { GANTT.tooltip.remove(); GANTT.tooltip = null; }
-  const old = document.getElementById('gantt-tt');
-  if (old) old.remove();
-}
-
-// Add task from Gantt button
-function addCardFromGantt() {
-  if (!COLS.length) { notify('Creá una columna primero en el Kanban','wa'); return; }
-  sw('kn');
-  setTimeout(() => addCard(COLS[0].id), 300);
-}
-
-// ── Update sw() to handle Gantt ───────────────
-const _origSw = sw;
-
-
-// ══════════════════════════════════════════════
 //  FEATURE 1: NOTIFICATIONS
 // ══════════════════════════════════════════════
 let NOTIFS = [];
@@ -3763,8 +3207,6 @@ function openMetrics(){
 
 function closeMetrics(){
   document.getElementById('metrics-panel')?.classList.remove('on');
-  // Exit present mode if active
-  document.getElementById('gantt-container')?.classList.remove('present-mode');
 }
 
 async function loadMetrics(){
@@ -3882,49 +3324,6 @@ function renderMetrics(d){
     </div>`;
 }
 
-// ══════════════════════════════════════════════
-//  FEATURE 5: GANTT PRESENTATION MODE
-// ══════════════════════════════════════════════
-let isPresentMode = false;
-
-function togglePresentMode(){
-  isPresentMode = !isPresentMode;
-  const gc = document.getElementById('gantt-container');
-  const btn = document.getElementById('present-btn');
-  const gbtn = document.getElementById('gantt-present-btn');
-  const panel = document.getElementById('metrics-panel');
-
-  if(isPresentMode){
-    // Enter present mode
-    if(panel) panel.classList.remove('on');
-    sw('gt');
-    if(gc){
-      gc.style.position='fixed';
-      gc.style.inset='0';
-      gc.style.zIndex='9998';
-      gc.style.background='var(--bg)';
-    }
-    document.getElementById('gantt-toolbar').style.display='none';
-    document.getElementById('gantt-legend').style.display='none';
-    if(gbtn) gbtn.innerHTML='<i class="fas fa-compress"></i>';
-    if(btn) btn.innerHTML='<i class="fas fa-compress"></i> Salir presentación';
-    renderGantt();
-    notify('Modo presentación — ESC para salir','ok');
-  } else {
-    // Exit present mode
-    if(gc){ gc.style.position=''; gc.style.inset=''; gc.style.zIndex=''; gc.style.background=''; }
-    document.getElementById('gantt-toolbar').style.display='';
-    document.getElementById('gantt-legend').style.display='';
-    if(gbtn) gbtn.innerHTML='<i class="fas fa-tv"></i>';
-    if(btn) btn.innerHTML='<i class="fas fa-tv"></i> Presentar Gantt';
-    renderGantt();
-  }
-}
-
-// ESC exits presentation mode
-document.addEventListener('keydown', e => {
-  if(e.key === 'Escape' && isPresentMode) togglePresentMode();
-});
 
 // ── Utility: close all side panels ────────────
 function closeAllPanels(){
@@ -4150,10 +3549,6 @@ document.addEventListener('click', e=>{
   if(!document.getElementById('search-wrap')?.contains(e.target)) hideSearch();
 });
 
-// ══════════════════════════════════════════════
-//  FEATURE B: FECHAS DE INICIO EN GANTT
-// ══════════════════════════════════════════════
-// Override renderCard to show start_date on Gantt bars
 // ══════════════════════════════════════════════
 //  FEATURE C: CHECKLIST / SUBTAREAS
 // ══════════════════════════════════════════════
@@ -4515,9 +3910,8 @@ function applyFilters(){
   FILTERS.priority = document.getElementById('flt-priority')?.value || '';
   const hasActive = FILTERS.mine||FILTERS.overdue||FILTERS.high||FILTERS.nodate||FILTERS.assignee||FILTERS.priority;
   document.getElementById('flt-clear').style.display = hasActive ? '' : 'none';
-  // Re-render kanban and gantt with filters
+  // Re-render kanban with filters
   renderKanban();
-  if(S.view==='gt'||S.view==='bt') renderGantt();
   if(S.view==='list') renderListView();
 }
 
@@ -4531,7 +3925,6 @@ function clearFilters(){
   document.getElementById('flt-clear').style.display='none';
   document.getElementById('filter-result-count').textContent='';
   renderKanban();
-  if(S.view==='gt'||S.view==='bt') renderGantt();
 }
 
 function filterCards(cards){
@@ -4575,7 +3968,7 @@ function toggleListView(){
   const isOn = !lv.classList.contains('on');
   // Hide all other views
   lv.classList.toggle('on', isOn);
-  if(ga) ga.classList.toggle('on', !isOn && (S.view==='gt'||S.view==='bt'));
+  if(ga) ga.classList.toggle('on', !isOn && S.view==='kn');
   if(kf) kf.classList.toggle('on', !isOn && S.view==='kn');
   btn?.classList.toggle('on', isOn);
   if(isOn){
@@ -4583,7 +3976,7 @@ function toggleListView(){
     S.view = 'list';
     renderListView();
   } else {
-    S.view = S.prevView||'gt';
+    S.view = S.prevView||'kn';
     sw(S.view);
   }
 }
@@ -4841,22 +4234,6 @@ function getCardBlockedStatus(cardId){
   });
 }
 
-// Draw dependency arrows on Gantt
-function drawGanttDeps(barsEl, cards, start, colW, rowIndexMap){
-  cards.forEach(card=>{
-    if(!card.dependencies?.length) return;
-    card.dependencies.forEach(depId=>{
-      const fromRow=rowIndexMap[depId];
-      const toRow=rowIndexMap[card.id];
-      if(fromRow===undefined||toRow===undefined) return;
-      // Simple arrow line
-      const arrow=document.createElement('div');
-      arrow.className='gantt-dep-arrow';
-      arrow.style.cssText=`left:0;top:${fromRow*44+22}px;width:100%;height:${Math.abs(toRow-fromRow)*44}px;pointer-events:none`;
-      barsEl.appendChild(arrow);
-    });
-  });
-}
 
 
 // ══════════════════════════════════════════════
@@ -4865,7 +4242,6 @@ function drawGanttDeps(barsEl, cards, start, colW, rowIndexMap){
 const TOUR_STEPS = [
   {emoji:'🌙',title:'Bienvenido a Luna Workspace',desc:'Tu gestor de proyectos colaborativo. En 2 minutos vas a conocer todo lo que necesitás para empezar.',target:null,pos:'center'},
   {emoji:'📋',title:'El Kanban — tus tareas',desc:'Cada columna representa un estado. Arrastrá las tarjetas entre columnas para cambiar su estado. Hacé clic en "+" para crear una nueva tarea.',target:'#tv-kn',pos:'bottom'},
-  {emoji:'📊',title:'El Gantt — cronograma visual',desc:'Aquí ves todas las tareas como barras en el tiempo. Arrastrá una barra para cambiar las fechas. Perfecta para presentar avances a clientes.',target:'#tv-gt',pos:'bottom'},
   {emoji:'🔍',title:'Búsqueda global',desc:'Encontrá cualquier tarea escribiendo aquí. Buscá en todos tus proyectos al mismo tiempo. También podés filtrar por asignado, prioridad y vencimiento.',target:'#search-input',pos:'bottom'},
   {emoji:'🔔',title:'Notificaciones',desc:'Te avisamos cuando te asignan una tarea o alguien comenta en la tuya. También podés configurar recordatorios por email para fechas de vencimiento.',target:'.notif-bell',pos:'bottom-left'},
   {emoji:'🎨',title:'Personalizá tu experiencia',desc:'Cada usuario puede elegir su propio tema de colores, imagen de fondo y estilo. La configuración se guarda en tu perfil y se aplica en cualquier dispositivo.',target:'#theme-btn',pos:'bottom-left'},
@@ -4963,49 +4339,6 @@ function checkShowTour(){
     const done = localStorage.getItem('luna_tour_done_'+(ME?.id||'guest'));
     if(!done) setTimeout(startTour, 1500);
   }catch(e){}
-}
-
-// ══════════════════════════════════════════════
-//  FEATURE 2: EXPORT GANTT TO PDF
-// ══════════════════════════════════════════════
-function exportGanttPDF(){
-  // Save current view state
-  const prevView = S.view;
-  // Switch to Gantt full view
-  sw('gt');
-  setTimeout(()=>{
-    // Add print-specific title
-    const title = document.createElement('div');
-    title.id='print-title';
-    title.style.cssText='position:fixed;top:0;left:0;right:0;padding:12px 20px;background:#fff;font-family:Syne,sans-serif;font-size:16px;font-weight:800;border-bottom:2px solid #5b6af0;z-index:9999;display:flex;align-items:center;gap:10px;print-color-adjust:exact';
-    const ws = WORKSPACES.find(w=>w.id==ACTIVE_WS);
-    title.innerHTML=`<span style="font-size:20px">🌙</span><span>Luna Workspace — ${esc(ws?.name||'Gantt')}</span><span style="margin-left:auto;font-size:12px;color:#6b6a7e;font-weight:400">${new Date().toLocaleDateString('es-ES',{year:'numeric',month:'long',day:'numeric'})}</span>`;
-    document.body.appendChild(title);
-    // Adjust gantt for print
-    const ga = document.getElementById('garea');
-    const gc = document.getElementById('gantt-container');
-    if(ga) ga.style.top='52px';
-    window.print();
-    // Restore
-    setTimeout(()=>{
-      title.remove();
-      if(ga) ga.style.top='';
-      if(prevView!=='gt') sw(prevView);
-    }, 500);
-  }, 300);
-}
-
-// Add export button to gantt toolbar
-function addGanttExportBtn(){
-  const toolbar = document.getElementById('gantt-toolbar');
-  if(!toolbar || toolbar.querySelector('#gantt-pdf-btn')) return;
-  const btn = document.createElement('button');
-  btn.id='gantt-pdf-btn';
-  btn.className='gtb';
-  btn.title='Exportar a PDF';
-  btn.innerHTML='<i class="fas fa-file-pdf" style="color:#ef4444"></i> PDF';
-  btn.onclick=exportGanttPDF;
-  toolbar.appendChild(btn);
 }
 
 // ══════════════════════════════════════════════
@@ -5274,40 +4607,6 @@ async function processRecurringTasks(){
 }
 
 // ══════════════════════════════════════════════
-//  FEATURE 8: GANTT MOBILE TOUCH ZOOM
-// ══════════════════════════════════════════════
-(function initGanttTouch(){
-  let lastDist=0, baseColW=28;
-  document.addEventListener('touchstart', e=>{
-    if(e.touches.length===2 && document.getElementById('garea')?.classList.contains('on')){
-      lastDist=Math.hypot(
-        e.touches[0].clientX-e.touches[1].clientX,
-        e.touches[0].clientY-e.touches[1].clientY
-      );
-      baseColW=GANTT.colW;
-    }
-  },{passive:true});
-
-  document.addEventListener('touchmove', e=>{
-    if(e.touches.length===2 && document.getElementById('garea')?.classList.contains('on')){
-      const dist=Math.hypot(
-        e.touches[0].clientX-e.touches[1].clientX,
-        e.touches[0].clientY-e.touches[1].clientY
-      );
-      if(!lastDist) return;
-      const scale=dist/lastDist;
-      const newW=Math.max(4,Math.min(60,Math.round(baseColW*scale)));
-      if(newW!==GANTT.colW){
-        GANTT.colW=newW;
-        renderGantt();
-      }
-    }
-  },{passive:true});
-
-  document.addEventListener('touchend', ()=>{ lastDist=0; },{passive:true});
-})();
-
-// ══════════════════════════════════════════════
 //  FEATURE 9: COLUMN COMMENTS
 // ══════════════════════════════════════════════
 let colComments = {}; // colId → [{text, user, date}]
@@ -5451,10 +4750,6 @@ async function showApp(){
   initTheme();
   detectOSDarkMode();
   startPolling();
-  const ganttEnabled = !(window.LUNA_WP && window.LUNA_WP.showGantt === false);
-  document.getElementById('tv-gt').style.display = ganttEnabled ? '' : 'none';
-  document.getElementById('tv-bt').style.display = ganttEnabled ? '' : 'none';
-  if(ganttEnabled){ initGantt(); addGanttExportBtn(); }
   loadWipLimits();
   loadColComments();
   sw('kn');
