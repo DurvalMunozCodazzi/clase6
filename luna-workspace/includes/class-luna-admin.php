@@ -361,8 +361,18 @@ class Luna_Admin {
     public function render_notifications_page() {
         global $wpdb;
         $p     = $wpdb->prefix . 'luna_';
+        // Run migration first so all columns exist before querying them
+        Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'phone',                "VARCHAR(30) DEFAULT ''");
+        Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'whatsapp_apikey',      "VARCHAR(100) DEFAULT ''");
+        Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'telegram_chat_id',     "VARCHAR(50) DEFAULT NULL");
+        Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'notification_channel', "ENUM('email','whatsapp','telegram','all','none') DEFAULT 'email'");
         $users = $wpdb->get_results(
-            "SELECT id, name, email, phone, whatsapp_apikey, telegram_chat_id, notification_channel, active
+            "SELECT id, name, email,
+                    COALESCE(phone,'') AS phone,
+                    COALESCE(whatsapp_apikey,'') AS whatsapp_apikey,
+                    telegram_chat_id,
+                    COALESCE(notification_channel,'email') AS notification_channel,
+                    active
              FROM `{$p}users` ORDER BY name ASC",
             ARRAY_A
         ) ?: [];
