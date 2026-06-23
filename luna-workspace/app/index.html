@@ -568,13 +568,21 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 .cal-quick-cancel:hover{background:var(--er);color:#fff;border-color:var(--er)}
 
 /* event chips: pill style with left-bar accent + subtle glass look */
-.cal-chip{font-size:10px;font-weight:700;padding:2px 7px 2px 6px;border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;cursor:pointer;line-height:1.5;box-shadow:0 1px 3px rgba(0,0,0,.18);transition:all .12s;position:relative;border-left:3px solid rgba(255,255,255,.5)}
+.cal-chip{font-size:10px;font-weight:700;padding:2px 7px 2px 6px;border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;cursor:grab;line-height:1.5;box-shadow:0 1px 3px rgba(0,0,0,.18);transition:all .12s;position:relative;border-left:3px solid rgba(255,255,255,.5);display:flex;align-items:center;gap:4px}
 .cal-chip:hover{transform:scale(1.04) translateX(1px);box-shadow:0 2px 8px rgba(0,0,0,.22)}
+.cal-chip.dragging{opacity:.45;cursor:grabbing;transform:scale(.96)}
+.cal-chip-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-chip-avatars{display:flex;gap:-2px;flex-shrink:0;margin-left:2px}
+.cal-chip-av{width:14px;height:14px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:7px;font-weight:800;color:#fff;border:1.5px solid rgba(255,255,255,.6);margin-left:-4px;box-shadow:0 1px 3px rgba(0,0,0,.25);flex-shrink:0}
+.cal-chip-av:first-child{margin-left:0}
 .cal-more{font-size:9px;color:var(--acc);font-weight:800;margin-top:2px;padding-left:4px;letter-spacing:.2px;opacity:.8}
+/* drag-over state for drop targets */
+.cal-day.drag-over{border-color:var(--acc)!important;border-width:2px!important;background:var(--accg)!important;box-shadow:0 0 0 3px rgba(91,106,240,.3)!important;transform:scale(1.02)}
+.cal-day.other-month.drag-over{opacity:.7!important}
 
 /* sidebar tasks list */
 .cal-tasks-list{width:300px;border-left:1px solid rgba(91,106,240,.18);overflow-y:auto;padding:0;flex-shrink:0;display:flex;flex-direction:column;background:var(--surf);box-shadow:-2px 0 8px rgba(91,106,240,.06)}
-.cal-tasks-hdr{font-size:12px;font-weight:800;color:#fff;padding:14px 16px;background:linear-gradient(135deg,#5b6af0,#8b5cf6);flex-shrink:0;letter-spacing:-.2px;position:sticky;top:0;box-shadow:0 2px 8px rgba(91,106,240,.25)}
+.cal-tasks-hdr{font-size:12px;font-weight:800;color:#fff;padding:14px 16px;background:var(--acc);flex-shrink:0;letter-spacing:-.2px;position:sticky;top:0;box-shadow:0 2px 8px rgba(91,106,240,.25)}
 .cal-tasks-body{padding:12px;flex:1}
 .cal-task-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--rl);background:var(--elev);border:1px solid var(--bdr);border-left:3px solid var(--acc);margin-bottom:6px;cursor:pointer;transition:all .15s}
 .cal-task-item:hover{border-color:var(--acc);background:var(--accg);transform:translateX(3px);box-shadow:0 2px 8px rgba(91,106,240,.15)}
@@ -2972,7 +2980,18 @@ function renderCalendar(){
     const chipsH = cards.slice(0,maxChips).map(c=>{
       const col = COLS.find(col=>col.id==c.column_id);
       const clr = c.priority ? {low:'#22d3a0',medium:'#f59e0b',high:'#f97316',critical:'#ef4444'}[c.priority] : col?.color||'#5b6af0';
-      return `<div class="cal-chip" style="background:${clr};color:#fff;" onclick="event.stopPropagation();openCardM(${c.id})" title="${esc(c.title)}">⏰ ${esc(c.title)}</div>`;
+      // Build mini assignee avatars (max 3)
+      const cardAsgn = ASGN.filter(a=>a.card_id==c.id).slice(0,3);
+      const avHtml = cardAsgn.length ? `<span class="cal-chip-avatars">${cardAsgn.map(a=>{
+        const init = (a.name||'?').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+        return `<span class="cal-chip-av" style="background:${a.color||'#5b6af0'}" title="${esc(a.name)}">${init}</span>`;
+      }).join('')}</span>` : '';
+      return `<div class="cal-chip" style="background:${clr};color:#fff;" draggable="true"
+        data-card-id="${c.id}" data-card-due="${c.due_date||''}" data-card-start="${c.start_date||''}"
+        ondragstart="calDragStart(event,${c.id})"
+        ondragend="calDragEnd(event)"
+        onclick="event.stopPropagation();openCardM(${c.id})"
+        title="${esc(c.title)}"><span class="cal-chip-title">${esc(c.title)}</span>${avHtml}</div>`;
     }).join('');
     const moreH = cards.length > maxChips ? `<div class="cal-more">+${cards.length-maxChips} más</div>` : '';
     const dateStr = `${CAL.year}-${String(CAL.month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -2983,7 +3002,11 @@ function renderCalendar(){
       isSelected ? 'on'      : '',
       isWeekend  ? 'weekend' : '',
     ].filter(Boolean).join(' ');
-    html+=`<div class="${cls}" onclick="selectCalDay(${d})">
+    html+=`<div class="${cls}"
+      onclick="selectCalDay(${d})"
+      ondragover="calDragOver(event)"
+      ondragleave="calDragLeave(event)"
+      ondrop="calDrop(event,'${dateStr}')">
       <div class="cal-day-num">${d}${addBtn}</div>
       ${chipsH}${moreH}
     </div>`;
@@ -3090,6 +3113,76 @@ function calQuickCancel(){
   const inp = document.getElementById('cal-quick-title');
   if(inp) inp.value='';
   inp?.focus();
+}
+
+// ══════════════════════════════════════════════
+//  CALENDAR DRAG & DROP
+// ══════════════════════════════════════════════
+let _calDragCardId = null;
+
+function calDragStart(e, cardId){
+  _calDragCardId = cardId;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', cardId);
+  // Mark chip as dragging after a tick so the drag ghost looks normal
+  setTimeout(()=> e.target.classList.add('dragging'), 0);
+}
+
+function calDragEnd(e){
+  e.target.classList.remove('dragging');
+  // Remove all drag-over highlights
+  document.querySelectorAll('.cal-day.drag-over').forEach(el=>el.classList.remove('drag-over'));
+  _calDragCardId = null;
+}
+
+function calDragOver(e){
+  if(_calDragCardId === null) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const day = e.currentTarget;
+  if(!day.classList.contains('drag-over')) day.classList.add('drag-over');
+}
+
+function calDragLeave(e){
+  // Only remove if leaving the cell itself (not a child element)
+  if(!e.currentTarget.contains(e.relatedTarget)){
+    e.currentTarget.classList.remove('drag-over');
+  }
+}
+
+async function calDrop(e, newDateStr){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  const cardId = _calDragCardId || parseInt(e.dataTransfer.getData('text/plain'));
+  if(!cardId) return;
+
+  const card = CARDS.find(c=>c.id==cardId);
+  if(!card) return;
+  if(card.due_date === newDateStr) return; // dropped on same date
+
+  // If new date is before start_date, also move start_date
+  const updates = { due_date: newDateStr };
+  if(card.start_date && newDateStr < card.start_date){
+    updates.start_date = newDateStr;
+  }
+
+  // Optimistic update in memory
+  const prevDue = card.due_date;
+  const prevStart = card.start_date;
+  card.due_date = newDateStr;
+  if(updates.start_date) card.start_date = newDateStr;
+  renderCalendar();
+
+  try{
+    await _wsApi(`kanban.php?action=save_card&id=${cardId}`, 'PUT', updates);
+    notify('Fecha límite movida a '+newDateStr, 'ok');
+  }catch(err){
+    // Rollback on error
+    card.due_date = prevDue;
+    card.start_date = prevStart;
+    renderCalendar();
+    notify('Error al mover: '+err.message, 'er');
+  }
 }
 
 // ══════════════════════════════════════════════
