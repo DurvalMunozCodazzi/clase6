@@ -150,6 +150,12 @@
   <a class="sb-link" href="#mod-api">Modificar APIs</a>
   <a class="sb-link" href="#mod-db">Modificar la BD</a>
   <a class="sb-link" href="#mod-notif">Modificar notificaciones</a>
+
+  <div class="sb-section">Sistema de Licencias</div>
+  <a class="sb-link" href="#licencias">Cómo funciona</a>
+  <a class="sb-link" href="#licencias-flujo">Flujo de validación</a>
+  <a class="sb-link" href="#licencias-planes">Planes y dominios</a>
+  <a class="sb-link" href="#licencias-servidor">Servidor ABM (WsR)</a>
 </nav>
 
 <main class="main">
@@ -890,6 +896,246 @@ JOIN users u ON u.id = n.user_id WHERE n.is_read = 0;</pre>
       <tr><td>Agregar un nuevo campo al perfil de usuario</td><td><code>app/api/users.php</code> + <code>index.html</code></td><td>SELECT/UPDATE + formulario del modal</td></tr>
       <tr><td>Cambiar el logo/nombre "Luna Workspace"</td><td><code>app/index.html</code></td><td>HTML del topbar (líneas ~850)</td></tr>
       <tr><td>Cambiar colores del calendario</td><td><code>app/index.html</code></td><td>CSS clases <code>.cal-*</code> (líneas ~515-600)</td></tr>
+    </table>
+  </section>
+
+  <!-- ===== LICENCIAS ===== -->
+  <section id="licencias">
+    <h2>Sistema de Licencias — Cómo funciona</h2>
+    <p>El sistema de licencias conecta <strong>cada instalación de Luna Workspace</strong> con el servidor central en <strong>websobreruedas.com</strong>, que actúa como autoridad de validación. Nadie puede usar Luna sin una clave válida asociada a su dominio.</p>
+
+    <div class="grid2">
+      <div class="card accent">
+        <h4>🖥️ Cliente (instalación del cliente)</h4>
+        <p>Cada cliente tiene Luna instalado en su WordPress. Al activar el plugin, ingresa su clave de licencia en el panel WP → <em>Luna Workspace → Licencia</em>.</p>
+        <p>La clave queda guardada en la opción de WordPress <code>luna_license_key</code>.</p>
+      </div>
+      <div class="card green">
+        <h4>🌐 Servidor (websobreruedas.com)</h4>
+        <p>Tu servidor centralizado. Tiene instalado el plugin <strong>Luna License Server</strong> (un plugin de WP separado) que expone la API REST de validación.</p>
+        <p>Desde ahí hacés el ABM: crear, suspender, renovar y eliminar licencias de todos tus clientes.</p>
+      </div>
+    </div>
+
+    <div class="warn">
+      ⚠️ <strong>El servidor de licencias debe estar online.</strong> Si cae websobreruedas.com, las instalaciones en clientes entran en <em>modo offline</em> (usan la cache local) hasta que pueda reconectar.
+    </div>
+  </section>
+
+  <section id="licencias-flujo">
+    <h2>Flujo completo de validación</h2>
+
+    <h3>Primera activación (nuevo cliente)</h3>
+    <div class="vflow">
+      <div class="vflow-box acc">Cliente instala el plugin en su WordPress<br><span style="font-size:10px;color:#8892d0">aparece aviso "No hay licencia configurada"</span></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box pur">WP Admin → Luna Workspace → Licencia<br><span style="font-size:10px;color:#9f8fd0">pega su clave única — ej: LUNA-XXXX-XXXX-XXXX</span></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box acc">PHP: <code>Luna_License::verify($key, $domain)</code><br><span style="font-size:10px;color:#8892d0">POST a https://websobreruedas.com/wp-json/luna-licenses/v1/verify</span></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box grn">websobreruedas.com verifica: ¿existe la clave? ¿dominio autorizado? ¿no vencida?</div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box ora">Devuelve JSON firmado con HMAC-SHA256<br><span style="font-size:10px;color:#c9a84a">{valid, plan, expires_at, max_workspaces, hmac, issued_at}</span></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box pur">Plugin verifica la firma HMAC — rechaza si no coincide<br><span style="font-size:10px;color:#9f8fd0">previene servidores falsos o respuestas manipuladas</span></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box grn">Cache guardada: 24hs en WordPress transient + offline_cache en BD<br><span style="font-size:10px;color:#6bbf8a">evita llamadas repetidas al servidor</span></div>
+    </div>
+
+    <h3>Verificaciones posteriores (cada carga de la app)</h3>
+    <div class="flow" style="flex-wrap:wrap;gap:4px">
+      <div class="flow-box">App carga</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box acc">¿Hay cache válida?<br><code style="font-size:9px">luna_license_XXXX</code></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box grn">Sí → usa cache<br>(no llama al servidor)</div>
+    </div>
+    <div class="flow" style="flex-wrap:wrap;gap:4px;margin-top:4px">
+      <div class="flow-box">Cache vencida</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box pur">POST a websobreruedas.com</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box grn">OK → renueva cache 24hs</div>
+    </div>
+    <div class="flow" style="flex-wrap:wrap;gap:4px;margin-top:4px">
+      <div class="flow-box red">Sin conexión</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box ora">Modo offline<br>usa <code style="font-size:9px">offline_cache</code></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box grn">App funciona sin internet</div>
+    </div>
+
+    <h3>Verificación desde el lado de la app (index.html)</h3>
+    <p>El frontend también hace su propia verificación al iniciar, independiente del plugin WP:</p>
+    <pre><span class="cm">// Constantes en las primeras líneas de index.html</span>
+const LICENSE_SERVER     = <span class="st">'https://websobreruedas.com/licencias/api/verify.php'</span>;
+const LICENSE_CACHE_DAYS = <span class="nb">30</span>;  <span class="cm">// días de cache en localStorage</span>
+
+<span class="cm">// Al iniciar la app:</span>
+<span class="kw">async function</span> <span class="fn">checkLicense</span>() {
+    <span class="kw">const</span> key    = <span class="fn">getLicenseKey</span>();       <span class="cm">// desde LUNA_WP.licenseKey o localStorage</span>
+    <span class="kw">const</span> cached = <span class="fn">getLicenseCache</span>();      <span class="cm">// si hay cache válida, la usa</span>
+    <span class="kw">if</span> (cached?.valid) <span class="kw">return true</span>;
+
+    <span class="cm">// POST al servidor con la clave + dominio del navegador</span>
+    <span class="kw">const</span> data = <span class="kw">await</span> <span class="fn">fetch</span>(LICENSE_SERVER, {
+        method: <span class="st">'POST'</span>,
+        body: JSON.stringify({ license_key: key, domain: window.location.hostname })
+    });
+    <span class="cm">// Si no hay conexión → permite con warning (modo offline)</span>
+}</pre>
+
+    <h3>Seguridad: firma HMAC-SHA256</h3>
+    <p>El servidor firma cada respuesta con un secreto compartido para que nadie pueda falsificar una respuesta válida:</p>
+    <pre><span class="cm">// El servidor firma así (websobreruedas.com):</span>
+$payload  = implode('|', [$key, $domain, $valid, $plan, $expires_at, $issued_at]);
+$hmac     = hash_hmac('sha256', $payload, HMAC_SECRET);
+
+<span class="cm">// El cliente (class-luna-license.php) verifica:</span>
+$expected = hash_hmac('sha256', $payload, Luna_License::HMAC_SECRET);
+<span class="kw">if</span> (!hash_equals($expected, $data['hmac'])) {
+    <span class="cm">// Rechaza — alguien modificó la respuesta o es un servidor falso</span>
+    return ['valid' => false, 'reason' => 'invalid_signature'];
+}</pre>
+    <div class="tip">💡 El <code>HMAC_SECRET</code> en <code>class-luna-license.php</code> y el del servidor deben ser <strong>idénticos</strong>. Si los cambiás, cambialo en ambos lados al mismo tiempo.</div>
+  </section>
+
+  <section id="licencias-planes">
+    <h2>Planes y control de dominios</h2>
+
+    <h3>Planes disponibles</h3>
+    <table class="tbl">
+      <tr><th>Plan</th><th>Max. Workspaces</th><th>Max. Sitios</th><th>Uso típico</th></tr>
+      <tr><td><strong>Starter</strong></td><td>1</td><td>1</td><td>Freelancer, equipo pequeño</td></tr>
+      <tr><td><strong>Professional</strong></td><td>3</td><td>3</td><td>Empresa mediana, múltiples proyectos</td></tr>
+      <tr><td><strong>Unlimited</strong></td><td>999</td><td>999</td><td>Agencias, revendedores</td></tr>
+    </table>
+
+    <h3>¿Qué pasa si se supera el límite de workspaces?</h3>
+    <p>Al intentar crear un workspace extra, el backend en <code>workspaces.php</code> consulta el límite de la licencia:</p>
+    <pre><span class="cm">// workspaces.php — al crear nuevo workspace:</span>
+$lic = getLicenseInfo();
+$max = $lic['max_workspaces'] ?? 1;
+<span class="kw">if</span> ($count >= $max) {
+    jsonErr('Límite de workspaces alcanzado para tu plan (' . $max . '). Actualizá tu licencia.', 403);
+}</pre>
+
+    <h3>Validación de dominio</h3>
+    <p>Cuando el servidor recibe el POST de verificación, compara el dominio enviado con el que tiene registrado para esa clave:</p>
+    <ul>
+      <li>Si coincide → <code>valid: true</code></li>
+      <li>Si no coincide → <code>valid: false, reason: 'domain_mismatch'</code></li>
+      <li>Si la clave está en múltiples dominios autorizados → válida para todos ellos (según plan)</li>
+    </ul>
+    <div class="warn">⚠️ El dominio se toma de <code>window.location.hostname</code> (en el browser) o de <code>$_SERVER['HTTP_HOST']</code> (en PHP). Asegurate de que el dominio registrado en websobreruedas.com coincida exactamente (sin www si el sitio no usa www, etc.).</div>
+
+    <h3>Período de gracia</h3>
+    <p>Cuando una licencia vence, el servidor puede responder con <code>"grace": true, "grace_days": 7</code>. En ese caso:</p>
+    <ul>
+      <li>La app sigue funcionando</li>
+      <li>Aparece un banner naranja de aviso en la parte superior con cuenta regresiva</li>
+      <li>La cache de gracia dura solo <strong>1 día</strong> (en lugar de 30) para forzar reverificaciones frecuentes</li>
+    </ul>
+  </section>
+
+  <section id="licencias-servidor">
+    <h2>Servidor ABM — websobreruedas.com</h2>
+    <p>El servidor central es un WordPress con el plugin <strong>Luna License Server</strong> instalado. Desde ahí manejás todas las licencias de todos tus clientes.</p>
+
+    <h3>Endpoint de verificación</h3>
+    <pre>POST https://websobreruedas.com/wp-json/luna-licenses/v1/verify
+Content-Type: application/json
+
+{
+  "license_key": "LUNA-XXXX-XXXX-XXXX",
+  "domain": "dominio-del-cliente.com"
+}</pre>
+
+    <h3>Respuesta esperada (válida)</h3>
+    <pre>{
+  "valid":          true,
+  "plan":           "professional",
+  "expires_at":     "2026-12-31",
+  "max_workspaces": 3,
+  "grace":          false,
+  "grace_days":     0,
+  "domain":         "dominio-del-cliente.com",
+  "issued_at":      "2025-06-23T22:00:00Z",
+  "hmac":           "abc123def456..."   <span class="cm">← firma HMAC-SHA256</span>
+}</pre>
+
+    <h3>Respuesta (inválida)</h3>
+    <pre>{
+  "valid":   false,
+  "reason":  "domain_mismatch",   <span class="cm">← ver tabla de razones abajo</span>
+  "message": "Esta licencia no está autorizada para este dominio."
+}</pre>
+
+    <h3>Códigos de razón de rechazo</h3>
+    <table class="tbl">
+      <tr><th>reason</th><th>Significado</th><th>Acción a tomar</th></tr>
+      <tr><td><code>no_key</code></td><td>No se envió clave</td><td>El cliente debe ingresar su clave</td></tr>
+      <tr><td><code>not_found</code></td><td>La clave no existe en el servidor</td><td>Verificar que la clave esté bien creada en WsR</td></tr>
+      <tr><td><code>domain_mismatch</code></td><td>Dominio no autorizado para esa clave</td><td>Agregar el dominio del cliente en WsR o crear clave nueva</td></tr>
+      <tr><td><code>expired</code></td><td>Licencia vencida (sin gracia)</td><td>Renovar la licencia en WsR</td></tr>
+      <tr><td><code>suspended</code></td><td>Licencia suspendida manualmente</td><td>Reactivar en WsR (si el cliente pagó)</td></tr>
+      <tr><td><code>site_limit</code></td><td>Usada en más sitios de los permitidos</td><td>Actualizar a plan superior</td></tr>
+      <tr><td><code>rate_limit</code></td><td>Demasiadas verificaciones en poco tiempo</td><td>Normal — el cliente usará la cache</td></tr>
+      <tr><td><code>invalid_signature</code></td><td>La firma HMAC no coincide</td><td>Verificar que el HMAC_SECRET sea igual en ambos lados</td></tr>
+      <tr><td><code>server_unreachable</code></td><td>No se pudo conectar a WsR</td><td>Verificar que websobreruedas.com esté online</td></tr>
+    </table>
+
+    <h3>ABM de licencias en websobreruedas.com</h3>
+    <div class="grid2">
+      <div class="card green">
+        <h4>Alta — nuevo cliente</h4>
+        <ol style="margin:8px 0 0 16px;color:var(--t2)">
+          <li>Acceder a WP Admin de websobreruedas.com</li>
+          <li>Luna Licenses → Nueva Licencia</li>
+          <li>Ingresar: dominio del cliente, plan, fecha de vencimiento</li>
+          <li>El sistema genera la clave LUNA-XXXX-XXXX-XXXX</li>
+          <li>Entregarle esa clave al cliente</li>
+        </ol>
+      </div>
+      <div class="card orange">
+        <h4>Baja / Suspensión</h4>
+        <ol style="margin:8px 0 0 16px;color:var(--t2)">
+          <li>WP Admin → Luna Licenses → buscar la clave</li>
+          <li>Click en "Suspender" o "Eliminar"</li>
+          <li>La cache del cliente expira en 24hs y la validación fallará</li>
+          <li>Para suspensión inmediata: el cliente puede limpiar su cache manualmente desde WP Admin → Luna → Licencia → "Limpiar cache"</li>
+        </ol>
+      </div>
+      <div class="card accent">
+        <h4>Modificación / Renovación</h4>
+        <ol style="margin:8px 0 0 16px;color:var(--t2)">
+          <li>WP Admin → Luna Licenses → editar la clave</li>
+          <li>Cambiar fecha de vencimiento o plan</li>
+          <li>La cache del cliente se actualiza sola en el próximo ciclo (24hs)</li>
+          <li>Para renovación inmediata: el cliente limpia la cache desde el panel WP</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h4>Cambio de dominio</h4>
+        <ol style="margin:8px 0 0 16px;color:var(--t2)">
+          <li>WP Admin → Luna Licenses → editar la clave</li>
+          <li>Cambiar el dominio autorizado al nuevo</li>
+          <li>El cliente instala Luna en el nuevo dominio con la misma clave</li>
+          <li>El dominio viejo queda automáticamente inválido</li>
+        </ol>
+      </div>
+    </div>
+
+    <h3>Archivos relevantes para modificar el sistema de licencias</h3>
+    <table class="tbl">
+      <tr><th>Qué cambiar</th><th>Archivo</th><th>Qué buscar</th></tr>
+      <tr><td>URL del servidor de licencias</td><td><code>includes/class-luna-license.php</code></td><td><code>const SERVER = '...'</code> (línea 7)</td></tr>
+      <tr><td>Secreto HMAC compartido</td><td><code>includes/class-luna-license.php</code></td><td><code>const HMAC_SECRET = '...'</code> (línea 10)</td></tr>
+      <tr><td>Planes y límites</td><td><code>includes/class-luna-license.php</code></td><td><code>const PLANS = [...]</code> (línea 12)</td></tr>
+      <tr><td>URL del servidor (frontend)</td><td><code>app/index.html</code></td><td><code>const LICENSE_SERVER = '...'</code> (línea 14)</td></tr>
+      <tr><td>Días de cache local</td><td><code>app/index.html</code></td><td><code>const LICENSE_CACHE_DAYS = 30</code> (línea 17)</td></tr>
+      <tr><td>Límite de workspaces por plan</td><td><code>app/api/workspaces.php</code></td><td>bloque <code>License check</code> (línea 62)</td></tr>
+      <tr><td>Comportamiento offline</td><td><code>app/config.php</code></td><td>función <code>getLicenseInfo()</code> (línea 156)</td></tr>
     </table>
   </section>
 
