@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Luna Workspace — Guía Técnica</title>
+<style>
+  :root{
+    --acc:#5b6af0;--acc2:#8b5cf6;--grn:#22c55e;--ora:#f59e0b;--red:#ef4444;
+    --bg:#0f1117;--surf:#1a1d2e;--elev:#232640;--bdr:#2d3155;
+    --t1:#e8eaf6;--t2:#9196c0;--t3:#565a80;--f:'Segoe UI',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--t1);font-family:var(--f);font-size:14px;line-height:1.6}
+  a{color:var(--acc);text-decoration:none}
+
+  /* layout */
+  .sidebar{position:fixed;left:0;top:0;width:230px;height:100vh;background:var(--surf);border-right:1px solid var(--bdr);overflow-y:auto;padding:20px 0;z-index:100}
+  .main{margin-left:230px;padding:40px 48px;max-width:1100px}
+
+  /* sidebar nav */
+  .sb-logo{padding:0 20px 20px;border-bottom:1px solid var(--bdr);margin-bottom:12px}
+  .sb-logo h2{font-size:16px;font-weight:800;background:linear-gradient(135deg,var(--acc),var(--acc2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .sb-logo p{font-size:10px;color:var(--t3);margin-top:2px}
+  .sb-section{padding:4px 20px;font-size:10px;font-weight:800;color:var(--t3);letter-spacing:.8px;text-transform:uppercase;margin:12px 0 4px}
+  .sb-link{display:block;padding:7px 20px;font-size:12px;color:var(--t2);cursor:pointer;border-left:2px solid transparent;transition:.15s}
+  .sb-link:hover,.sb-link.on{color:var(--t1);border-left-color:var(--acc);background:rgba(91,106,240,.08)}
+
+  /* headings */
+  h1{font-size:28px;font-weight:800;margin-bottom:6px;background:linear-gradient(135deg,var(--acc),var(--acc2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  h2{font-size:20px;font-weight:800;margin:48px 0 16px;color:var(--t1);padding-bottom:8px;border-bottom:1px solid var(--bdr)}
+  h3{font-size:15px;font-weight:700;margin:28px 0 10px;color:var(--acc)}
+  h4{font-size:13px;font-weight:700;margin:16px 0 8px;color:var(--t2)}
+  p{color:var(--t2);margin-bottom:10px}
+  ul,ol{color:var(--t2);padding-left:20px;margin-bottom:10px}
+  li{margin-bottom:4px}
+  strong{color:var(--t1)}
+
+  /* code */
+  code{background:rgba(91,106,240,.15);border:1px solid rgba(91,106,240,.25);border-radius:4px;padding:1px 6px;font-size:12px;color:#a5b4fc;font-family:'Courier New',monospace}
+  pre{background:var(--elev);border:1px solid var(--bdr);border-radius:8px;padding:16px;overflow-x:auto;margin:12px 0;font-size:12px;font-family:'Courier New',monospace;color:#c8ccff;line-height:1.7}
+  pre .cm{color:var(--t3)}
+  pre .kw{color:#a5b4fc}
+  pre .st{color:#86efac}
+  pre .fn{color:#fbbf24}
+  pre .nb{color:#f9a8d4}
+
+  /* cards & boxes */
+  .card{background:var(--surf);border:1px solid var(--bdr);border-radius:12px;padding:20px;margin-bottom:16px}
+  .card.accent{border-color:rgba(91,106,240,.4);background:rgba(91,106,240,.06)}
+  .card.green{border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.05)}
+  .card.orange{border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.05)}
+  .card.red{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.05)}
+  .tip{background:rgba(91,106,240,.1);border-left:3px solid var(--acc);border-radius:0 8px 8px 0;padding:12px 16px;margin:12px 0;font-size:13px;color:var(--t2)}
+  .warn{background:rgba(245,158,11,.08);border-left:3px solid var(--ora);border-radius:0 8px 8px 0;padding:12px 16px;margin:12px 0;font-size:13px;color:var(--t2)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;margin:0 2px}
+  .badge.php{background:rgba(139,92,246,.2);color:#a5b4fc}
+  .badge.js{background:rgba(251,191,36,.15);color:#fcd34d}
+  .badge.sql{background:rgba(34,197,94,.15);color:#86efac}
+  .badge.css{background:rgba(239,68,68,.15);color:#fca5a5}
+  .badge.wp{background:rgba(6,182,212,.15);color:#67e8f9}
+
+  /* grid layouts */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}.sidebar{display:none}.main{margin-left:0;padding:20px}}
+
+  /* flow diagrams */
+  .flow{display:flex;align-items:center;flex-wrap:wrap;gap:0;margin:16px 0}
+  .flow-box{background:var(--elev);border:1.5px solid var(--bdr);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;color:var(--t1);white-space:nowrap;text-align:center;min-width:100px}
+  .flow-box.acc{border-color:var(--acc);background:rgba(91,106,240,.15);color:#a5b4fc}
+  .flow-box.grn{border-color:var(--grn);background:rgba(34,197,94,.1);color:#86efac}
+  .flow-box.ora{border-color:var(--ora);background:rgba(245,158,11,.1);color:#fcd34d}
+  .flow-box.red{border-color:var(--red);background:rgba(239,68,68,.1);color:#fca5a5}
+  .flow-box.pur{border-color:var(--acc2);background:rgba(139,92,246,.15);color:#c4b5fd}
+  .flow-arrow{font-size:18px;color:var(--t3);padding:0 6px;flex-shrink:0}
+  .flow-sub{font-size:10px;color:var(--t3);font-weight:400;display:block;margin-top:1px}
+
+  /* vertical flow */
+  .vflow{display:flex;flex-direction:column;align-items:center;gap:0;margin:16px 0}
+  .vflow-box{background:var(--elev);border:1.5px solid var(--bdr);border-radius:8px;padding:8px 20px;font-size:12px;font-weight:700;color:var(--t1);text-align:center;min-width:200px;width:100%;max-width:380px}
+  .vflow-box.acc{border-color:var(--acc);background:rgba(91,106,240,.15);color:#a5b4fc}
+  .vflow-box.grn{border-color:var(--grn);background:rgba(34,197,94,.1);color:#86efac}
+  .vflow-box.ora{border-color:var(--ora);background:rgba(245,158,11,.1);color:#fcd34d}
+  .vflow-box.pur{border-color:var(--acc2);background:rgba(139,92,246,.15);color:#c4b5fd}
+  .vflow-arrow{font-size:20px;color:var(--t3);line-height:1.2;padding:2px 0}
+  .vflow-label{font-size:10px;color:var(--t3);text-align:center;padding:0 0 2px}
+
+  /* table schema */
+  .tbl{width:100%;border-collapse:collapse;margin:12px 0;font-size:12px}
+  .tbl th{background:var(--elev);color:var(--t2);font-weight:700;padding:8px 12px;text-align:left;border-bottom:1px solid var(--bdr)}
+  .tbl td{padding:7px 12px;border-bottom:1px solid rgba(45,49,85,.5);color:var(--t2)}
+  .tbl td:first-child{color:var(--t1);font-weight:600;font-family:'Courier New',monospace;font-size:11px}
+  .tbl tr:hover td{background:rgba(91,106,240,.04)}
+  .pk{color:var(--ora)!important}
+  .fk{color:#67e8f9!important}
+
+  /* file tree */
+  .tree{font-family:'Courier New',monospace;font-size:12px;color:var(--t2);background:var(--elev);border:1px solid var(--bdr);border-radius:8px;padding:16px;line-height:1.8}
+  .tree .dir{color:var(--acc);font-weight:700}
+  .tree .api{color:#86efac}
+  .tree .inc{color:#fcd34d}
+  .tree .cfg{color:#f9a8d4}
+  .tree .app{color:#c4b5fd}
+  .tree .note{color:var(--t3);font-size:10px;margin-left:8px}
+
+  /* two-db diagram */
+  .db-diagram{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:16px 0}
+  .db-box{border:2px solid var(--bdr);border-radius:12px;overflow:hidden}
+  .db-header{padding:10px 16px;font-size:12px;font-weight:800;color:#fff}
+  .db-table{padding:6px 16px;font-size:11px;color:var(--t2);border-top:1px solid var(--bdr);font-family:'Courier New',monospace}
+  .db-table:hover{background:rgba(255,255,255,.03);color:var(--t1)}
+
+  /* section anchor offset */
+  section{scroll-margin-top:24px}
+
+  .step{display:flex;gap:12px;margin-bottom:12px}
+  .step-num{width:28px;height:28px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;margin-top:1px}
+  .step-body{flex:1}
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sb-logo">
+    <h2>🌙 Luna Workspace</h2>
+    <p>Guía Técnica v1.0 — Jun 2025</p>
+  </div>
+  <div class="sb-section">Arquitectura</div>
+  <a class="sb-link" href="#arquitectura">Visión general</a>
+  <a class="sb-link" href="#dos-bases">Las dos bases de datos</a>
+  <a class="sb-link" href="#archivos">Mapa de archivos</a>
+
+  <div class="sb-section">Base de datos</div>
+  <a class="sb-link" href="#tablas">Todas las tablas</a>
+  <a class="sb-link" href="#relaciones">Relaciones</a>
+
+  <div class="sb-section">Flujos</div>
+  <a class="sb-link" href="#flujo-login">Login</a>
+  <a class="sb-link" href="#flujo-tarea">Crear/editar tarea</a>
+  <a class="sb-link" href="#flujo-notif">Notificaciones</a>
+  <a class="sb-link" href="#flujo-calendar">Calendario</a>
+  <a class="sb-link" href="#flujo-dragdrop">Drag & drop</a>
+
+  <div class="sb-section">Programas usados</div>
+  <a class="sb-link" href="#programas">Stack tecnológico</a>
+
+  <div class="sb-section">Cómo modificar</div>
+  <a class="sb-link" href="#mod-ui">Modificar la UI</a>
+  <a class="sb-link" href="#mod-api">Modificar APIs</a>
+  <a class="sb-link" href="#mod-db">Modificar la BD</a>
+  <a class="sb-link" href="#mod-notif">Modificar notificaciones</a>
+</nav>
+
+<main class="main">
+
+  <!-- ===== PORTADA ===== -->
+  <div style="margin-bottom:40px">
+    <h1>Luna Workspace — Guía Técnica Completa</h1>
+    <p style="color:var(--t3);font-size:13px">Documento de referencia para entender, mantener y modificar el sistema.</p>
+  </div>
+
+  <!-- ===== ARQUITECTURA ===== -->
+  <section id="arquitectura">
+    <h2>Visión general del sistema</h2>
+    <p>Luna Workspace está compuesto por <strong>dos partes que conviven</strong> en el mismo servidor:</p>
+
+    <div class="grid2">
+      <div class="card accent">
+        <h4>🔌 Plugin de WordPress</h4>
+        <p>Instala la app en WP y expone una página de administración para gestionar usuarios y configurar notificaciones.</p>
+        <p><strong>Ruta:</strong> <code>/wp-content/plugins/luna-workspace/</code></p>
+      </div>
+      <div class="card green">
+        <h4>🖥️ Aplicación Luna (SPA)</h4>
+        <p>La app real: un tablero Kanban + Calendario + Chat. Es PHP + HTML/JS puro, independiente de WordPress.</p>
+        <p><strong>Ruta:</strong> <code>/luna-workspace/app/</code></p>
+      </div>
+    </div>
+
+    <h3>Diagrama de capas</h3>
+    <div class="vflow">
+      <div class="vflow-box acc">🌐 Navegador del usuario<div style="font-size:10px;color:#8892d0;font-weight:400">Ejecuta index.html (SPA)</div></div>
+      <div class="vflow-arrow">↕️</div>
+      <div class="vflow-label">peticiones HTTP / fetch()</div>
+      <div class="vflow-box pur">🐘 PHP Backend (API)<div style="font-size:10px;color:#9f8fd0;font-weight:400">app/api/*.php — procesa requests</div></div>
+      <div class="vflow-arrow">↕️</div>
+      <div class="vflow-label">consultas SQL / PDO</div>
+      <div class="vflow-box grn">🗄️ MySQL — base admin_luna<div style="font-size:10px;color:#6bbf8a;font-weight:400">tablas sin prefijo: cards, users, etc.</div></div>
+    </div>
+    <div class="vflow" style="margin-top:-8px">
+      <div class="vflow-box ora">🔧 WordPress Admin Panel<div style="font-size:10px;color:#c9a84a;font-weight:400">includes/class-luna-admin.php</div></div>
+      <div class="vflow-arrow">↕️</div>
+      <div class="vflow-label">conecta vía PDO directamente</div>
+      <div class="vflow-box grn">🗄️ MySQL — base admin_luna<div style="font-size:10px;color:#6bbf8a;font-weight:400">lee los mismos datos</div></div>
+    </div>
+  </section>
+
+  <!-- ===== DOS BASES ===== -->
+  <section id="dos-bases">
+    <h2>Las dos bases de datos</h2>
+    <div class="warn">
+      ⚠️ <strong>Punto crítico:</strong> Hay DOS bases de datos MySQL en el servidor. Confundirlas es el error más frecuente.
+    </div>
+
+    <div class="db-diagram">
+      <div class="db-box" style="border-color:rgba(91,106,240,.5)">
+        <div class="db-header" style="background:linear-gradient(135deg,rgba(91,106,240,.4),rgba(139,92,246,.3))">
+          🗄️ Base: <code style="background:none;border:none;color:#fff">admin_luna</code>
+        </div>
+        <div class="db-table" style="background:rgba(91,106,240,.08);color:#a5b4fc;font-weight:700">← LA QUE USA LA APP</div>
+        <div class="db-table">users</div>
+        <div class="db-table">workspaces</div>
+        <div class="db-table">workspace_members</div>
+        <div class="db-table">columns_k</div>
+        <div class="db-table">cards</div>
+        <div class="db-table">card_tags</div>
+        <div class="db-table">card_assignees</div>
+        <div class="db-table">card_checklist</div>
+        <div class="db-table">card_dependencies</div>
+        <div class="db-table">notifications</div>
+        <div class="db-table">sessions</div>
+        <div class="db-table">chat_messages</div>
+        <div class="db-table">attachments</div>
+        <div class="db-table">app_settings</div>
+        <div class="db-table">user_meta</div>
+        <div class="db-table">activity_log</div>
+        <div class="db-table">workspace_labels</div>
+        <div class="db-table">workspace_templates</div>
+      </div>
+      <div class="db-box" style="border-color:rgba(6,182,212,.4)">
+        <div class="db-header" style="background:linear-gradient(135deg,rgba(6,182,212,.3),rgba(59,130,246,.2))">
+          🗄️ Base: WordPress (<code style="background:none;border:none;color:#fff">wp_*</code>)
+        </div>
+        <div class="db-table" style="background:rgba(6,182,212,.08);color:#67e8f9;font-weight:700">Solo el plugin WP la usa</div>
+        <div class="db-table">wp_luna_users <span style="color:var(--t3)">(ref. a admin_luna)</span></div>
+        <div class="db-table">wp_luna_workspaces</div>
+        <div class="db-table">wp_luna_workspace_members</div>
+        <div class="db-table">wp_luna_columns_k</div>
+        <div class="db-table">wp_luna_cards</div>
+        <div class="db-table">wp_luna_card_tags</div>
+        <div class="db-table">wp_luna_card_assignees</div>
+        <div class="db-table">wp_luna_notifications</div>
+        <div class="db-table">wp_luna_sessions</div>
+        <div class="db-table">wp_luna_app_settings</div>
+        <div class="db-table">... (mismo esquema)</div>
+        <div class="db-table" style="color:var(--t3);font-size:10px;margin-top:8px">⚠️ El panel WP lee admin_luna directamente vía PDO para mostrar usuarios reales</div>
+      </div>
+    </div>
+
+    <h3>¿Por qué dos bases?</h3>
+    <p>El plugin se instaló en WordPress y WordPress crea sus propias tablas con prefijo <code>wp_luna_*</code>. Pero la app real corre como app PHP independiente y usa <code>admin_luna</code> sin prefijo. El panel de administración de WordPress fue modificado para leer directamente de <code>admin_luna</code> usando PDO (conexión directa), porque si no, solo veía sus propias tablas vacías.</p>
+
+    <h3>Credenciales de conexión</h3>
+    <p>Están en <code>app/luna-wp-config.php</code>:</p>
+    <pre>define('DB_HOST',        'localhost');
+define('DB_NAME',        'admin_luna');   <span class="cm">// ← base de la app</span>
+define('DB_USER',        'Luna');
+define('DB_PASS',        '!?t1Kipek1qf3oYL');
+define('LUNA_TB_PREFIX', '');             <span class="cm">// ← sin prefijo en las tablas</span></pre>
+  </section>
+
+  <!-- ===== ARCHIVOS ===== -->
+  <section id="archivos">
+    <h2>Mapa de archivos</h2>
+    <div class="tree">
+<span class="dir">luna-workspace/</span>
+├── <span class="app">luna-workspace.php</span>         <span class="note">← punto de entrada del plugin WP, registra menús y hooks</span>
+│
+├── <span class="dir">includes/</span>                  <span class="note">← lógica del plugin WordPress</span>
+│   ├── <span class="inc">class-luna-admin.php</span>   <span class="note">← panel WP: usuarios, notificaciones, AJAX handlers</span>
+│   ├── <span class="inc">class-luna-activator.php</span><span class="note">← CREATE TABLE en activación del plugin</span>
+│   └── <span class="inc">class-luna-deactivator.php</span>
+│
+└── <span class="dir">app/</span>                       <span class="note">← LA APP REAL (independiente de WP)</span>
+    ├── <span class="app">index.html</span>             <span class="note">← ⭐ TODA la UI: HTML + CSS + JS (~5500 líneas)</span>
+    ├── <span class="cfg">config.php</span>             <span class="note">← funciones globales: getDB(), requireAuth(), tb(), etc.</span>
+    ├── <span class="cfg">luna-wp-config.php</span>     <span class="note">← credenciales de BD y prefijo de tablas</span>
+    │
+    └── <span class="dir">api/</span>                   <span class="note">← endpoints PHP, cada archivo = un área funcional</span>
+        ├── <span class="api">auth.php</span>           <span class="note">← login, logout, token de sesión</span>
+        ├── <span class="api">kanban.php</span>         <span class="note">← ⭐ tablero: board, add_card, save_card, delete_card</span>
+        ├── <span class="api">email.php</span>          <span class="note">← ⭐ createNotification(): despacha email + WhatsApp</span>
+        ├── <span class="api">notifications.php</span>  <span class="note">← listar notifs, marcar leídas, send_whatsapp</span>
+        ├── <span class="api">users.php</span>          <span class="note">← CRUD usuarios, perfil, preferencias</span>
+        ├── <span class="api">workspaces.php</span>     <span class="note">← CRUD workspaces, miembros, templates</span>
+        ├── <span class="api">search.php</span>         <span class="note">← búsqueda full-text en tarjetas</span>
+        ├── <span class="api">metrics.php</span>        <span class="note">← datos para gráficas del dashboard</span>
+        ├── <span class="api">reminders.php</span>      <span class="note">← recordatorios programados</span>
+        ├── <span class="api">settings.php</span>       <span class="note">← configuración SMTP y ajustes globales</span>
+        ├── <span class="api">upload.php</span>         <span class="note">← subida de archivos adjuntos</span>
+        └── <span class="api">delete_file.php</span>    <span class="note">← borrar adjuntos</span>
+    </div>
+
+    <div class="tip">
+      💡 <strong>Regla de oro:</strong> Si querés cambiar la UI (botones, colores, texto) → <code>app/index.html</code>.<br>
+      Si querés cambiar lógica de negocio o BD → el archivo <code>api/</code> correspondiente.
+    </div>
+  </section>
+
+  <!-- ===== TABLAS ===== -->
+  <section id="tablas">
+    <h2>Tablas de la base de datos</h2>
+
+    <h3>users — Usuarios del sistema</h3>
+    <table class="tbl">
+      <tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr>
+      <tr><td class="pk">id</td><td>INT PK</td><td>Identificador único</td></tr>
+      <tr><td>username</td><td>VARCHAR(60)</td><td>Nombre de usuario para login (único)</td></tr>
+      <tr><td>email</td><td>VARCHAR(120)</td><td>Email para notificaciones</td></tr>
+      <tr><td>name</td><td>VARCHAR(120)</td><td>Nombre completo visible</td></tr>
+      <tr><td>cargo</td><td>VARCHAR(120)</td><td>Puesto de trabajo</td></tr>
+      <tr><td>dept</td><td>VARCHAR(120)</td><td>Departamento</td></tr>
+      <tr><td>role</td><td>ENUM</td><td>admin / member / visitor</td></tr>
+      <tr><td>color</td><td>VARCHAR(10)</td><td>Color hex del avatar (#5b6af0)</td></tr>
+      <tr><td>password</td><td>VARCHAR(255)</td><td>Hash bcrypt</td></tr>
+      <tr><td>phone</td><td>VARCHAR(30)</td><td>Teléfono para WhatsApp (formato: 5491123...)</td></tr>
+      <tr><td>whatsapp_apikey</td><td>VARCHAR(50)</td><td>API Key de CallMeBot</td></tr>
+      <tr><td>telegram_chat_id</td><td>VARCHAR(50)</td><td>Chat ID de Telegram (no implementado aún)</td></tr>
+      <tr><td>notification_channel</td><td>ENUM</td><td>email / whatsapp / telegram / all / none</td></tr>
+      <tr><td>active</td><td>TINYINT(1)</td><td>1=activo, 0=inactivo</td></tr>
+      <tr><td>last_login</td><td>DATETIME</td><td>Último acceso</td></tr>
+    </table>
+
+    <h3>cards — Tarjetas/Tareas</h3>
+    <table class="tbl">
+      <tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr>
+      <tr><td class="pk">id</td><td>INT PK</td><td>Identificador único</td></tr>
+      <tr><td class="fk">column_id</td><td>INT FK</td><td>Columna del kanban a la que pertenece</td></tr>
+      <tr><td class="fk">workspace_id</td><td>INT FK</td><td>Workspace al que pertenece</td></tr>
+      <tr><td>title</td><td>VARCHAR(500)</td><td>Título de la tarea</td></tr>
+      <tr><td>description</td><td>TEXT</td><td>Descripción completa</td></tr>
+      <tr><td>priority</td><td>ENUM</td><td>'' / low / medium / high / critical</td></tr>
+      <tr><td>due_date</td><td>DATE</td><td>⭐ Fecha límite — usada en el calendario</td></tr>
+      <tr><td>start_date</td><td>DATE</td><td>Fecha de inicio</td></tr>
+      <tr><td>estimated</td><td>DECIMAL(5,1)</td><td>Horas estimadas</td></tr>
+      <tr><td>progress</td><td>INT</td><td>Porcentaje 0-100</td></tr>
+      <tr><td>position</td><td>INT</td><td>Orden dentro de la columna</td></tr>
+      <tr><td>created_at / updated_at</td><td>DATETIME</td><td>Timestamps automáticos</td></tr>
+    </table>
+
+    <h3>columns_k — Columnas del Kanban</h3>
+    <div class="warn">⚠️ Se llama <strong>columns_k</strong> (no "columns") porque "columns" es una palabra reservada de MySQL que causaba errores.</div>
+    <table class="tbl">
+      <tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr>
+      <tr><td class="pk">id</td><td>INT PK</td><td>Identificador único</td></tr>
+      <tr><td class="fk">workspace_id</td><td>INT FK</td><td>Workspace</td></tr>
+      <tr><td>title</td><td>VARCHAR(200)</td><td>Nombre de la columna (Ej: "En progreso")</td></tr>
+      <tr><td>color</td><td>VARCHAR(10)</td><td>Color hex para identificarla visualmente</td></tr>
+      <tr><td>position</td><td>INT</td><td>Orden horizontal en el tablero</td></tr>
+    </table>
+
+    <h3>card_assignees — Personas asignadas a tareas</h3>
+    <table class="tbl">
+      <tr><th>Campo</th><th>Descripción</th></tr>
+      <tr><td class="fk">card_id</td><td>FK → cards.id</td></tr>
+      <tr><td class="fk">user_id</td><td>FK → users.id</td></tr>
+    </table>
+    <p>Tabla pivot. Una tarjeta puede tener varios usuarios asignados. Cuando se cambia esta tabla, se disparan las notificaciones.</p>
+
+    <h3>notifications — Notificaciones internas</h3>
+    <table class="tbl">
+      <tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr>
+      <tr><td class="pk">id</td><td>INT PK</td><td></td></tr>
+      <tr><td class="fk">user_id</td><td>INT FK</td><td>Usuario que recibe la notificación</td></tr>
+      <tr><td class="fk">from_user_id</td><td>INT FK</td><td>Usuario que la generó</td></tr>
+      <tr><td>type</td><td>VARCHAR(30)</td><td>assigned / updated / comment / reminder</td></tr>
+      <tr><td class="fk">card_id</td><td>INT FK</td><td>Tarjeta relacionada (puede ser null)</td></tr>
+      <tr><td>message</td><td>TEXT</td><td>Texto de la notificación</td></tr>
+      <tr><td>is_read</td><td>TINYINT(1)</td><td>0=no leída, 1=leída</td></tr>
+    </table>
+
+    <h3>sessions — Sesiones activas</h3>
+    <table class="tbl">
+      <tr><th>Campo</th><th>Descripción</th></tr>
+      <tr><td class="pk">token</td><td>VARCHAR(64) — token aleatorio que el browser guarda en localStorage</td></tr>
+      <tr><td class="fk">user_id</td><td>FK → users.id</td></tr>
+      <tr><td>expires_at</td><td>Cuándo vence la sesión</td></tr>
+    </table>
+
+    <h3>Otras tablas</h3>
+    <div class="grid2">
+      <div class="card">
+        <h4>card_tags</h4>
+        <p>Etiquetas de colores en cada tarjeta. Campos: <code>card_id</code>, <code>label</code>, <code>color</code>.</p>
+      </div>
+      <div class="card">
+        <h4>card_checklist</h4>
+        <p>Items de checklist dentro de una tarjeta. Campos: <code>card_id</code>, <code>title</code>, <code>is_done</code>, <code>position</code>.</p>
+      </div>
+      <div class="card">
+        <h4>chat_messages</h4>
+        <p>Comentarios/chat dentro de cada tarjeta. Campos: <code>card_id</code>, <code>user_id</code>, <code>message</code>.</p>
+      </div>
+      <div class="card">
+        <h4>workspace_labels</h4>
+        <p>Etiquetas globales del workspace reutilizables. Campos: <code>workspace_id</code>, <code>name</code>, <code>color</code>.</p>
+      </div>
+      <div class="card">
+        <h4>user_meta</h4>
+        <p>Preferencias de usuario (tema, vista, etc.) como pares clave-valor. Tabla clave=valor flexible.</p>
+      </div>
+      <div class="card">
+        <h4>activity_log</h4>
+        <p>Historial de cambios en tarjetas. Campos: <code>card_id</code>, <code>user_id</code>, <code>action</code>, <code>field</code>, <code>new_value</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== RELACIONES ===== -->
+  <section id="relaciones">
+    <h2>Relaciones entre tablas</h2>
+    <pre style="font-size:11px">
+workspaces ────────────┬──── workspace_members ──── users
+     │                 │          │
+     │                 │          └── (role en ese workspace)
+     │
+     └── columns_k ─── cards ─────────┬── card_assignees ── users
+                          │            ├── card_tags
+                          │            ├── card_checklist
+                          │            ├── card_dependencies (card ↔ card)
+                          │            ├── chat_messages ─── users
+                          │            └── attachments
+                          │
+                          └── notifications (user_id, from_user_id, card_id)
+
+users ── sessions (token de sesión activa)
+users ── user_meta (preferencias: tema, vista, etc.)
+workspaces ── workspace_labels (etiquetas reutilizables)
+workspaces ── workspace_templates (plantillas)</pre>
+  </section>
+
+  <!-- ===== FLUJO LOGIN ===== -->
+  <section id="flujo-login">
+    <h2>Flujo: Login del usuario</h2>
+    <div class="flow" style="flex-wrap:wrap;gap:4px">
+      <div class="flow-box">Usuario escribe<br>usuario + pass</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box acc">JS en index.html<br><code style="font-size:9px">doLogin()</code></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box pur">POST api/auth.php<br><code style="font-size:9px">action=login</code></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box grn">MySQL: busca user<br>verifica bcrypt</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box ora">Genera token<br>guarda en sessions</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box grn">Devuelve {token, user}</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box acc">JS guarda token<br>en localStorage</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box grn">loadBoard() inicia<br>la aplicación</div>
+    </div>
+
+    <h3>¿Cómo funciona la autenticación en cada request?</h3>
+    <p>Cada llamada a la API envía el token en el header:</p>
+    <pre>Authorization: Bearer <span class="st">TOKEN_AQUI</span>
+X-Workspace-Id: <span class="nb">1</span></pre>
+    <p>En el backend, <code>config.php</code> tiene:</p>
+    <pre><span class="kw">function</span> <span class="fn">requireAuth</span>() {
+    $token = str_replace('Bearer ', '', $_SERVER['HTTP_AUTHORIZATION'] ?? '');
+    <span class="cm">// busca el token en la tabla sessions</span>
+    $st = $db->prepare("SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.expires_at > NOW()");
+    <span class="cm">// si no existe → jsonErr('No autenticado', 401)</span>
+}</pre>
+  </section>
+
+  <!-- ===== FLUJO TAREA ===== -->
+  <section id="flujo-tarea">
+    <h2>Flujo: Crear o editar una tarea</h2>
+
+    <h3>Al crear una tarea nueva</h3>
+    <div class="vflow">
+      <div class="vflow-box acc">Usuario completa el formulario y presiona "Guardar"</div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box pur">JS: <code>saveCard()</code> en index.html</div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box pur">POST <code>kanban.php?action=add_card</code><br><span style="font-size:10px;color:#9f8fd0">{column_id, title, priority, due_date, ...}</span></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box grn">INSERT en tabla <strong>cards</strong></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box acc">PUT <code>kanban.php?action=save_card&id=N</code><br><span style="font-size:10px;color:#8892d0">guarda tags, asignados, checklist</span></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box grn">UPDATE cards / INSERT card_tags / INSERT card_assignees</div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box ora">Para cada asignado NUEVO → <code>createNotification()</code></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box pur">email.php: envía Email + WhatsApp según canal del usuario</div>
+    </div>
+
+    <h3>Código clave en kanban.php (save_card)</h3>
+    <pre><span class="cm">// 1. Actualiza campos de la tarjeta</span>
+foreach (['title','description','priority','due_date','start_date','estimated','column_id','progress'] as $f) {
+    if (isset($b[$f])) $fields[$f] = $b[$f];
+}
+<span class="cm">// 2. Guarda tags (borra y recrea)</span>
+$db->prepare("DELETE FROM ".tb('card_tags')." WHERE card_id=?")->execute([$id]);
+foreach ($b['tags'] as $tag) { <span class="cm">// INSERT cada tag</span> }
+
+<span class="cm">// 3. Detecta asignados NUEVOS (para notificar solo a ellos)</span>
+$prev = /* SELECT user_id FROM card_assignees WHERE card_id=? */;
+$newAssignees = array_diff($b['assignees'], $prevIds);
+
+<span class="cm">// 4. Notifica solo a los nuevamente asignados</span>
+foreach ($newAssignees as $uid) {
+    createNotification($db, $uid, $me['id'], 'assigned', $id, $wsId, '');
+}</pre>
+  </section>
+
+  <!-- ===== FLUJO NOTIFICACIONES ===== -->
+  <section id="flujo-notif">
+    <h2>Flujo: Sistema de notificaciones</h2>
+
+    <div class="tip">💡 La función central es <code>createNotification()</code> en <code>app/api/email.php</code>. Todo pasa por ahí.</div>
+
+    <div class="vflow">
+      <div class="vflow-box acc">Se asigna un usuario a una tarea<br><span style="font-size:10px;color:#8892d0">tipo: "assigned"</span></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box pur">kanban.php llama <code>createNotification($db, $userId, $fromId, 'assigned', $cardId, $wsId, '')</code></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box grn">INSERT en tabla <strong>notifications</strong> (notificación interna)</div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box acc">Consulta el canal del usuario<br><code>notification_channel</code> en tabla users</div>
+      <div class="vflow-arrow">↓</div>
+    </div>
+
+    <div class="grid2" style="margin-top:0">
+      <div>
+        <div class="vflow">
+          <div class="vflow-box ora">Canal = "email" o "all"</div>
+          <div class="vflow-arrow">↓</div>
+          <div class="vflow-box pur">Arma HTML con tabla de datos completos<br><span style="font-size:10px;color:#9f8fd0">título, prioridad, asignados, fechas, tags...</span></div>
+          <div class="vflow-arrow">↓</div>
+          <div class="vflow-box grn">sendNativeMail() → socket :25<br>o mail() de PHP como fallback</div>
+        </div>
+      </div>
+      <div>
+        <div class="vflow">
+          <div class="vflow-box grn">Canal = "whatsapp" o "all"</div>
+          <div class="vflow-arrow">↓</div>
+          <div class="vflow-box pur">Arma texto plano con todos los campos<br><span style="font-size:10px;color:#9f8fd0">lee phone + whatsapp_apikey del usuario</span></div>
+          <div class="vflow-arrow">↓</div>
+          <div class="vflow-box acc">GET api.callmebot.com/whatsapp.php<br><code style="font-size:9px">?phone=X&amp;text=Y&amp;apikey=Z</code></div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Tipos de notificación</h3>
+    <div class="grid2">
+      <div class="card accent">
+        <strong>assigned</strong> — Al asignar
+        <p style="margin-top:6px">Mensaje completo: estado, descripción, prioridad, quién asigna, fechas, tags. Se envía solo a los NUEVOS asignados.</p>
+      </div>
+      <div class="card green">
+        <strong>updated</strong> — Al modificar
+        <p style="margin-top:6px">Mensaje corto: "Se actualizó la tarea X". Se envía a todos los asignados existentes excepto quien editó.</p>
+      </div>
+      <div class="card orange">
+        <strong>comment</strong> — Al comentar
+        <p style="margin-top:6px">Aviso de nuevo comentario. No se envía al propio comentador.</p>
+      </div>
+      <div class="card">
+        <strong>reminder</strong> — Recordatorio
+        <p style="margin-top:6px">Generado por reminders.php cuando se acerca la fecha límite.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FLUJO CALENDARIO ===== -->
+  <section id="flujo-calendar">
+    <h2>Flujo: Vista de Calendario</h2>
+    <p>El calendario no tiene su propia API — usa los datos que ya están cargados en memoria (<code>CARDS</code> y <code>ASGN</code>).</p>
+
+    <div class="vflow">
+      <div class="vflow-box acc">Usuario abre el calendario<br><code style="font-size:10px">toggleCalPanel()</code></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box pur">JS llama <code>renderCalendar()</code><br><span style="font-size:10px;color:#9f8fd0">NO hace ninguna petición al servidor</span></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box acc">Filtra el array global <code>CARDS</code><br>→ busca tarjetas con <code>due_date</code> en el mes actual</div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box pur">Construye un map: <code>dayCards[día] = [tarjetas]</code></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box acc">Para cada tarjeta → busca sus asignados en <code>ASGN</code><br><span style="font-size:10px;color:#8892d0">genera mini-avatars con iniciales y color</span></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box grn">Renderiza HTML de la grilla + chips de tareas</div>
+    </div>
+
+    <h3>¿Por qué no hace llamadas al servidor?</h3>
+    <p>Cuando se carga el tablero (<code>loadBoard()</code>), la API <code>kanban.php?action=board</code> devuelve TODO de una vez:</p>
+    <pre>{ <span class="st">"columns"</span>: [...], <span class="st">"cards"</span>: [...], <span class="st">"tags"</span>: [...], <span class="st">"assignees"</span>: [...] }</pre>
+    <p>Esto se guarda en variables globales. El calendario simplemente lee esas variables — cero requests extra.</p>
+
+    <h3>¿Cómo se muestra una tarea en el calendario?</h3>
+    <p>Solo aparece si tiene <code>due_date</code> (fecha límite). Aparece en el día de esa fecha. El chip muestra:</p>
+    <ul>
+      <li>Color según <strong>prioridad</strong> (verde=low, amarillo=medium, naranja=high, rojo=critical)</li>
+      <li>Si no tiene prioridad: el color de la <strong>columna</strong></li>
+      <li>El <strong>título</strong> truncado</li>
+      <li>Mini-avatars con iniciales de los <strong>asignados</strong></li>
+    </ul>
+
+    <h3>Diagrama visual del chip</h3>
+    <div style="margin:16px 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div style="background:#f59e0b;border-left:3px solid rgba(255,255,255,.5);border-radius:6px;padding:4px 8px;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;max-width:220px">
+        <span>Diseñar landing page</span>
+        <span style="display:flex">
+          <span style="background:#5b6af0;width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:8px;border:2px solid rgba(255,255,255,.6);font-weight:800">DM</span>
+          <span style="background:#22c55e;width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:8px;border:2px solid rgba(255,255,255,.6);font-weight:800;margin-left:-4px">MA</span>
+        </span>
+      </div>
+      <div style="color:var(--t3);font-size:12px">← color=prioridad medium · avatars DM (Durval) y MA (Mica)</div>
+    </div>
+  </section>
+
+  <!-- ===== FLUJO DRAG & DROP ===== -->
+  <section id="flujo-dragdrop">
+    <h2>Flujo: Drag &amp; Drop del calendario</h2>
+
+    <div class="vflow">
+      <div class="vflow-box acc">Usuario arrastra un chip de tarea</div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box pur"><code>calDragStart(event, cardId)</code><br><span style="font-size:10px;color:#9f8fd0">guarda el ID en variable _calDragCardId</span></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box acc">Al pasar sobre un día: <code>calDragOver()</code><br><span style="font-size:10px;color:#8892d0">agrega clase .drag-over → highlight visual</span></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box pur">Usuario suelta → <code>calDrop(event, 'YYYY-MM-DD')</code></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box acc">¿La nueva fecha es anterior al start_date?</div>
+      <div class="vflow-arrow">↓</div>
+    </div>
+    <div class="grid2">
+      <div class="vflow">
+        <div class="vflow-box grn">No → solo actualiza due_date</div>
+      </div>
+      <div class="vflow">
+        <div class="vflow-box ora">Sí → actualiza due_date Y start_date</div>
+      </div>
+    </div>
+    <div class="vflow" style="margin-top:0">
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box acc">Actualización optimista: modifica CARDS en memoria → <code>renderCalendar()</code> → el usuario ve el cambio INMEDIATAMENTE</div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box pur">PUT <code>kanban.php?action=save_card&id=N</code><br><code style="font-size:10px">{due_date: 'YYYY-MM-DD'}</code></div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box grn">MySQL UPDATE cards SET due_date=? WHERE id=?</div>
+      <div class="vflow-arrow">↓</div>
+      <div class="vflow-box acc">Si falla → rollback: restaura fecha anterior y re-renderiza</div>
+    </div>
+
+    <h3>Código completo de calDrop()</h3>
+    <pre><span class="kw">async function</span> <span class="fn">calDrop</span>(e, newDateStr) {
+    e.preventDefault();
+    <span class="kw">const</span> cardId = _calDragCardId;
+    <span class="kw">const</span> card = CARDS.find(c => c.id == cardId);
+
+    <span class="cm">// Determinar qué campos actualizar</span>
+    <span class="kw">const</span> updates = { due_date: newDateStr };
+    <span class="kw">if</span> (card.start_date && newDateStr &lt; card.start_date) {
+        updates.start_date = newDateStr;
+    }
+
+    <span class="cm">// Actualización optimista (sin esperar al servidor)</span>
+    <span class="kw">const</span> prevDue = card.due_date;
+    card.due_date = newDateStr;
+    <span class="fn">renderCalendar</span>();
+
+    <span class="kw">try</span> {
+        <span class="kw">await</span> <span class="fn">_wsApi</span>(`kanban.php?action=save_card&id=${cardId}`, 'PUT', updates);
+    } <span class="kw">catch</span>(err) {
+        <span class="cm">// Si falla, revertir</span>
+        card.due_date = prevDue;
+        <span class="fn">renderCalendar</span>();
+    }
+}</pre>
+  </section>
+
+  <!-- ===== PROGRAMAS ===== -->
+  <section id="programas">
+    <h2>Stack tecnológico — Programas involucrados</h2>
+
+    <div class="grid3">
+      <div class="card accent">
+        <span class="badge js">JS</span>
+        <h4>Vanilla JavaScript</h4>
+        <p>Toda la lógica del frontend. Sin frameworks. Funciones globales en <code>index.html</code>.</p>
+        <p><strong>No necesitás</strong> Node.js, npm, ni compilar nada.</p>
+      </div>
+      <div class="card">
+        <span class="badge php">PHP</span>
+        <h4>PHP 7.4+</h4>
+        <p>Cada archivo en <code>app/api/</code> es un endpoint. Usa PDO para la base de datos.</p>
+        <p>Se ejecuta en el servidor Apache/Nginx del hosting.</p>
+      </div>
+      <div class="card green">
+        <span class="badge sql">MySQL</span>
+        <h4>MySQL 5.7+ / MariaDB</h4>
+        <p>Base de datos relacional. Accedés con phpMyAdmin o HeidiSQL desde tu PC.</p>
+      </div>
+      <div class="card">
+        <span class="badge wp">WP</span>
+        <h4>WordPress</h4>
+        <p>Solo actúa como "contenedor" del plugin. El panel de admin WP muestra usuarios y notificaciones.</p>
+      </div>
+      <div class="card orange">
+        <span class="badge css">CSS</span>
+        <h4>CSS Variables</h4>
+        <p>Todo el sistema de temas funciona con <code>--acc</code>, <code>--surf</code>, <code>--t1</code>, etc. definidas en <code>:root</code>.</p>
+      </div>
+      <div class="card">
+        <span class="badge">API</span>
+        <h4>CallMeBot API</h4>
+        <p>Servicio externo para WhatsApp. Requiere que cada usuario haga opt-in y obtenga su apikey personal.</p>
+      </div>
+    </div>
+
+    <h3>¿Qué necesitás para editar?</h3>
+    <ul>
+      <li><strong>Editor de texto:</strong> VS Code, Notepad++, o cualquier editor con resaltado de sintaxis</li>
+      <li><strong>Acceso FTP/SFTP:</strong> FileZilla u otro cliente para subir archivos al servidor</li>
+      <li><strong>phpMyAdmin:</strong> para ver/editar la base de datos directamente desde el navegador</li>
+      <li><strong>Navegador con DevTools (F12):</strong> para depurar errores JS en tiempo real</li>
+    </ul>
+  </section>
+
+  <!-- ===== MODIFICAR UI ===== -->
+  <section id="mod-ui">
+    <h2>Cómo modificar la UI</h2>
+    <p>Todo está en <strong>un solo archivo</strong>: <code>app/index.html</code>. Tiene tres secciones:</p>
+
+    <div class="grid3">
+      <div class="card">
+        <h4>1. CSS (líneas 1–800)</h4>
+        <p>Todo el estilo visual. Variables de color en <code>:root</code>. Cada componente tiene su clase.</p>
+      </div>
+      <div class="card">
+        <h4>2. HTML (líneas 800–1700)</h4>
+        <p>La estructura: topbar, modales, paneles. Todo está en el DOM desde el inicio.</p>
+      </div>
+      <div class="card">
+        <h4>3. JavaScript (líneas 1700–5500)</h4>
+        <p>La lógica: funciones para cada feature. Las funciones están agrupadas con comentarios <code>// ══</code>.</p>
+      </div>
+    </div>
+
+    <h3>Ejemplos prácticos</h3>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <strong>Cambiar un color:</strong> Buscá la clase CSS del elemento (con F12 en el navegador), luego buscá esa clase en el archivo y modificá el valor.
+        <pre>/* Antes */ .cal-chip { background: #f59e0b; }
+/* Después */ .cal-chip { background: #3b82f6; }</pre>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <strong>Cambiar un texto fijo:</strong> Usá Ctrl+F para buscar el texto exacto en el archivo y editarlo directamente.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <strong>Cambiar cuántos chips se muestran por día:</strong> Buscá <code>maxChips</code> en el JS:
+        <pre><span class="kw">const</span> maxChips = isMobile ? <span class="nb">1</span> : <span class="nb">3</span>; <span class="cm">// cambiá el 3 por más</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== MODIFICAR API ===== -->
+  <section id="mod-api">
+    <h2>Cómo modificar las APIs</h2>
+    <p>Cada archivo en <code>app/api/</code> sigue el mismo patrón:</p>
+    <pre><span class="kw">&lt;?php</span>
+require_once '../config.php';
+$me     = requireAuth();       <span class="cm">// valida el token del usuario</span>
+$db     = getDB();             <span class="cm">// conexión PDO a MySQL</span>
+$method = $_SERVER['REQUEST_METHOD']; <span class="cm">// GET, POST, PUT, DELETE</span>
+$action = $_GET['action'] ?? '';
+
+<span class="kw">if</span> ($method === 'GET' && $action === 'mi_accion') {
+    <span class="cm">// tu código aquí</span>
+    $st = $db->prepare("SELECT * FROM ".tb('cards')." WHERE id=?");
+    $st->execute([$id]);
+    jsonOut(['data' => $st->fetchAll()]);
+}</pre>
+
+    <h3>Funciones helpers disponibles en config.php</h3>
+    <table class="tbl">
+      <tr><th>Función</th><th>Qué hace</th></tr>
+      <tr><td>getDB()</td><td>Devuelve conexión PDO a admin_luna</td></tr>
+      <tr><td>requireAuth()</td><td>Valida token, devuelve array con datos del usuario logueado</td></tr>
+      <tr><td>requireAdmin()</td><td>Como requireAuth() pero exige rol admin</td></tr>
+      <tr><td>tb('nombre')</td><td>Devuelve el nombre de la tabla con prefijo (LUNA_TB_PREFIX + nombre)</td></tr>
+      <tr><td>jsonOut($data)</td><td>Responde JSON con header correcto y termina</td></tr>
+      <tr><td>jsonErr('msg', 400)</td><td>Responde error JSON y termina</td></tr>
+    </table>
+
+    <div class="tip">
+      💡 <code>tb('cards')</code> → devuelve <code>"cards"</code> (porque LUNA_TB_PREFIX está vacío).
+      Si en algún momento ponés un prefijo como <code>'luna_'</code>, automáticamente devolvería <code>"luna_cards"</code>.
+    </div>
+  </section>
+
+  <!-- ===== MODIFICAR BD ===== -->
+  <section id="mod-db">
+    <h2>Cómo modificar la base de datos</h2>
+
+    <div class="warn">
+      ⚠️ <strong>Antes de modificar la BD:</strong> siempre hacé un backup completo desde phpMyAdmin → Exportar → SQL.
+    </div>
+
+    <h3>Agregar una columna a una tabla existente</h3>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body"><strong>En phpMyAdmin:</strong> abrí la base <code>admin_luna</code>, elegí la tabla, tab "Estructura" → "Agregar columna".</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body"><strong>En el API PHP:</strong> agrega el campo al SELECT/INSERT/UPDATE correspondiente. Ejemplo en <code>users.php</code>:
+<pre><span class="cm">// Agregar nuevo campo "slack_id" a la consulta</span>
+$st = $db->query("SELECT id, username, email, name, ..., <span class="st">slack_id</span> FROM ".tb('users'));</pre>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body"><strong>En el activator del plugin</strong> (<code>includes/class-luna-activator.php</code>): agrega la columna al CREATE TABLE para que las nuevas instalaciones ya la tengan.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body"><strong>En el JS</strong> (<code>index.html</code>): si querés mostrar el campo, buscá donde se renderiza ese objeto y agregá el campo.</div>
+    </div>
+
+    <h3>Consultar la BD directamente (para debug)</h3>
+    <pre><span class="cm">-- Ver todas las tareas con su fecha límite</span>
+SELECT id, title, due_date, priority FROM cards ORDER BY due_date;
+
+<span class="cm">-- Ver quién está asignado a qué tarea</span>
+SELECT c.title, u.name FROM card_assignees ca
+JOIN cards c ON c.id = ca.card_id
+JOIN users u ON u.id = ca.user_id;
+
+<span class="cm">-- Ver notificaciones no leídas</span>
+SELECT n.*, u.name as para FROM notifications n
+JOIN users u ON u.id = n.user_id WHERE n.is_read = 0;</pre>
+  </section>
+
+  <!-- ===== MODIFICAR NOTIFICACIONES ===== -->
+  <section id="mod-notif">
+    <h2>Cómo modificar las notificaciones</h2>
+    <p>Todo está en <code>app/api/email.php</code> en la función <code>createNotification()</code>.</p>
+
+    <h3>Cambiar el texto del mensaje de WhatsApp</h3>
+    <p>Buscá la variable <code>$assignedPlain</code> en <code>email.php</code>. Es el texto que recibe el usuario en WhatsApp. Podés agregar o quitar líneas:</p>
+    <pre><span class="kw">$assignedPlain</span> = "Hola {$recipientName},\n" .
+    "{$fromName} te asignó la tarea *{$cardTitle}*.\n\n" .
+    "Estado: {$colTitle}\n" .
+    "Prioridad: {$priority}\n" .
+    <span class="cm">// ← agregá más campos aquí si querés</span>
+    "Ver: {$appUrl}";</pre>
+
+    <h3>Cambiar el formato del email HTML</h3>
+    <p>Buscá la variable <code>$assignedHtml</code> en el mismo archivo. Es HTML puro que podés editar como cualquier página web:</p>
+    <pre><span class="kw">$assignedHtml</span> = <span class="st">"&lt;h2&gt;Nueva tarea asignada&lt;/h2&gt;
+&lt;table&gt;
+  &lt;tr&gt;&lt;td&gt;&lt;b&gt;Título:&lt;/b&gt;&lt;/td&gt;&lt;td&gt;{$cardTitle}&lt;/td&gt;&lt;/tr&gt;
+  &lt;tr&gt;&lt;td&gt;&lt;b&gt;Prioridad:&lt;/b&gt;&lt;/td&gt;&lt;td&gt;{$priority}&lt;/td&gt;&lt;/tr&gt;
+  &lt;!-- más campos... --&gt;
+&lt;/table&gt;"</span>;</pre>
+
+    <h3>Agregar un nuevo tipo de notificación</h3>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">En el PHP que detecta el evento, llamá a <code>createNotification($db, $userId, $fromId, 'mi_tipo', $cardId, $wsId, 'mensaje')</code>.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">En <code>email.php</code>, dentro de <code>createNotification()</code>, agrega un bloque <code>if($type === 'mi_tipo')</code> con el texto y HTML del mensaje.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">En <code>index.html</code> (JS), buscá donde se renderizan las notificaciones y agregá el ícono/color para el nuevo tipo.</div>
+    </div>
+
+    <h3>Flujo rápido: ¿dónde editar según el problema?</h3>
+    <table class="tbl">
+      <tr><th>Problema / cambio</th><th>Archivo</th><th>Sección</th></tr>
+      <tr><td>El texto del WA es diferente al esperado</td><td><code>app/api/email.php</code></td><td>Variable <code>$assignedPlain</code></td></tr>
+      <tr><td>El email tiene mal formato</td><td><code>app/api/email.php</code></td><td>Variable <code>$assignedHtml</code></td></tr>
+      <tr><td>No llegan notificaciones</td><td><code>app/api/email.php</code></td><td>Función <code>sendNotificationToUser()</code></td></tr>
+      <tr><td>La campana de notif no muestra el mensaje bien</td><td><code>app/index.html</code></td><td>Función <code>renderNotifPanel()</code></td></tr>
+      <tr><td>Agregar un nuevo campo al perfil de usuario</td><td><code>app/api/users.php</code> + <code>index.html</code></td><td>SELECT/UPDATE + formulario del modal</td></tr>
+      <tr><td>Cambiar el logo/nombre "Luna Workspace"</td><td><code>app/index.html</code></td><td>HTML del topbar (líneas ~850)</td></tr>
+      <tr><td>Cambiar colores del calendario</td><td><code>app/index.html</code></td><td>CSS clases <code>.cal-*</code> (líneas ~515-600)</td></tr>
+    </table>
+  </section>
+
+  <div style="margin-top:60px;padding:24px;border-top:1px solid var(--bdr);color:var(--t3);font-size:12px;text-align:center">
+    Luna Workspace — Guía Técnica · Generada Jun 2025<br>
+    Para preguntas técnicas: consultar a Claude Code
+  </div>
+
+</main>
+
+<script>
+// Smooth scroll for sidebar links
+document.querySelectorAll('.sb-link').forEach(a => {
+  a.addEventListener('click', e => {
+    const href = a.getAttribute('href');
+    if(href.startsWith('#')){
+      e.preventDefault();
+      document.querySelector(href)?.scrollIntoView({behavior:'smooth'});
+      document.querySelectorAll('.sb-link').forEach(x=>x.classList.remove('on'));
+      a.classList.add('on');
+    }
+  });
+});
+
+// Highlight active section on scroll
+const sections = document.querySelectorAll('section[id]');
+const observer = new IntersectionObserver(entries=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      document.querySelectorAll('.sb-link').forEach(x=>x.classList.remove('on'));
+      const link = document.querySelector(`.sb-link[href="#${entry.target.id}"]`);
+      if(link) link.classList.add('on');
+    }
+  });
+}, {threshold:0.3});
+sections.forEach(s=>observer.observe(s));
+</script>
+</body>
+</html>
