@@ -522,7 +522,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 /* nav bar: subtle gradient tint matching the header palette */
 .cal-nav{display:flex;align-items:center;gap:10px;padding:12px 20px;background:linear-gradient(135deg,rgba(91,106,240,.1) 0%,rgba(139,92,246,.07) 100%);border-bottom:2px solid rgba(91,106,240,.18);flex-shrink:0}
 /* month label: gradient text for visual punch */
-.cal-month-label{font-size:17px;font-weight:800;flex:1;text-align:center;background:linear-gradient(135deg,var(--acc) 30%,#8b5cf6 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-.3px}
+.cal-month-label{font-size:17px;font-weight:800;flex:1;text-align:center;letter-spacing:-.3px}
 /* nav arrow buttons: rounded-square icon button style */
 .cal-nb{width:34px;height:34px;border-radius:10px;border:1.5px solid rgba(91,106,240,.22);background:var(--surf);color:var(--acc);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .15s;font-weight:700;box-shadow:0 1px 4px rgba(91,106,240,.1)}
 .cal-nb:hover{background:var(--acc);color:#fff;transform:translateY(-1px);box-shadow:0 4px 12px rgba(91,106,240,.35);border-color:var(--acc)}
@@ -1361,7 +1361,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
         <button class="cal-hdr-close" onclick="toggleCalPanel()"><i class="fas fa-times"></i></button>
       </div>
     </div>
-    <div class="cal-nav">
+    <div class="cal-nav" id="cal-nav">
       <button class="cal-nb" onclick="calPrev()"><i class="fas fa-chevron-left"></i></button>
       <div class="cal-month-label" id="cal-month-label">Mayo 2026</div>
       <button class="cal-nb" onclick="calNext()"><i class="fas fa-chevron-right"></i></button>
@@ -2921,6 +2921,21 @@ function timeAgo(dateStr){
 let CAL = { year: new Date().getFullYear(), month: new Date().getMonth(), selectedDate: null };
 const CAL_MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const CAL_DAYS   = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+// Distinct color per month — header + nav tint changes as you navigate
+const CAL_MONTH_COLORS = [
+  '#3b82f6', // Enero   — azul frío (año nuevo)
+  '#ec4899', // Febrero — rosa (San Valentín)
+  '#22c55e', // Marzo   — verde (primavera)
+  '#a855f7', // Abril   — violeta (flores)
+  '#f59e0b', // Mayo    — ámbar (calor)
+  '#06b6d4', // Junio   — cyan (verano)
+  '#ef4444', // Julio   — rojo (calor pico)
+  '#f97316', // Agosto  — naranja (sol)
+  '#84cc16', // Septiembre — lima (otoño temprano)
+  '#d97706', // Octubre — ámbar oscuro (hojas caídas)
+  '#6366f1', // Noviembre — índigo (noche larga)
+  '#10b981', // Diciembre — esmeralda (Navidad)
+];
 
 function toggleCalPanel(){
   const p = document.getElementById('cal-panel');
@@ -2935,11 +2950,34 @@ function calNext(){ CAL.month++; if(CAL.month>11){CAL.month=0;CAL.year++;} rende
 function calToday(){ CAL.year=new Date().getFullYear(); CAL.month=new Date().getMonth(); CAL.selectedDate=null; renderCalendar(); }
 
 function renderCalendar(){
+  const mc = CAL_MONTH_COLORS[CAL.month]; // distinctive color for this month
+
   const lbl = document.getElementById('cal-month-label');
-  if(lbl) lbl.textContent = CAL_MONTHS[CAL.month]+' '+CAL.year;
+  if(lbl){
+    lbl.textContent = CAL_MONTHS[CAL.month]+' '+CAL.year;
+    // Month label uses month color as gradient
+    lbl.style.background = `linear-gradient(135deg, ${mc} 20%, ${lighten(mc)} 100%)`;
+    lbl.style.webkitBackgroundClip = 'text';
+    lbl.style.webkitTextFillColor  = 'transparent';
+    lbl.style.backgroundClip       = 'text';
+  }
+
+  // Nav bar: subtle tint of the month color
+  const calNav = document.getElementById('cal-nav');
+  if(calNav){
+    calNav.style.background    = `linear-gradient(135deg, rgba(${hexRgb(mc)},.13) 0%, rgba(${hexRgb(mc)},.06) 100%)`;
+    calNav.style.borderBottom  = `2px solid rgba(${hexRgb(mc)},.25)`;
+  }
+
+  // Main header bar: gradient from accent → month color
+  const calHdr = document.querySelector('.cal-hdr');
+  if(calHdr) calHdr.style.background = `linear-gradient(135deg, ${THEME.accent} 0%, ${mc} 100%)`;
 
   const dowRow = document.getElementById('cal-dow-row');
-  if(dowRow) dowRow.innerHTML = CAL_DAYS.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  if(dowRow){
+    dowRow.innerHTML = CAL_DAYS.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+    dowRow.style.background = `linear-gradient(135deg, rgba(${hexRgb(mc)},.11), rgba(${hexRgb(mc)},.05))`;
+  }
 
   const grid = document.getElementById('cal-grid'); if(!grid) return;
   const today = new Date(); today.setHours(0,0,0,0);
@@ -5354,9 +5392,7 @@ function applyTheme(){
   const tsp=document.getElementById('top-solid-preview');
   if(tsp) tsp.style.background=THEME.accent;
 
-  // ── Cal header follows accent (no fixed pink gradient) ──
-  const calHdr = document.querySelector('.cal-hdr');
-  if(calHdr) calHdr.style.background = `linear-gradient(135deg, ${THEME.accent} 0%, ${lighten(THEME.accent)} 100%)`;
+  // ── Cal header color is set by renderCalendar() using month color + accent ──
 
   // ── Modal / surface color ──
   // Only override --elev (modal/card surfaces); --surf stays from the color theme
