@@ -425,25 +425,71 @@ function createNotification($db, $userId, $fromUserId, $type, $cardId, $workspac
     $from = $f->fetch();
     $fromName = $from ? $from['name'] : 'Un compañero';
 
-    // Get card
-    $c = $db->prepare("SELECT title FROM ".tb('cards')." WHERE id=?");
+    // Get card with full details
+    $c = $db->prepare("SELECT c.title, c.description, c.priority, c.start_date, c.due_date,
+                              col.title AS column_title
+                       FROM ".tb('cards')." c
+                       LEFT JOIN ".tb('columns')." col ON col.id = c.column_id
+                       WHERE c.id=?");
     $c->execute([$cardId]);
-    $card = $c->fetch();
+    $card      = $c->fetch();
     $cardTitle = $card ? $card['title'] : 'una tarea';
+
+    // Get card tags
+    $tSt = $db->prepare("SELECT label FROM ".tb('card_tags')." WHERE card_id=?");
+    $tSt->execute([$cardId]);
+    $tags = array_column($tSt->fetchAll(), 'label');
+
+    // Get card assignees names
+    $aSt = $db->prepare("SELECT u.name FROM ".tb('card_assignees')." ca JOIN ".tb('users')." u ON u.id=ca.user_id WHERE ca.card_id=?");
+    $aSt->execute([$cardId]);
+    $assignees = array_column($aSt->fetchAll(), 'name');
 
     // Get workspace
     $w = $db->prepare("SELECT name FROM ".tb('workspaces')." WHERE id=?");
     $w->execute([$workspaceId]);
-    $ws = $w->fetch();
+    $ws     = $w->fetch();
     $wsName = $ws ? $ws['name'] : 'el workspace';
 
     $siteUrl = defined('SITE_URL') ? SITE_URL : ((isset($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!='off'?'https':'http').'://'.($_SERVER['HTTP_HOST']??''));
+
+    $prioLabels = ['high' => '🔴 Alta', 'medium' => '🟡 Media', 'low' => '🟢 Baja'];
+    $prio       = $card ? ($prioLabels[$card['priority']] ?? '') : '';
+
+    // Build rich WA/Telegram plain text for 'assigned' type
+    $assignedPlain = implode("\n", array_filter([
+        '🔔 *Tarea en Luna Workspace*',
+        '📌 *' . $cardTitle . '*',
+        $card && $card['column_title']  ? '📋 Estado: '      . $card['column_title']      : '',
+        $card && $card['description']   ? '📝 '              . $card['description']        : '',
+        $prio                           ? '⚡ Prioridad: '   . $prio                       : '',
+        $assignees                      ? '👥 Asignado a: '  . implode(', ', $assignees)   : '',
+        '👤 Asignado por: '            . $fromName,
+        $card && $card['start_date']    ? '🗓 Inicio: '      . $card['start_date']         : '',
+        $card && $card['due_date']      ? '⏰ Vence: '       . $card['due_date']           : '',
+        $tags                           ? '🏷 Etiquetas: '   . implode(', ', $tags)        : '',
+    ]));
 
     $eUser    = htmlspecialchars($user['name'],  ENT_QUOTES, 'UTF-8');
     $eFrom    = htmlspecialchars($fromName,       ENT_QUOTES, 'UTF-8');
     $eCard    = htmlspecialchars($cardTitle,      ENT_QUOTES, 'UTF-8');
     $eWs      = htmlspecialchars($wsName,         ENT_QUOTES, 'UTF-8');
     $eSiteUrl = htmlspecialchars($siteUrl,        ENT_QUOTES, 'UTF-8');
+
+    // Build detailed HTML body for 'assigned' email
+    $detailRows = '';
+    if ($card && $card['column_title'])  $detailRows .= "<tr><td style='color:#64748b;padding:2px 8px 2px 0'>Estado</td><td><strong>" . htmlspecialchars($card['column_title'], ENT_QUOTES, 'UTF-8') . "</strong></td></tr>";
+    if ($card && $card['description'])   $detailRows .= "<tr><td style='color:#64748b;padding:2px 8px 2px 0;vertical-align:top'>Descripción</td><td>" . nl2br(htmlspecialchars($card['description'], ENT_QUOTES, 'UTF-8')) . "</td></tr>";
+    if ($prio)                           $detailRows .= "<tr><td style='color:#64748b;padding:2px 8px 2px 0'>Prioridad</td><td>{$prio}</td></tr>";
+    if ($assignees)                      $detailRows .= "<tr><td style='color:#64748b;padding:2px 8px 2px 0'>Asignado a</td><td>" . htmlspecialchars(implode(', ', $assignees), ENT_QUOTES, 'UTF-8') . "</td></tr>";
+    if ($card && $card['start_date'])    $detailRows .= "<tr><td style='color:#64748b;padding:2px 8px 2px 0'>Inicio</td><td>" . htmlspecialchars($card['start_date'], ENT_QUOTES, 'UTF-8') . "</td></tr>";
+    if ($card && $card['due_date'])      $detailRows .= "<tr><td style='color:#64748b;padding:2px 8px 2px 0'>Vence</td><td>" . htmlspecialchars($card['due_date'], ENT_QUOTES, 'UTF-8') . "</td></tr>";
+    if ($tags)                           $detailRows .= "<tr><td style='color:#64748b;padding:2px 8px 2px 0'>Etiquetas</td><td>" . htmlspecialchars(implode(', ', $tags), ENT_QUOTES, 'UTF-8') . "</td></tr>";
+
+    $assignedHtml = "<p>Hola <strong>{$eUser}</strong>,</p>
+        <p><strong>{$eFrom}</strong> te asignó la tarea <strong>&quot;{$eCard}&quot;</strong> en <strong>{$eWs}</strong>.</p>"
+        . ($detailRows ? "<table style='border-collapse:collapse;margin:12px 0'>{$detailRows}</table>" : '')
+        . "<a href='{$eSiteUrl}' class='btn'>Ver en Luna →</a>";
 
     $subjects = [
         'assigned'        => "✅ Te asignaron una tarea en {$wsName}",
@@ -453,11 +499,7 @@ function createNotification($db, $userId, $fromUserId, $type, $cardId, $workspac
         'dependency_done' => "🔓 Una tarea desbloqueada: {$cardTitle}",
     ];
     $htmlBodies = [
-        'assigned' => "<p>Hola <strong>{$eUser}</strong>,</p>
-            <p><strong>{$eFrom}</strong> te asignó la tarea:</p>
-            <blockquote><strong>{$eCard}</strong></blockquote>
-            <p>en el workspace <strong>{$eWs}</strong>.</p>
-            <a href='{$eSiteUrl}' class='btn'>Ver en Luna →</a>",
+        'assigned' => $assignedHtml,
         'updated'  => "<p>Hola <strong>{$eUser}</strong>,</p>
             <p><strong>{$eFrom}</strong> modificó la tarea <strong>&quot;{$eCard}&quot;</strong> en <strong>{$eWs}</strong>.</p>
             <a href='{$eSiteUrl}' class='btn'>Ver tarea →</a>",
@@ -473,11 +515,11 @@ function createNotification($db, $userId, $fromUserId, $type, $cardId, $workspac
             <a href='{$eSiteUrl}' class='btn'>Ver tarea →</a>",
     ];
     $plainTexts = [
-        'assigned'        => "Hola {$user['name']}, {$fromName} te asignó la tarea \"{$cardTitle}\" en {$wsName}. Ver: {$siteUrl}",
-        'updated'         => "Hola {$user['name']}, {$fromName} modificó la tarea \"{$cardTitle}\" en {$wsName}. Ver: {$siteUrl}",
-        'comment'         => "Hola {$user['name']}, {$fromName} comentó en \"{$cardTitle}\": " . substr($message,0,200) . " Ver: {$siteUrl}",
-        'due_soon'        => "Hola {$user['name']}, la tarea \"{$cardTitle}\" vence pronto en {$wsName}. Ver: {$siteUrl}",
-        'dependency_done' => "Hola {$user['name']}, la tarea \"{$cardTitle}\" fue desbloqueada. Ver: {$siteUrl}",
+        'assigned'        => $assignedPlain,
+        'updated'         => "✏️ {$fromName} modificó \"{$cardTitle}\" en {$wsName}.",
+        'comment'         => "💬 {$fromName} comentó en \"{$cardTitle}\": " . substr($message,0,200),
+        'due_soon'        => "⚠️ Tarea por vencer: \"{$cardTitle}\" en {$wsName}.",
+        'dependency_done' => "🔓 Tarea desbloqueada: \"{$cardTitle}\".",
     ];
 
     $subject   = $subjects[$type]   ?? "Nueva notificación en {$wsName}";
