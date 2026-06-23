@@ -407,7 +407,7 @@ class Luna_Admin {
           </div>
 
           <div class="luna-card">
-            <h2 style="margin-top:0">Usuarios y estado de notificaciones</h2>
+            <h2 style="margin-top:0">Usuarios y estado de notificaciones <span style="font-size:13px;font-weight:normal;color:#6b7280">(<?= count($users) ?> usuario<?= count($users) != 1 ? 's' : '' ?> en Luna)</span></h2>
             <p style="color:#666;font-size:13px;margin-top:-8px">Podés editar el teléfono, WA API Key y canal directamente aquí. Hacé clic en 💾 para guardar cada fila.</p>
             <table class="widefat fixed striped" style="font-size:12px">
               <thead>
@@ -425,10 +425,10 @@ class Luna_Admin {
                   $channel = $u['notification_channel'] ?: 'email';
                   $waReady = !empty($u['phone']) && !empty($u['whatsapp_apikey']);
                 ?>
-                <tr style="<?= $u['active'] ? '' : 'opacity:.5' ?>">
+                <tr>
                   <td>
                     <strong><?= esc_html($u['name']) ?></strong>
-                    <?= !$u['active'] ? '<br><em style="color:#94a3b8;font-size:11px">inactivo</em>' : '' ?>
+                    <?= !$u['active'] ? ' <span style="background:#fee2e2;color:#dc2626;font-size:10px;padding:1px 5px;border-radius:4px;vertical-align:middle">inactivo</span>' : '' ?>
                   </td>
                   <td style="font-size:11px"><?= esc_html($u['email'] ?: '—') ?></td>
                   <td>
