@@ -509,15 +509,9 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 
 /* ── CALENDAR ── */
 /* ── CALENDAR PANEL ── */
-#cal-panel{position:fixed;inset:0;background:var(--bg);z-index:300;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
+#cal-panel{position:fixed;top:var(--th);left:0;right:0;bottom:0;background:var(--bg);z-index:200;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
 #cal-panel.on{transform:translateY(0)}
 
-.cal-hdr{padding:0;flex-shrink:0;background:var(--acc);display:flex;align-items:center;gap:12px;position:relative;overflow:hidden}
-.cal-hdr::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");pointer-events:none}
-.cal-hdr-inner{position:relative;z-index:1;display:flex;align-items:center;gap:12px;width:100%;padding:16px 20px}
-.cal-hdr h3{font-size:18px;font-weight:800;flex:1;margin:0;color:#fff;letter-spacing:-.3px;text-shadow:0 1px 3px rgba(0,0,0,.2)}
-.cal-hdr-close{width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:.15s;backdrop-filter:blur(4px)}
-.cal-hdr-close:hover{background:rgba(255,255,255,.35)}
 
 /* nav bar: subtle gradient tint matching the header palette */
 .cal-nav{display:flex;align-items:center;gap:10px;padding:12px 20px;background:linear-gradient(135deg,rgba(91,106,240,.1) 0%,rgba(139,92,246,.07) 100%);border-bottom:2px solid rgba(91,106,240,.18);flex-shrink:0}
@@ -591,8 +585,6 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 .cal-task-date{font-size:10px;color:var(--t3);font-family:var(--fm);font-weight:600}
 
 @media(max-width:768px){
-  .cal-hdr-inner{padding:12px 14px}
-  .cal-hdr h3{font-size:15px}
   .cal-nav{padding:8px 14px;gap:6px}
   .cal-month-label{font-size:14px}
   .cal-body{flex-direction:column}
@@ -1353,19 +1345,12 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 
   <!-- CALENDAR PANEL -->
   <div id="cal-panel">
-    <div class="cal-hdr">
-      <div class="cal-hdr-inner">
-        <i class="fas fa-calendar-alt" style="color:rgba(255,255,255,.9);font-size:20px"></i>
-        <h3>Calendario</h3>
-        <span style="font-size:10px;opacity:.6;font-family:monospace">v2.1</span>
-        <button class="cal-hdr-close" onclick="toggleCalPanel()"><i class="fas fa-times"></i></button>
-      </div>
-    </div>
     <div class="cal-nav" id="cal-nav">
       <button class="cal-nb" onclick="calPrev()"><i class="fas fa-chevron-left"></i></button>
       <div class="cal-month-label" id="cal-month-label">Mayo 2026</div>
       <button class="cal-nb" onclick="calNext()"><i class="fas fa-chevron-right"></i></button>
       <button class="cal-nb cal-nb-today" onclick="calToday()" title="Hoy">Hoy</button>
+      <button class="cal-nb" onclick="toggleCalPanel()" title="Cerrar calendario" style="margin-left:4px"><i class="fas fa-times"></i></button>
     </div>
     <div class="cal-body">
       <div class="cal-grid-wrap">
@@ -2969,9 +2954,6 @@ function renderCalendar(){
     calNav.style.borderBottom  = `2px solid rgba(${hexRgb(mc)},.25)`;
   }
 
-  // Main header bar: gradient from accent → month color
-  const calHdr = document.querySelector('.cal-hdr');
-  if(calHdr) calHdr.style.background = `linear-gradient(135deg, ${THEME.accent} 0%, ${mc} 100%)`;
 
   const dowRow = document.getElementById('cal-dow-row');
   if(dowRow){
@@ -5392,13 +5374,35 @@ function applyTheme(){
   const tsp=document.getElementById('top-solid-preview');
   if(tsp) tsp.style.background=THEME.accent;
 
-  // ── Cal header color is set by renderCalendar() using month color + accent ──
 
   // ── Modal / surface color ──
-  // Only override --elev (modal/card surfaces); --surf stays from the color theme
-  // so that inputs always contrast correctly with --t1 regardless of modal color choice.
+  // When modalColor is set, check its luminance to decide if it needs dark or light text/inputs.
+  // This prevents invisible text when a light modal color is used in dark mode (or vice versa).
   if(THEME.modalColor){
-    document.documentElement.style.setProperty('--elev', THEME.modalColor);
+    const [mr,mg,mb] = hexRgb(THEME.modalColor).split(',').map(Number);
+    // Relative luminance (WCAG formula)
+    const lum = v => { v/=255; return v<=0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055,2.4); };
+    const luminance = 0.2126*lum(mr) + 0.7152*lum(mg) + 0.0722*lum(mb);
+    const isLight = luminance > 0.35;
+    const r = document.documentElement;
+    r.style.setProperty('--elev', THEME.modalColor);
+    // Derive a slightly darker/lighter variant for --surf so inputs stand out from card bg
+    const adj = isLight ? -15 : 15;
+    r.style.setProperty('--surf', `rgb(${Math.max(0,Math.min(255,mr+adj))},${Math.max(0,Math.min(255,mg+adj))},${Math.max(0,Math.min(255,mb+adj))})`);
+    // Adapt text colors to always contrast against the modal background
+    if(isLight){
+      r.style.setProperty('--t1','#1a1a2e');
+      r.style.setProperty('--t2','#4a4a6a');
+      r.style.setProperty('--t3','#8888aa');
+      r.style.setProperty('--bdr','#d0d4e8');
+      r.style.setProperty('--bdrl','#b0b8d8');
+    } else {
+      r.style.setProperty('--t1', ct.t1);
+      r.style.setProperty('--t2', ct.t2);
+      r.style.setProperty('--t3', ct.t3);
+      r.style.setProperty('--bdr', ct.bdr);
+      r.style.setProperty('--bdrl', ct.bdrl);
+    }
   }
 }
 
