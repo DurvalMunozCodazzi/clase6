@@ -12,6 +12,32 @@ class Luna_Admin {
         add_action('wp_ajax_luna_save_user_contact',  [$this, 'ajax_save_user_contact']);
     }
 
+    // Connect to the same DB the Luna app uses (may differ from WordPress DB)
+    private function get_app_db(): ?PDO {
+        $cfg = plugin_dir_path(__FILE__) . '../app/luna-wp-config.php';
+        if (!file_exists($cfg)) return null;
+        $defs = [];
+        preg_match_all("/define\('([^']+)',\s*'([^']*)'\)/", file_get_contents($cfg), $m, PREG_SET_ORDER);
+        foreach ($m as $row) $defs[$row[1]] = $row[2];
+        if (empty($defs['DB_HOST']) || empty($defs['DB_NAME'])) return null;
+        try {
+            $dsn = "mysql:host={$defs['DB_HOST']};dbname={$defs['DB_NAME']};charset=" . ($defs['DB_CHARSET'] ?? 'utf8mb4');
+            $pdo = new PDO($dsn, $defs['DB_USER'] ?? '', $defs['DB_PASS'] ?? '', [
+                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            ]);
+            return $pdo;
+        } catch (Exception $e) { return null; }
+    }
+
+    // Return the table prefix the app uses
+    private function get_app_prefix(): string {
+        $cfg = plugin_dir_path(__FILE__) . '../app/luna-wp-config.php';
+        if (!file_exists($cfg)) return '';
+        preg_match("/define\('LUNA_TB_PREFIX',\s*'([^']*)'\)/", file_get_contents($cfg), $m);
+        return $m[1] ?? '';
+    }
+
     public function maybe_migrate(): void {
         // Run at most once per day — prevents SHOW COLUMNS on every AJAX request
         if (get_transient('luna_migration_done_' . LUNA_VERSION)) return;
@@ -359,23 +385,38 @@ class Luna_Admin {
 
     // ── Notifications page ────────────────────────────────────────────────────
     public function render_notifications_page() {
-        global $wpdb;
-        $p     = $wpdb->prefix . 'luna_';
-        // Run migration first so all columns exist before querying them
-        Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'phone',                "VARCHAR(30) DEFAULT ''");
-        Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'whatsapp_apikey',      "VARCHAR(100) DEFAULT ''");
-        Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'telegram_chat_id',     "VARCHAR(50) DEFAULT NULL");
-        Luna_Activator::add_column_if_missing($wpdb, "{$p}users", 'notification_channel', "ENUM('email','whatsapp','telegram','all','none') DEFAULT 'email'");
-        $users = $wpdb->get_results(
-            "SELECT id, name, email,
-                    COALESCE(phone,'') AS phone,
-                    COALESCE(whatsapp_apikey,'') AS whatsapp_apikey,
-                    telegram_chat_id,
-                    COALESCE(notification_channel,'email') AS notification_channel,
-                    active
-             FROM `{$p}users` ORDER BY name ASC",
-            ARRAY_A
-        ) ?: [];
+        $appDb  = $this->get_app_db();
+        $appPfx = $this->get_app_prefix();
+        $users  = [];
+        if ($appDb) {
+            try {
+                $st = $appDb->query(
+                    "SELECT id, name, email,
+                            COALESCE(phone,'') AS phone,
+                            COALESCE(whatsapp_apikey,'') AS whatsapp_apikey,
+                            telegram_chat_id,
+                            COALESCE(notification_channel,'email') AS notification_channel,
+                            active
+                     FROM `{$appPfx}users` ORDER BY name ASC"
+                );
+                $users = $st->fetchAll();
+            } catch (Exception $e) { $users = []; }
+        }
+        if (empty($users)) {
+            // Fallback: WordPress DB (single-DB setup or legacy)
+            global $wpdb;
+            $p = $wpdb->prefix . 'luna_';
+            $users = $wpdb->get_results(
+                "SELECT id, name, email,
+                        COALESCE(phone,'') AS phone,
+                        COALESCE(whatsapp_apikey,'') AS whatsapp_apikey,
+                        telegram_chat_id,
+                        COALESCE(notification_channel,'email') AS notification_channel,
+                        active
+                 FROM `{$p}users` ORDER BY name ASC",
+                ARRAY_A
+            ) ?: [];
+        }
 
         $channel_labels = [
             'email'     => '📧 Email',
@@ -647,25 +688,29 @@ class Luna_Admin {
         $valid_channels = ['email', 'whatsapp', 'telegram', 'all', 'none'];
         if (!in_array($channel, $valid_channels, true)) $channel = 'email';
 
-        global $wpdb;
-        $p = $wpdb->prefix . 'luna_';
-
-        $result = $wpdb->update(
-            "{$p}users",
-            [
-                'phone'                => $phone,
-                'whatsapp_apikey'      => $wakey,
-                'notification_channel' => $channel,
-            ],
-            ['id' => $uid],
-            ['%s', '%s', '%s'],
-            ['%d']
-        );
-
-        if ($result === false) {
-            wp_send_json_error('Error al guardar: ' . $wpdb->last_error);
+        $appDb  = $this->get_app_db();
+        $appPfx = $this->get_app_prefix();
+        if ($appDb) {
+            try {
+                $st = $appDb->prepare(
+                    "UPDATE `{$appPfx}users` SET phone=?, whatsapp_apikey=?, notification_channel=? WHERE id=?"
+                );
+                $st->execute([$phone, $wakey, $channel, $uid]);
+                wp_send_json_success();
+            } catch (Exception $e) {
+                wp_send_json_error('Error al guardar: ' . $e->getMessage());
+            }
+        } else {
+            global $wpdb;
+            $p      = $wpdb->prefix . 'luna_';
+            $result = $wpdb->update(
+                "{$p}users",
+                ['phone' => $phone, 'whatsapp_apikey' => $wakey, 'notification_channel' => $channel],
+                ['id' => $uid], ['%s', '%s', '%s'], ['%d']
+            );
+            if ($result === false) wp_send_json_error('Error al guardar: ' . $wpdb->last_error);
+            wp_send_json_success();
         }
-        wp_send_json_success();
     }
 
 }
