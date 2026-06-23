@@ -429,7 +429,7 @@ function createNotification($db, $userId, $fromUserId, $type, $cardId, $workspac
     $c = $db->prepare("SELECT c.title, c.description, c.priority, c.start_date, c.due_date,
                               col.title AS column_title
                        FROM ".tb('cards')." c
-                       LEFT JOIN ".tb('columns')." col ON col.id = c.column_id
+                       LEFT JOIN ".tb('columns_k')." col ON col.id = c.column_id
                        WHERE c.id=?");
     $c->execute([$cardId]);
     $card      = $c->fetch();
