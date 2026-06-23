@@ -3465,10 +3465,18 @@ function highlightSearch(items){
 }
 
 async function doSearch(q){
+  const res = document.getElementById('search-results');
+  if(!res) return;
+  res.innerHTML = `<div class="sr-empty"><i class="fas fa-spinner fa-spin" style="font-size:16px;display:block;margin-bottom:6px"></i>Buscando...</div>`;
+  res.classList.add('on');
   try{
     const d = await _wsApi(`search.php?q=${encodeURIComponent(q)}`);
     renderSearchResults(d, q);
-  }catch(e){ hideSearch(); }
+  }catch(e){
+    res.innerHTML = `<div class="sr-empty" style="color:var(--err)"><i class="fas fa-exclamation-circle" style="display:block;margin-bottom:6px;font-size:16px"></i>${esc(e.message||'Error de búsqueda')}</div>`;
+    res.classList.add('on');
+  }
+}
 }
 
 function renderSearchResults(d, q){
@@ -3487,7 +3495,7 @@ function renderSearchResults(d, q){
       const col_color = c.column_color || '#5b6af0';
       const pColor = c.priority ? prio_colors[c.priority] : col_color;
       const titleHL = highlightText(c.title, q);
-      const chkStr = c.checklist_total>0 ? `<i class="fas fa-check-square"></i> ${c.checklist_done}/${c.checklist_total} · ` : '';
+      const chkStr = c.checklist_count>0 ? `<i class="fas fa-check-square"></i> ${c.checklist_done}/${c.checklist_count} · ` : '';
       return `<div class="sr-item" onclick="openSearchCard(${c.id},${c.workspace_id})">
         <div class="sr-dot" style="background:${pColor}"></div>
         <div class="sr-info">
