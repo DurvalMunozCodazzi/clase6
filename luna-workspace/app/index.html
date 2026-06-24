@@ -232,6 +232,14 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 .kic{font-size:9px;color:var(--t3);display:flex;align-items:center;gap:2px}
 .acb{margin:3px 7px 7px;padding:6px;border-radius:var(--r);border:1px dashed var(--bdr);background:transparent;color:var(--t3);font-size:10px;font-family:var(--f);font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;transition:.15s}
 .acb:hover{border-color:var(--acc);color:var(--acc);background:var(--accg)}
+.qa-wrap{margin:3px 7px 7px}
+.qa-inp{width:100%;box-sizing:border-box;padding:7px 9px;border-radius:var(--r);border:1.5px solid var(--acc);background:var(--bg);color:var(--t1);font-size:11px;font-family:var(--f);outline:none;caret-color:var(--acc)}
+.qa-inp::placeholder{color:var(--t3);opacity:1}
+.qa-btns{display:flex;gap:5px;margin-top:5px}
+.qa-ok{flex:1;padding:5px 8px;border-radius:var(--r);border:none;background:var(--acc);color:#fff;font-size:11px;font-family:var(--f);font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;transition:.15s}
+.qa-ok:hover{opacity:.85}
+.qa-cancel{padding:5px 9px;border-radius:var(--r);border:1px solid var(--bdr);background:transparent;color:var(--t2);font-size:11px;font-family:var(--f);cursor:pointer;transition:.15s}
+.qa-cancel:hover{border-color:var(--er);color:var(--er)}
 #acol{flex-shrink:0;width:130px;height:44px;background:var(--elev);border:1px dashed var(--bdr);border-radius:var(--rl);cursor:pointer;color:var(--t3);font-size:11px;font-weight:600;font-family:var(--f);display:flex;align-items:center;justify-content:center;gap:5px;transition:.15s;align-self:flex-start}
 #acol:hover{border-color:var(--acc);color:var(--acc)}
 .mo{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(5px);z-index:1000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
@@ -1833,7 +1841,7 @@ function renderKanban(){
   COLS.sort((a,b)=>a.position-b.position).forEach(col=>{
     const el=document.createElement('div');el.className='kcol';el.dataset.colId=col.id;
     const colCards=CARDS.filter(c=>c.column_id==col.id).sort((a,b)=>a.position-b.position);
-    el.innerHTML=`<div class="kch"><div class="cdot" style="background:${col.color}"></div><div class="ctit" onclick="${ro?'':`renCol(this,${col.id})`}">${esc(col.title)}</div><span class="cnt">${colCards.length}</span>${!ro?`<button class="cmb" onclick="showCM(event,${col.id})"><i class="fas fa-ellipsis-v"></i></button>`:''}</div><div class="kcards" id="kc-${col.id}" data-col-id="${col.id}"></div>${!ro?`<button class="acb" onclick="addCard(${col.id})"><i class="fas fa-plus"></i> Tarea</button>`:''}`;
+    el.innerHTML=`<div class="kch"><div class="cdot" style="background:${col.color}"></div><div class="ctit" onclick="${ro?'':`renCol(this,${col.id})`}">${esc(col.title)}</div><span class="cnt">${colCards.length}</span>${!ro?`<button class="cmb" onclick="showCM(event,${col.id})"><i class="fas fa-ellipsis-v"></i></button>`:''}</div><div class="kcards" id="kc-${col.id}" data-col-id="${col.id}"></div>${!ro?`<div class="qa-wrap"><button class="acb" id="qa-btn-${col.id}" onclick="showQA(${col.id},'qa')"><i class="fas fa-plus"></i> Agregar tarea</button><div class="qa-form" id="qa-form-${col.id}" style="display:none"><input class="qa-inp" id="qa-inp-${col.id}" placeholder="Título de la tarea..." onkeydown="qaKey(event,${col.id},'qa')"><div class="qa-btns"><button class="qa-ok" onclick="quickAddCard(${col.id},'qa')"><i class="fas fa-check"></i> Agregar</button><button class="qa-cancel" onclick="hideQA(${col.id},'qa')"><i class="fas fa-times"></i></button></div></div></div>`:''}`;
     board.insertBefore(el,add);
     const kce=document.getElementById('kc-'+col.id);
     colCards.forEach(c=>kce.appendChild(renderCard(c,col)));
@@ -1929,7 +1937,7 @@ function renderFK(){
   COLS.sort((a,b)=>a.position-b.position).forEach(col=>{
     const el=document.createElement('div');el.className='kcol';el.dataset.colId=col.id;
     const colCards=CARDS.filter(c=>c.column_id==col.id).sort((a,b)=>a.position-b.position);
-    el.innerHTML=`<div class="kch"><div class="cdot" style="background:${col.color}"></div><div class="ctit">${esc(col.title)}</div><span class="cnt">${colCards.length}</span>${!ro?`<button class="cmb" onclick="showCM(event,${col.id})"><i class="fas fa-ellipsis-v"></i></button>`:''}</div><div class="kcards" id="fkc-${col.id}" data-col-id="${col.id}"></div>${!ro?`<button class="acb" onclick="addCard(${col.id})"><i class="fas fa-plus"></i></button>`:''}`;
+    el.innerHTML=`<div class="kch"><div class="cdot" style="background:${col.color}"></div><div class="ctit">${esc(col.title)}</div><span class="cnt">${colCards.length}</span>${!ro?`<button class="cmb" onclick="showCM(event,${col.id})"><i class="fas fa-ellipsis-v"></i></button>`:''}</div><div class="kcards" id="fkc-${col.id}" data-col-id="${col.id}"></div>${!ro?`<div class="qa-wrap"><button class="acb" id="fqa-btn-${col.id}" onclick="showQA(${col.id},'fqa')"><i class="fas fa-plus"></i> Agregar</button><div class="qa-form" id="fqa-form-${col.id}" style="display:none"><input class="qa-inp" id="fqa-inp-${col.id}" placeholder="Título..." onkeydown="qaKey(event,${col.id},'fqa')"><div class="qa-btns"><button class="qa-ok" onclick="quickAddCard(${col.id},'fqa')"><i class="fas fa-check"></i></button><button class="qa-cancel" onclick="hideQA(${col.id},'fqa')"><i class="fas fa-times"></i></button></div></div></div>`:''}`;
     fv.appendChild(el);
     const kce=document.getElementById('fkc-'+col.id);
     colCards.forEach(c=>kce.appendChild(renderCard(c,col)));
@@ -2012,6 +2020,38 @@ async function addCard(colId){
     CARDS.push(d.card);renderKanban();if(S.view==='kn')renderFK();
     openCardM(d.card.id);
   }catch(e){notify('Error: '+e.message,'er')}
+}
+
+function showQA(colId,p){
+  const btn=document.getElementById(p+'-btn-'+colId);
+  const frm=document.getElementById(p+'-form-'+colId);
+  const inp=document.getElementById(p+'-inp-'+colId);
+  if(btn)btn.style.display='none';
+  if(frm)frm.style.display='';
+  if(inp){inp.value='';inp.focus();}
+}
+function hideQA(colId,p){
+  const btn=document.getElementById(p+'-btn-'+colId);
+  const frm=document.getElementById(p+'-form-'+colId);
+  if(btn)btn.style.display='';
+  if(frm)frm.style.display='none';
+}
+function qaKey(e,colId,p){
+  if(e.key==='Enter'){e.preventDefault();quickAddCard(colId,p);}
+  if(e.key==='Escape'){hideQA(colId,p);}
+}
+async function quickAddCard(colId,p){
+  if(isVisitor())return;
+  const inp=document.getElementById(p+'-inp-'+colId);
+  const title=inp?inp.value.trim():'';
+  if(!title){if(inp)inp.focus();return;}
+  try{
+    const d=await _wsApi('kanban.php?action=add_card','POST',{column_id:colId,title});
+    CARDS.push(d.card);
+    renderKanban();
+    if(S.view==='kn')renderFK();
+    setTimeout(()=>showQA(colId,p),50);
+  }catch(err){notify('Error al crear tarea: '+err.message,'er');}
 }
 
 async function moveCard(cardId,newColId,newPos){
