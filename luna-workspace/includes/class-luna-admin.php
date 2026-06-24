@@ -85,11 +85,14 @@ class Luna_Admin {
     public function show_notices() {
         $screen = get_current_screen();
         if (!$screen || strpos($screen->id, 'luna') === false) return;
-        // Show initial admin password once after fresh installation
+        // Show banner but do NOT delete the option here — render_main_page() deletes it
+        // after displaying it in the yellow box so the user can copy it
         $initial_pass = get_option('luna_initial_admin_pass');
         if ($initial_pass) {
-            echo '<div class="notice notice-warning"><p><strong>Luna Workspace — Contraseña inicial del admin:</strong> <code style="font-size:14px;background:#fff3cd;padding:2px 8px;border-radius:4px">' . esc_html($initial_pass) . '</code> — Cámbiala desde el perfil del usuario.</p></div>';
-            delete_option('luna_initial_admin_pass');
+            echo '<div class="notice notice-warning is-dismissible"><p>'
+                . '<strong>Luna Workspace — Primera instalación:</strong> '
+                . 'La contraseña del admin se muestra más abajo en esta página bajo <strong>"🔐 Contraseña del administrador Luna"</strong>. '
+                . 'Andate a <a href="' . admin_url('admin.php?page=luna-workspace') . '">Luna Workspace → Configuración</a> para verla.</p></div>';
         }
         $key = get_option('luna_license_key', '');
         if (empty($key)) {
@@ -302,6 +305,32 @@ class Luna_Admin {
             </form>
           </div>
         </div>
+
+        <script>
+        jQuery(function($){
+          var nonce = <?php echo wp_json_encode(wp_create_nonce('luna_admin_nonce')); ?>;
+          $('#luna-btn-reset-pass').on('click', function(){
+            if (!confirm('¿Generar una nueva contraseña para el admin de Luna?\nLa contraseña actual dejará de funcionar y se cerrarán todas las sesiones.')) return;
+            var btn = $(this);
+            var msg = $('#luna-reset-pass-msg');
+            btn.prop('disabled', true).text('Generando…');
+            msg.hide();
+            $.post(ajaxurl, { action: 'luna_reset_admin_pass', nonce: nonce }, function(res){
+              btn.prop('disabled', false).text('🔄 Generar nueva contraseña para admin Luna');
+              if (res.success && res.data && res.data.password) {
+                $('#luna-new-pass').text(res.data.password);
+                $('#luna-new-pass-result').show();
+                $('html,body').animate({scrollTop: $('#luna-new-pass-result').offset().top - 80}, 300);
+              } else {
+                msg.text('Error: ' + (res.data || 'No se pudo resetear')).show();
+              }
+            }).fail(function(){
+              btn.prop('disabled', false).text('🔄 Generar nueva contraseña para admin Luna');
+              msg.text('Error de conexión. Recargá la página e intentá de nuevo.').show();
+            });
+          });
+        });
+        </script>
         <?php
     }
 
@@ -425,28 +454,12 @@ class Luna_Admin {
 
     // ── Notifications page ────────────────────────────────────────────────────
     public function render_notifications_page() {
-        $appDb  = $this->get_app_db();
-        $appPfx = $this->get_app_prefix();
-        $users  = [];
-        if ($appDb) {
-            try {
-                $st = $appDb->query(
-                    "SELECT id, name, email,
-                            COALESCE(phone,'') AS phone,
-                            COALESCE(whatsapp_apikey,'') AS whatsapp_apikey,
-                            telegram_chat_id,
-                            COALESCE(notification_channel,'email') AS notification_channel,
-                            active
-                     FROM `{$appPfx}users` ORDER BY name ASC"
-                );
-                $users = $st->fetchAll();
-            } catch (Exception $e) { $users = []; }
-        }
-        if (empty($users)) {
-            // Fallback: WordPress DB (single-DB setup or legacy)
-            global $wpdb;
-            $p = $wpdb->prefix . 'luna_';
-            $users = $wpdb->get_results(
+        // Always use the WordPress DB directly — Luna tables are wp_luna_* in the same DB.
+        // Never use get_app_db() here: that file may contain credentials from a different site
+        // if the ZIP was built on another install (causing wrong-site users to appear).
+        global $wpdb;
+        $p     = $wpdb->prefix . 'luna_';
+        $users = $wpdb->get_results(
                 "SELECT id, name, email,
                         COALESCE(phone,'') AS phone,
                         COALESCE(whatsapp_apikey,'') AS whatsapp_apikey,
@@ -456,7 +469,6 @@ class Luna_Admin {
                  FROM `{$p}users` ORDER BY name ASC",
                 ARRAY_A
             ) ?: [];
-        }
 
         $channel_labels = [
             'email'     => '📧 Email',
@@ -799,29 +811,16 @@ class Luna_Admin {
         $valid_channels = ['email', 'whatsapp', 'telegram', 'all', 'none'];
         if (!in_array($channel, $valid_channels, true)) $channel = 'email';
 
-        $appDb  = $this->get_app_db();
-        $appPfx = $this->get_app_prefix();
-        if ($appDb) {
-            try {
-                $st = $appDb->prepare(
-                    "UPDATE `{$appPfx}users` SET phone=?, whatsapp_apikey=?, notification_channel=? WHERE id=?"
-                );
-                $st->execute([$phone, $wakey, $channel, $uid]);
-                wp_send_json_success();
-            } catch (Exception $e) {
-                wp_send_json_error('Error al guardar: ' . $e->getMessage());
-            }
-        } else {
-            global $wpdb;
-            $p      = $wpdb->prefix . 'luna_';
-            $result = $wpdb->update(
-                "{$p}users",
-                ['phone' => $phone, 'whatsapp_apikey' => $wakey, 'notification_channel' => $channel],
-                ['id' => $uid], ['%s', '%s', '%s'], ['%d']
-            );
-            if ($result === false) wp_send_json_error('Error al guardar: ' . $wpdb->last_error);
-            wp_send_json_success();
-        }
+        // Always use WordPress DB — same reason as render_notifications_page()
+        global $wpdb;
+        $p      = $wpdb->prefix . 'luna_';
+        $result = $wpdb->update(
+            "{$p}users",
+            ['phone' => $phone, 'whatsapp_apikey' => $wakey, 'notification_channel' => $channel],
+            ['id' => $uid], ['%s', '%s', '%s'], ['%d']
+        );
+        if ($result === false) wp_send_json_error('Error al guardar: ' . $wpdb->last_error);
+        wp_send_json_success();
     }
 
 }
