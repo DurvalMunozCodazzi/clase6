@@ -7,10 +7,59 @@ class Luna_Admin {
         add_action('admin_menu',            [$this, 'register_menu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts']);
         add_action('admin_notices',         [$this, 'show_notices']);
+        add_action('admin_notices',         [$this, 'show_db_diagnostic']);
         add_action('admin_init',            [$this, 'maybe_migrate']);
         add_action('wp_ajax_luna_test_notification',  [$this, 'ajax_test_notification']);
         add_action('wp_ajax_luna_save_user_contact',  [$this, 'ajax_save_user_contact']);
         add_action('wp_ajax_luna_reset_admin_pass',   [$this, 'ajax_reset_admin_pass']);
+    }
+
+    public function show_db_diagnostic() {
+        $screen = get_current_screen();
+        if (!$screen || strpos($screen->id, 'luna-notifications') === false) return;
+
+        global $wpdb;
+        $cfg_file = plugin_dir_path(__FILE__) . '../app/luna-wp-config.php';
+        $cfg_exists = file_exists($cfg_file);
+        $cfg_defs = [];
+        if ($cfg_exists) {
+            preg_match_all("/define\('([^']+)',\s*'([^']*)'\)/", file_get_contents($cfg_file), $cm, PREG_SET_ORDER);
+            foreach ($cm as $row) $cfg_defs[$row[1]] = $row[2];
+        }
+        $cfg_db   = $cfg_defs['DB_NAME']        ?? '—';
+        $cfg_host = $cfg_defs['DB_HOST']         ?? '—';
+        $cfg_user = $cfg_defs['DB_USER']         ?? '—';
+        $cfg_pfx  = $cfg_defs['LUNA_TB_PREFIX']  ?? '—';
+
+        $app_count = 0;
+        $app_error = '';
+        $appDb = $this->get_app_db();
+        $appPfx = $this->get_app_prefix();
+        if ($appDb && $appPfx) {
+            try {
+                $app_count = (int) $appDb->query("SELECT COUNT(*) FROM `{$appPfx}users`")->fetchColumn();
+            } catch (Exception $e) {
+                $app_error = $e->getMessage();
+            }
+        } else {
+            $app_error = $appDb ? 'prefix vacío' : 'no se pudo conectar';
+        }
+
+        $wp_p = $wpdb->prefix . 'luna_';
+        $wp_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM `{$wp_p}users`");
+        $wp_error = $wpdb->last_error;
+
+        echo '<div class="notice notice-info" style="font-family:monospace;font-size:12px">';
+        echo '<p><strong>🔍 Luna DB Diagnóstico (Notificaciones)</strong></p>';
+        echo '<table style="border-collapse:collapse">';
+        echo '<tr><td style="padding:2px 12px 2px 0;color:#555">Config existe:</td><td>' . ($cfg_exists ? '<b style="color:green">Sí</b>' : '<b style="color:red">NO</b>') . '</td></tr>';
+        echo '<tr><td style="padding:2px 12px 2px 0;color:#555">Config DB_HOST:</td><td>' . esc_html($cfg_host) . '</td></tr>';
+        echo '<tr><td style="padding:2px 12px 2px 0;color:#555">Config DB_NAME:</td><td>' . esc_html($cfg_db) . '</td></tr>';
+        echo '<tr><td style="padding:2px 12px 2px 0;color:#555">Config DB_USER:</td><td>' . esc_html($cfg_user) . '</td></tr>';
+        echo '<tr><td style="padding:2px 12px 2px 0;color:#555">Config LUNA_TB_PREFIX:</td><td>' . esc_html($cfg_pfx) . '</td></tr>';
+        echo '<tr><td style="padding:2px 12px 2px 0;color:#555">App DB usuarios:</td><td><b>' . $app_count . '</b>' . ($app_error ? ' — <span style="color:red">' . esc_html($app_error) . '</span>' : '') . '</td></tr>';
+        echo '<tr><td style="padding:2px 12px 2px 0;color:#555">WP DB (' . esc_html($wpdb->dbname) . ') prefix ' . esc_html($wp_p) . ' usuarios:</td><td><b>' . $wp_count . '</b>' . ($wp_error ? ' — <span style="color:red">' . esc_html($wp_error) . '</span>' : '') . '</td></tr>';
+        echo '</table></div>';
     }
 
     // Connect to the same DB the Luna app uses (may differ from WordPress DB)
