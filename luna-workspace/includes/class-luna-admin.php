@@ -10,6 +10,7 @@ class Luna_Admin {
         add_action('admin_init',            [$this, 'maybe_migrate']);
         add_action('wp_ajax_luna_test_notification',  [$this, 'ajax_test_notification']);
         add_action('wp_ajax_luna_save_user_contact',  [$this, 'ajax_save_user_contact']);
+        add_action('wp_ajax_luna_reset_admin_pass',   [$this, 'ajax_reset_admin_pass']);
     }
 
     // Connect to the same DB the Luna app uses (may differ from WordPress DB)
@@ -185,6 +186,44 @@ class Luna_Admin {
               </table>
               <p><button type="submit" name="luna_save_settings" class="button button-primary">Guardar cambios</button></p>
             </form>
+          </div>
+
+          <?php
+          // ── Admin password panel ─────────────────────────────────────────────
+          // Check if there's a stored initial/reset password to show
+          $pending_pass = get_option('luna_initial_admin_pass', '');
+          ?>
+          <div class="luna-card" style="margin-top:20px" id="luna-admin-pass-card">
+            <h2 style="margin-top:0">🔐 Contraseña del administrador Luna</h2>
+            <p style="color:#666;font-size:13px;margin-top:-8px">
+              El usuario <code>admin</code> es quien ingresa al tablero de Luna.
+              Si olvidaste la contraseña, generá una nueva acá — no necesitás entrar a MySQL.
+            </p>
+            <?php if ($pending_pass): ?>
+              <div style="background:#fef9c3;border:1px solid #fde047;border-radius:10px;padding:16px 20px;margin-bottom:16px">
+                <strong style="color:#854d0e">⚠️ Contraseña inicial — guardala ahora:</strong><br>
+                <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+                  <code id="luna-init-pass" style="font-size:18px;letter-spacing:2px;background:#fff;padding:8px 14px;border-radius:8px;border:1px solid #fde047;color:#1e1e1e"><?php echo esc_html($pending_pass) ?></code>
+                  <button onclick="navigator.clipboard.writeText('<?php echo esc_js($pending_pass) ?>');this.textContent='✓ Copiado!';setTimeout(()=>this.textContent='Copiar',2000)"
+                          style="background:#854d0e;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-weight:700;cursor:pointer">Copiar</button>
+                </div>
+                <p style="margin:10px 0 0;font-size:12px;color:#854d0e">Entrá a Luna con usuario <strong>admin</strong> y esta contraseña, luego cámbiala desde tu perfil.</p>
+              </div>
+              <?php delete_option('luna_initial_admin_pass'); ?>
+            <?php endif; ?>
+            <div id="luna-new-pass-result" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:16px 20px;margin-bottom:16px">
+              <strong style="color:#166534">✅ Nueva contraseña generada — guardala ahora:</strong><br>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+                <code id="luna-new-pass" style="font-size:18px;letter-spacing:2px;background:#fff;padding:8px 14px;border-radius:8px;border:1px solid #86efac;color:#1e1e1e"></code>
+                <button onclick="navigator.clipboard.writeText(document.getElementById('luna-new-pass').textContent);this.textContent='✓ Copiado!';setTimeout(()=>this.textContent='Copiar',2000)"
+                        style="background:#166534;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-weight:700;cursor:pointer">Copiar</button>
+              </div>
+              <p style="margin:10px 0 0;font-size:12px;color:#166534">Ingresá a Luna con usuario <strong>admin</strong> y esta contraseña.</p>
+            </div>
+            <button id="luna-btn-reset-pass" class="button button-secondary" style="font-size:13px;padding:6px 18px">
+              🔄 Generar nueva contraseña para admin Luna
+            </button>
+            <span id="luna-reset-pass-msg" style="margin-left:10px;font-size:13px;color:#dc2626;display:none"></span>
           </div>
 
           <?php
@@ -516,6 +555,28 @@ class Luna_Admin {
         jQuery(function($){
           var nonce = '<?= wp_create_nonce('luna_admin_nonce') ?>';
 
+          // Reset admin password (runs on both main page and notifications page)
+          $(document).on('click', '#luna-btn-reset-pass', function(){
+            if (!confirm('¿Generar una nueva contraseña para el admin de Luna?\nLa contraseña actual dejará de funcionar.')) return;
+            var btn = $(this);
+            var msg = $('#luna-reset-pass-msg');
+            btn.prop('disabled', true).text('Generando…');
+            msg.hide();
+            $.post(ajaxurl, { action: 'luna_reset_admin_pass', nonce: nonce }, function(res){
+              btn.prop('disabled', false).text('🔄 Generar nueva contraseña para admin Luna');
+              if (res.success && res.data && res.data.password) {
+                $('#luna-new-pass').text(res.data.password);
+                $('#luna-new-pass-result').show();
+                $('html,body').animate({scrollTop: $('#luna-new-pass-result').offset().top - 60}, 300);
+              } else {
+                msg.text('Error: ' + (res.data || 'No se pudo resetear')).show();
+              }
+            }).fail(function(){
+              btn.prop('disabled', false).text('🔄 Generar nueva contraseña para admin Luna');
+              msg.text('Error de conexión. Recargá la página e intentá de nuevo.').show();
+            });
+          });
+
           // Save user contact fields
           $(document).on('click', '.luna-save-user', function(){
             var uid  = $(this).data('uid');
@@ -672,6 +733,55 @@ class Luna_Admin {
                 wp_send_json_error('Error: ' . ($mail_error ?: 'No se pudo conectar al servidor de correo local (localhost:25). Verificá en Plesk → Mail → Mail Settings que el servicio de correo esté activo.'));
             }
         }
+    }
+
+    // ── AJAX: reset Luna admin password ──────────────────────────────────────────
+    public function ajax_reset_admin_pass() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Sin permisos');
+
+        global $wpdb;
+        $p = $wpdb->prefix . 'luna_';
+
+        // Verificar que existe la tabla
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$p}users'");
+        if (!$table_exists) {
+            wp_send_json_error('Las tablas de Luna no están instaladas. Desactivá y reactivá el plugin.');
+        }
+
+        $new_pass = bin2hex(random_bytes(8)); // 16 chars, legible
+        $hash     = password_hash($new_pass, PASSWORD_BCRYPT);
+
+        $result = $wpdb->update(
+            "{$p}users",
+            ['password' => $hash],
+            ['role' => 'admin', 'active' => 1],
+            ['%s'],
+            ['%s', '%d']
+        );
+
+        if ($result === false) {
+            wp_send_json_error('Error al actualizar: ' . $wpdb->last_error);
+        }
+
+        if ($result === 0) {
+            // No había admin activo — intentar crear uno
+            Luna_Activator::activate();
+            $new_pass2 = get_option('luna_initial_admin_pass', '');
+            if ($new_pass2) {
+                delete_option('luna_initial_admin_pass');
+                wp_send_json_success(['password' => $new_pass2]);
+            }
+            wp_send_json_error('No se encontró usuario admin en Luna. Intentá desactivar y reactivar el plugin.');
+        }
+
+        // También invalidar todas las sesiones activas del admin para forzar re-login
+        $admin = $wpdb->get_row("SELECT id FROM `{$p}users` WHERE role='admin' AND active=1 ORDER BY id LIMIT 1", ARRAY_A);
+        if ($admin) {
+            $wpdb->delete("{$p}sessions", ['user_id' => $admin['id']], ['%d']);
+        }
+
+        wp_send_json_success(['password' => $new_pass]);
     }
 
     // ── AJAX: save user contact fields from notifications page ─────────────────
