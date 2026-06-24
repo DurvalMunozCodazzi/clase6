@@ -27,6 +27,9 @@ define('LR_WA_INSTANCE', '');       // ej: 'instance12345'
 // Número propio de soporte (para que el usuario te escriba)
 define('LR_WA_SOPORTE', '5491112345678'); // ajustar sin + ni espacios
 
+// Email del vendedor — recibe aviso por cada nuevo registro
+define('LR_VENDOR_EMAIL', 'pedidos47@gmail.com');
+
 // OTP expira en 10 minutos
 define('LR_OTP_TTL', 600);
 
@@ -187,6 +190,21 @@ function lr_email_tpl(string $name, string $content): string {
 HTML;
 }
 
+// ── Aviso al vendedor ──────────────────────────────────────────────────────────
+function lr_notify_vendor(string $name, string $email, string $phone, string $domain, string $key): void {
+    if (!defined('LR_VENDOR_EMAIL') || !LR_VENDOR_EMAIL) return;
+    $subject = "🌙 Nuevo registro Plan Gratis — $domain";
+    $body = "Nuevo usuario registrado en Luna Workspace Plan Gratis.\n\n"
+          . "Nombre:  $name\n"
+          . "Email:   $email\n"
+          . "Teléfono: $phone\n"
+          . "Dominio: $domain\n"
+          . "Clave:   $key\n\n"
+          . "Podés verlo en la tabla luna_free_licenses de tu base de datos.";
+    $headers = "From: " . LR_MAIL_FROM . "\r\nContent-Type: text/plain; charset=UTF-8";
+    @mail(LR_VENDOR_EMAIL, $subject, $body, $headers);
+}
+
 // ── WhatsApp (UltraMsg) ────────────────────────────────────────────────────────
 function lr_send_whatsapp(string $phone, string $msg): bool {
     if (!LR_WA_TOKEN || !LR_WA_INSTANCE) return false;
@@ -291,6 +309,9 @@ function action_verify_otp(): void {
 
     // Enviar clave por email
     lr_send_key_email($pending['email'], $pending['name'], $key, $pending['domain']);
+
+    // Avisar al vendedor
+    lr_notify_vendor($pending['name'], $pending['email'], $pending['phone'], $pending['domain'], $key);
 
     // Enviar clave por WhatsApp si está configurado
     $firstName = explode(' ', $pending['name'])[0];
