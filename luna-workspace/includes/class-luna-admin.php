@@ -35,16 +35,17 @@ class Luna_Admin {
         $app_error = '';
         $appDb = $this->get_app_db();
         $appPfx = $this->get_app_prefix();
-        if ($appDb && $appPfx) {
+        if ($appDb && $appPfx !== null) {
+            $tbl = $appPfx ? "`{$appPfx}users`" : '`users`';
             try {
-                $app_count = (int) $appDb->query("SELECT COUNT(*) FROM `{$appPfx}users`")->fetchColumn();
+                $app_count = (int) $appDb->query("SELECT COUNT(*) FROM {$tbl}")->fetchColumn();
             } catch (Exception $e) {
                 $app_error = $e->getMessage();
             }
         } elseif (!$appDb) {
             $app_error = 'no se pudo conectar (config inválida o DB inaccesible)';
         } else {
-            $app_error = 'prefix vacío en config';
+            $app_error = 'LUNA_TB_PREFIX no encontrado en config';
         }
 
         $wp_p = $wpdb->prefix . 'luna_';
@@ -82,12 +83,13 @@ class Luna_Admin {
         } catch (Exception $e) { return null; }
     }
 
-    // Return the table prefix the app uses
-    private function get_app_prefix(): string {
+    // Return the table prefix the app uses, or null if the config file is missing.
+    // Empty string is a valid prefix (means tables have no prefix: `users`, `workspaces`…).
+    private function get_app_prefix(): ?string {
         $cfg = plugin_dir_path(__FILE__) . '../app/luna-wp-config.php';
-        if (!file_exists($cfg)) return '';
+        if (!file_exists($cfg)) return null;
         preg_match("/define\('LUNA_TB_PREFIX',\s*'([^']*)'\)/", file_get_contents($cfg), $m);
-        return $m[1] ?? '';
+        return $m[1] ?? null; // null = define not found; '' = explicitly empty (valid)
     }
 
     public function maybe_migrate(): void {
@@ -522,7 +524,9 @@ class Luna_Admin {
         $appPfx = $this->get_app_prefix();
         $users  = [];
         $db_source = '';
-        if ($appDb !== null && $appPfx !== '') {
+        if ($appDb !== null && $appPfx !== null) {
+            $usersTable = $appPfx !== '' ? "`{$appPfx}users`" : '`users`';
+            $pfxLabel   = $appPfx !== '' ? $appPfx : '(sin prefijo)';
             // First attempt: full query with optional columns
             try {
                 $st = $appDb->query(
@@ -532,10 +536,10 @@ class Luna_Admin {
                             telegram_chat_id,
                             COALESCE(notification_channel,'email') AS notification_channel,
                             active
-                     FROM `{$appPfx}users` ORDER BY name ASC"
+                     FROM {$usersTable} ORDER BY name ASC"
                 );
                 $users = $st->fetchAll();
-                $db_source = "App DB (<code>{$cfg_db_name}</code>) · prefix <code>{$appPfx}</code>";
+                $db_source = "App DB (<code>{$cfg_db_name}</code>) · prefix <code>{$pfxLabel}</code>";
             } catch (Exception $e) {
                 // Optional columns may not exist yet — retry with basic columns only
                 // so we still get the users even without phone/channel fields
@@ -547,10 +551,10 @@ class Luna_Admin {
                                 NULL AS telegram_chat_id,
                                 'email' AS notification_channel,
                                 active
-                         FROM `{$appPfx}users` ORDER BY name ASC"
+                         FROM {$usersTable} ORDER BY name ASC"
                     );
                     $users = $st->fetchAll();
-                    $db_source = "App DB (<code>{$cfg_db_name}</code>) · prefix <code>{$appPfx}</code> (columnas básicas)";
+                    $db_source = "App DB (<code>{$cfg_db_name}</code>) · prefix <code>{$pfxLabel}</code> (columnas básicas)";
                 } catch (Exception $e2) {
                     $db_source = "Error App DB: " . esc_html($e2->getMessage());
                 }
@@ -941,10 +945,11 @@ class Luna_Admin {
         // Primary: app DB (may differ from WP DB — same logic as render_notifications_page)
         $appDb  = $this->get_app_db();
         $appPfx = $this->get_app_prefix();
-        if ($appDb && $appPfx) {
+        if ($appDb && $appPfx !== null) {
+            $usersTable = $appPfx !== '' ? "`{$appPfx}users`" : '`users`';
             try {
                 $st = $appDb->prepare(
-                    "UPDATE `{$appPfx}users` SET phone=?, whatsapp_apikey=?, notification_channel=? WHERE id=?"
+                    "UPDATE {$usersTable} SET phone=?, whatsapp_apikey=?, notification_channel=? WHERE id=?"
                 );
                 $st->execute([$phone, $wakey, $channel, $uid]);
                 wp_send_json_success();
