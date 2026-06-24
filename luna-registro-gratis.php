@@ -9,11 +9,23 @@
  */
 
 // ── Configuración ──────────────────────────────────────────────────────────────
-define('LR_DB_HOST',   'localhost');
-define('LR_DB_NAME',   'websobreruedas_licencias');  // ajustar
-define('LR_DB_USER',   'db_user');                   // ajustar
-define('LR_DB_PASS',   'db_password');               // ajustar
-define('LR_HMAC_KEY',  'ef1b13da2d745cd296dc66b90f950f440089b77080f3e3611f2000fdb162240d');
+// Leer credenciales desde wp-config.php (mismo WordPress de websobreruedas.com)
+$_lr_root = dirname(__DIR__);
+if (!defined('DB_HOST') && file_exists($_lr_root . '/wp-config.php')) {
+    define('ABSPATH', $_lr_root . '/');
+    define('WPINC', 'wp-includes');
+    // Extraer solo las constantes DB_* sin cargar WordPress completo
+    $wpconf = file_get_contents($_lr_root . '/wp-config.php');
+    foreach (['DB_NAME','DB_USER','DB_PASSWORD','DB_HOST'] as $_c) {
+        if (!defined($_c) && preg_match("/define\s*\(\s*['\"]$_c['\"]\s*,\s*['\"]([^'\"]*)['\"]/",$wpconf,$_m))
+            define($_c, $_m[1]);
+    }
+}
+define('LR_DB_HOST',  defined('DB_HOST')     ? DB_HOST     : 'localhost');
+define('LR_DB_NAME',  defined('DB_NAME')     ? DB_NAME     : '');
+define('LR_DB_USER',  defined('DB_USER')     ? DB_USER     : '');
+define('LR_DB_PASS',  defined('DB_PASSWORD') ? DB_PASSWORD : '');
+define('LR_HMAC_KEY', 'ef1b13da2d745cd296dc66b90f950f440089b77080f3e3611f2000fdb162240d');
 
 // Email remitente
 define('LR_MAIL_FROM',     'no-reply@websobreruedas.com');
@@ -21,13 +33,14 @@ define('LR_MAIL_FROMNAME', 'Luna Workspace');
 
 // WhatsApp Business — UltraMsg (obtener token en ultramsg.com)
 // Dejar vacío para deshabilitar envío automático por WA
-define('LR_WA_TOKEN',    '');       // ej: 'abc123xyz'
-define('LR_WA_INSTANCE', '');       // ej: 'instance12345'
+define('LR_WA_TOKEN',    '');  // completar cuando tengas cuenta UltraMsg
+define('LR_WA_INSTANCE', ''); // completar cuando tengas cuenta UltraMsg
 
-// Número propio de soporte (para que el usuario te escriba)
-define('LR_WA_SOPORTE', '5491112345678'); // ajustar sin + ni espacios
+// Tu número de WhatsApp de soporte (sin + ni espacios)
+// El usuario verá un botón "Escribinos por WhatsApp" que abre este número
+define('LR_WA_SOPORTE', '');  // ej: 5491112345678 — completar con tu número
 
-// Email del vendedor — recibe aviso por cada nuevo registro
+// Email del vendedor — recibe aviso por cada nuevo registro gratuito
 define('LR_VENDOR_EMAIL', 'pedidos47@gmail.com');
 
 // OTP expira en 10 minutos
