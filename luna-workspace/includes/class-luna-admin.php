@@ -41,8 +41,10 @@ class Luna_Admin {
             } catch (Exception $e) {
                 $app_error = $e->getMessage();
             }
+        } elseif (!$appDb) {
+            $app_error = 'no se pudo conectar (config inválida o DB inaccesible)';
         } else {
-            $app_error = $appDb ? 'prefix vacío' : 'no se pudo conectar';
+            $app_error = 'prefix vacío en config';
         }
 
         $wp_p = $wpdb->prefix . 'luna_';
@@ -521,6 +523,7 @@ class Luna_Admin {
         $users  = [];
         $db_source = '';
         if ($appDb !== null && $appPfx !== '') {
+            // First attempt: full query with optional columns
             try {
                 $st = $appDb->query(
                     "SELECT id, name, email,
@@ -534,10 +537,26 @@ class Luna_Admin {
                 $users = $st->fetchAll();
                 $db_source = "App DB (<code>{$cfg_db_name}</code>) · prefix <code>{$appPfx}</code>";
             } catch (Exception $e) {
-                $db_source = "Error App DB: " . esc_html($e->getMessage());
+                // Optional columns may not exist yet — retry with basic columns only
+                // so we still get the users even without phone/channel fields
+                try {
+                    $st = $appDb->query(
+                        "SELECT id, name, email,
+                                '' AS phone,
+                                '' AS whatsapp_apikey,
+                                NULL AS telegram_chat_id,
+                                'email' AS notification_channel,
+                                active
+                         FROM `{$appPfx}users` ORDER BY name ASC"
+                    );
+                    $users = $st->fetchAll();
+                    $db_source = "App DB (<code>{$cfg_db_name}</code>) · prefix <code>{$appPfx}</code> (columnas básicas)";
+                } catch (Exception $e2) {
+                    $db_source = "Error App DB: " . esc_html($e2->getMessage());
+                }
             }
         }
-        // Fallback: WordPress DB
+        // Fallback: WordPress DB (same two-level approach)
         if (empty($users)) {
             $p = $wpdb->prefix . 'luna_';
             $users = $wpdb->get_results(
@@ -550,6 +569,19 @@ class Luna_Admin {
                  FROM `{$p}users` ORDER BY name ASC",
                 ARRAY_A
             ) ?: [];
+            if (empty($users) && !$wpdb->last_error) {
+                // Retry with basic columns
+                $users = $wpdb->get_results(
+                    "SELECT id, name, email,
+                            '' AS phone,
+                            '' AS whatsapp_apikey,
+                            NULL AS telegram_chat_id,
+                            'email' AS notification_channel,
+                            active
+                     FROM `{$p}users` ORDER BY name ASC",
+                    ARRAY_A
+                ) ?: [];
+            }
             $db_source = $db_source ?: "WP DB (<code>{$wpdb->dbname}</code>) · prefix <code>{$p}</code>";
         }
 
