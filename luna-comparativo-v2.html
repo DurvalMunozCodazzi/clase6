@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Luna Workspace — Análisis Competitivo v2 · Junio 2026</title>
+<style>
+:root{
+  --acc:#5b6af0;--acc2:#8b5cf6;--grn:#22c55e;--red:#ef4444;--ora:#f59e0b;--cya:#06b6d4;--pin:#ec4899;
+  --bg:#080b14;--surf:#0f1322;--elev:#161b2e;--bdr:#1e2540;--bdrl:#2a3260;
+  --t1:#e8edf8;--t2:#8892c0;--t3:#3d4470;--f:'Segoe UI',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--t1);font-family:var(--f);font-size:14px;line-height:1.6;padding:0 0 80px}
+
+/* hero */
+.hero{background:linear-gradient(135deg,#0a0d1a 0%,#111630 50%,#0d1020 100%);padding:64px 48px 52px;text-align:center;position:relative;overflow:hidden;border-bottom:1px solid var(--bdr)}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(91,106,240,.2),transparent)}
+.hero::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:600px;height:1px;background:linear-gradient(90deg,transparent,rgba(91,106,240,.5),transparent)}
+.hero-badge{display:inline-block;background:rgba(91,106,240,.15);border:1px solid rgba(91,106,240,.35);color:#a5b4fc;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:5px 16px;border-radius:99px;margin-bottom:22px}
+.hero h1{font-size:38px;font-weight:900;letter-spacing:-1.2px;background:linear-gradient(135deg,#a5b4fc 0%,#67e8f9 55%,#c4b5fd 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:12px;line-height:1.15}
+.hero p{font-size:15px;color:var(--t2);max-width:680px;margin:0 auto 28px;line-height:1.7}
+.hero-meta{font-size:11px;color:var(--t3)}
+.hero-stats{display:flex;justify-content:center;gap:48px;margin:32px 0 0;flex-wrap:wrap}
+.hero-stat-num{font-size:30px;font-weight:900;background:linear-gradient(135deg,#a5b4fc,#67e8f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}
+.hero-stat-lbl{font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-top:4px}
+
+/* wrap */
+.wrap{max-width:1160px;margin:0 auto;padding:0 32px}
+
+/* section */
+.sec-num{display:inline-block;background:rgba(91,106,240,.18);border:1px solid rgba(91,106,240,.4);color:#a5b4fc;font-size:10px;font-weight:800;padding:2px 10px;border-radius:99px;letter-spacing:.5px;margin-bottom:10px}
+h2{font-size:23px;font-weight:900;margin:56px 0 6px;color:var(--t1);letter-spacing:-.4px}
+h2 span{background:linear-gradient(135deg,var(--acc),var(--acc2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sub{font-size:13px;color:var(--t2);margin-bottom:24px;line-height:1.65}
+
+/* plan cards */
+.plan-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin:28px 0}
+@media(max-width:900px){.plan-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.plan-grid{grid-template-columns:1fr}}
+.plan-card{background:var(--surf);border:1px solid var(--bdr);border-radius:18px;padding:24px 22px;position:relative;transition:.2s}
+.plan-card:hover{border-color:var(--bdrl);transform:translateY(-2px);box-shadow:0 10px 40px rgba(0,0,0,.4)}
+.plan-card.highlight{background:linear-gradient(145deg,rgba(91,106,240,.12),rgba(139,92,246,.08));border:1.5px solid rgba(91,106,240,.45)}
+.plan-badge{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;padding:3px 9px;border-radius:99px;margin-bottom:14px;display:inline-block}
+.plan-name{font-size:18px;font-weight:900;color:var(--t1);margin-bottom:4px}
+.plan-price{font-size:32px;font-weight:900;line-height:1;margin:10px 0 2px}
+.plan-price sup{font-size:14px;font-weight:700;vertical-align:top;margin-top:5px;display:inline-block}
+.plan-price-note{font-size:11px;color:var(--t3);margin-bottom:16px}
+.plan-feat{list-style:none;font-size:12px;color:var(--t2)}
+.plan-feat li{padding:5px 0;border-bottom:1px solid rgba(30,37,64,.7);display:flex;gap:8px;align-items:flex-start}
+.plan-feat li:last-child{border:none}
+.plan-feat .ic{flex-shrink:0;margin-top:1px;font-size:12px}
+.ic-g{color:var(--grn)}.ic-r{color:var(--red)}.ic-o{color:var(--ora)}.ic-b{color:#a5b4fc}
+.best-val{position:absolute;top:-1px;right:18px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;font-size:9px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;padding:4px 12px;border-radius:0 0 10px 10px}
+
+/* competitor cards */
+.comp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:24px 0}
+@media(max-width:900px){.comp-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.comp-grid{grid-template-columns:1fr}}
+.comp-card{background:var(--surf);border:1px solid var(--bdr);border-radius:16px;overflow:hidden;transition:.2s}
+.comp-card:hover{border-color:var(--bdrl);transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.comp-head{padding:18px 20px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(30,37,64,.7)}
+.comp-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.comp-name{font-size:15px;font-weight:800}
+.comp-cat{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
+.comp-body{padding:14px 20px 18px}
+.comp-price{font-size:11px;font-weight:700;padding:5px 12px;border-radius:8px;display:inline-block;margin-bottom:12px}
+.comp-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(30,37,64,.5);font-size:11px}
+.comp-row:last-child{border:none}
+.comp-row-lbl{color:var(--t3);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.comp-row-val{color:var(--t2);font-weight:600;text-align:right}
+.comp-row-val.g{color:#86efac}.comp-row-val.r{color:#fca5a5}.comp-row-val.o{color:#fde68a}
+
+/* big comparison table */
+.tscroll{overflow-x:auto;margin:24px 0;border-radius:16px;border:1px solid var(--bdr)}
+.ctable{width:100%;border-collapse:collapse;font-size:12px;min-width:860px}
+.ctable th{background:var(--elev);color:var(--t2);font-weight:700;padding:11px 14px;text-align:center;border-bottom:2px solid var(--bdr)}
+.ctable th:first-child{text-align:left;min-width:200px;width:220px}
+.ctable th.luna-col{color:#a5b4fc;background:rgba(91,106,240,.15);border-bottom-color:rgba(91,106,240,.45)}
+.ctable td{padding:9px 14px;border-bottom:1px solid rgba(30,37,64,.7);text-align:center;color:var(--t2)}
+.ctable td:first-child{text-align:left;font-weight:600;color:var(--t1);font-size:11px;padding-left:18px}
+.ctable tr:last-child td{border:none}
+.ctable tr:hover td{background:rgba(255,255,255,.02)}
+.ctable td.luna-col{background:rgba(91,106,240,.06)}
+.ctable .cat-row td{background:var(--elev);color:var(--t3);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;padding:7px 14px}
+.chk{color:var(--grn);font-size:13px}
+.cross{color:var(--red);font-size:13px}
+.part{color:var(--ora);font-size:11px;font-weight:700}
+.na{color:var(--t3);font-size:11px}
+.new{color:#a5b4fc;font-size:10px;font-weight:700;background:rgba(91,106,240,.2);padding:2px 7px;border-radius:99px}
+
+/* price comparison table */
+.ptable{width:100%;border-collapse:collapse;font-size:12px;margin:24px 0}
+.ptable th{background:var(--elev);color:var(--t2);font-weight:700;padding:10px 16px;text-align:center;border-bottom:2px solid var(--bdr)}
+.ptable th:first-child{text-align:left}
+.ptable th.luna-col{color:#a5b4fc;background:rgba(91,106,240,.15);border-bottom-color:rgba(91,106,240,.45)}
+.ptable td{padding:9px 16px;border-bottom:1px solid rgba(30,37,64,.6);text-align:center;color:var(--t2)}
+.ptable td:first-child{text-align:left;color:var(--t3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.ptable td.luna-col{background:rgba(91,106,240,.07);color:#c7d2fe;font-weight:700}
+.ptable tr:hover td{background:rgba(255,255,255,.02)}
+.ptable tr:last-child td{border:none}
+.ptable .winner{color:var(--grn);font-weight:800}
+.ptable .loser{color:var(--red)}
+.ptable .tied{color:var(--ora)}
+
+/* savings callout */
+.saving-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0}
+@media(max-width:700px){.saving-grid{grid-template-columns:1fr}}
+.saving-box{background:var(--surf);border:1px solid var(--bdr);border-radius:14px;padding:20px;text-align:center}
+.saving-logo{font-size:13px;font-weight:800;color:var(--t2);margin-bottom:6px}
+.saving-vs{font-size:11px;color:var(--t3);margin-bottom:12px}
+.saving-num{font-size:28px;font-weight:900;color:var(--grn);line-height:1}
+.saving-note{font-size:11px;color:var(--t2);margin-top:6px}
+.saving-box.premium{border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.06)}
+
+/* chart bars */
+.bar-chart{margin:24px 0;display:flex;flex-direction:column;gap:12px}
+.bar-row{display:flex;align-items:center;gap:14px}
+.bar-lbl{font-size:11px;color:var(--t2);font-weight:700;min-width:110px;text-align:right;flex-shrink:0}
+.bar-wrap{flex:1;background:rgba(30,37,64,.5);border-radius:99px;height:26px;position:relative;overflow:hidden}
+.bar-fill{height:100%;border-radius:99px;display:flex;align-items:center;justify-content:flex-end;padding-right:10px;font-size:11px;font-weight:800;color:#fff;transition:width .6s ease;min-width:40px}
+.bar-fill.luna{background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.bar-fill.trello{background:#0052cc}
+.bar-fill.monday{background:#f02e65}
+.bar-fill.asana{background:#f06a6a}
+.bar-fill.notion{background:#555}
+.bar-fill.click{background:#7b68ee}
+.bar-fill.jira{background:#0065ff}
+
+/* free plan callout */
+.free-callout{background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(6,182,212,.07));border:1.5px solid rgba(34,197,94,.3);border-radius:18px;padding:28px 32px;margin:28px 0;display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center}
+@media(max-width:700px){.free-callout{grid-template-columns:1fr}}
+.free-title{font-size:18px;font-weight:900;color:var(--grn);margin-bottom:6px}
+.free-desc{font-size:13px;color:var(--t2);line-height:1.65}
+.free-stats{display:flex;flex-direction:column;gap:10px;align-items:center}
+.free-stat-val{font-size:32px;font-weight:900;color:var(--grn);line-height:1}
+.free-stat-lbl{font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;text-align:center}
+.free-funnel{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:16px}
+.funnel-step{font-size:11px;font-weight:700;padding:5px 12px;border-radius:99px;white-space:nowrap}
+.funnel-arrow{color:var(--t3);font-size:14px}
+
+/* LATAM section */
+.latam-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0}
+@media(max-width:700px){.latam-grid{grid-template-columns:1fr 1fr}}
+.latam-card{background:var(--surf);border:1px solid var(--bdr);border-radius:14px;padding:18px}
+.latam-icon{font-size:24px;margin-bottom:8px}
+.latam-name{font-size:13px;font-weight:800;color:var(--t1);margin-bottom:4px}
+.latam-desc{font-size:11px;color:var(--t2);line-height:1.5}
+.latam-plan{font-size:10px;font-weight:700;padding:3px 9px;border-radius:99px;margin-top:10px;display:inline-block;background:rgba(91,106,240,.2);color:#a5b4fc;border:1px solid rgba(91,106,240,.3)}
+
+/* insight boxes */
+.insight{background:var(--elev);border-left:3px solid var(--acc);border-radius:0 12px 12px 0;padding:16px 20px;margin:20px 0;font-size:13px;color:var(--t2);line-height:1.65}
+.insight strong{color:var(--t1)}
+.insight.green{border-left-color:var(--grn)}
+.insight.orange{border-left-color:var(--ora)}
+.insight.red{border-left-color:var(--red)}
+
+/* verdict */
+.verdict{background:linear-gradient(135deg,rgba(91,106,240,.12),rgba(139,92,246,.08));border:1.5px solid rgba(91,106,240,.4);border-radius:18px;padding:32px;margin:32px 0}
+.verdict h3{font-size:20px;font-weight:900;color:var(--t1);margin-bottom:16px}
+.verdict-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+@media(max-width:700px){.verdict-grid{grid-template-columns:1fr}}
+.verdict-col h4{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px}
+.verdict-col ul{list-style:none;font-size:12px;color:var(--t2)}
+.verdict-col ul li{padding:4px 0;border-bottom:1px solid rgba(30,37,64,.5);display:flex;gap:8px}
+.verdict-col ul li:last-child{border:none}
+
+/* footer */
+.footer{text-align:center;color:var(--t3);font-size:11px;padding:40px 32px 0;border-top:1px solid var(--bdr);margin-top:60px}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-badge">Análisis Competitivo v2 · Junio 2026</div>
+  <h1>Luna Workspace vs. El Mercado</h1>
+  <p>Comparativa actualizada con la nueva estructura de planes: <strong style="color:#a5b4fc">Gratis · Básico · Profesional · Corporativo</strong>. Precios en USD, enfoque LATAM.</p>
+  <div class="hero-meta">Mercados analizados: Argentina · México · Chile · Colombia · Perú · Uruguay &nbsp;·&nbsp; 7 competidores directos</div>
+  <div class="hero-stats">
+    <div class="hero-stat"><div class="hero-stat-num">25%</div><div class="hero-stat-lbl">Más barato que<br>el rival más cercano</div></div>
+    <div class="hero-stat"><div class="hero-stat-num">$0</div><div class="hero-stat-lbl">Plan gratuito<br>para probar</div></div>
+    <div class="hero-stat"><div class="hero-stat-num">4</div><div class="hero-stat-lbl">Planes claros<br>sin sorpresas</div></div>
+    <div class="hero-stat"><div class="hero-stat-num">∞</div><div class="hero-stat-lbl">Pizarras en todos<br>los planes pagos</div></div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ════════════════════════════════════════════════
+     1. PLANES LUNA
+════════════════════════════════════════════════ -->
+<div class="sec-num">01</div>
+<h2>Nuestros <span>Planes Actualizados</span></h2>
+<p class="sub">Modelo plano por rango de usuarios — sin límite de pizarras en planes pagos. Las notificaciones (email, WhatsApp, Telegram) solo están disponibles a partir del plan Básico.</p>
+
+<div class="plan-grid">
+
+  <!-- GRATIS -->
+  <div class="plan-card">
+    <div class="plan-badge" style="background:rgba(100,116,139,.2);color:#94a3b8;border:1px solid rgba(100,116,139,.3)">Gratis</div>
+    <div class="plan-name">Gratis</div>
+    <div class="plan-price" style="color:#94a3b8"><sup>$</sup>0</div>
+    <div class="plan-price-note">Sin tarjeta de crédito</div>
+    <ul class="plan-feat">
+      <li><span class="ic ic-g">✓</span>1 usuario</li>
+      <li><span class="ic ic-g">✓</span>1 pizarra kanban</li>
+      <li><span class="ic ic-g">✓</span>Tareas ilimitadas</li>
+      <li><span class="ic ic-g">✓</span>Calendario</li>
+      <li><span class="ic ic-g">✓</span>Modo oscuro / temas</li>
+      <li><span class="ic ic-r">✗</span>Sin notificaciones</li>
+      <li><span class="ic ic-r">✗</span>Sin usuarios extra</li>
+      <li><span class="ic ic-r">✗</span>Sin pizarras extra</li>
+    </ul>
+  </div>
+
+  <!-- BÁSICO -->
+  <div class="plan-card">
+    <div class="plan-badge" style="background:rgba(6,182,212,.15);color:#67e8f9;border:1px solid rgba(6,182,212,.3)">Básico</div>
+    <div class="plan-name">Básico</div>
+    <div class="plan-price" style="color:#67e8f9"><sup>$</sup>19</div>
+    <div class="plan-price-note">por mes · hasta 5 usuarios</div>
+    <ul class="plan-feat">
+      <li><span class="ic ic-g">✓</span>Hasta 5 usuarios</li>
+      <li><span class="ic ic-g">✓</span>Pizarras ilimitadas</li>
+      <li><span class="ic ic-g">✓</span>Tareas ilimitadas</li>
+      <li><span class="ic ic-g">✓</span>Notificaciones email</li>
+      <li><span class="ic ic-g">✓</span>WhatsApp & Telegram</li>
+      <li><span class="ic ic-g">✓</span>Calendario</li>
+      <li><span class="ic ic-g">✓</span>Métricas básicas</li>
+      <li><span class="ic ic-r">✗</span>Sin soporte prioritario</li>
+    </ul>
+  </div>
+
+  <!-- PROFESIONAL -->
+  <div class="plan-card highlight">
+    <div class="best-val">Más popular</div>
+    <div class="plan-badge" style="background:rgba(91,106,240,.2);color:#a5b4fc;border:1px solid rgba(91,106,240,.4)">Profesional</div>
+    <div class="plan-name">Profesional</div>
+    <div class="plan-price" style="background:linear-gradient(135deg,#a5b4fc,#67e8f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text"><sup style="-webkit-text-fill-color:#a5b4fc">$</sup>39</div>
+    <div class="plan-price-note">por mes · hasta 20 usuarios</div>
+    <ul class="plan-feat">
+      <li><span class="ic ic-g">✓</span>Hasta 20 usuarios</li>
+      <li><span class="ic ic-g">✓</span>Pizarras ilimitadas</li>
+      <li><span class="ic ic-g">✓</span>Tareas ilimitadas</li>
+      <li><span class="ic ic-g">✓</span>Notificaciones multicanal</li>
+      <li><span class="ic ic-g">✓</span>Recordatorios automáticos</li>
+      <li><span class="ic ic-g">✓</span>Métricas avanzadas</li>
+      <li><span class="ic ic-g">✓</span>Fondo personalizado</li>
+      <li><span class="ic ic-g">✓</span>Soporte email prioritario</li>
+    </ul>
+  </div>
+
+  <!-- CORPORATIVO -->
+  <div class="plan-card">
+    <div class="plan-badge" style="background:rgba(139,92,246,.2);color:#c4b5fd;border:1px solid rgba(139,92,246,.35)">Corporativo</div>
+    <div class="plan-name">Corporativo</div>
+    <div class="plan-price" style="color:#c4b5fd"><sup>$</sup>89</div>
+    <div class="plan-price-note">por mes · usuarios ilimitados</div>
+    <ul class="plan-feat">
+      <li><span class="ic ic-b">✓</span>Usuarios ilimitados</li>
+      <li><span class="ic ic-b">✓</span>Pizarras ilimitadas</li>
+      <li><span class="ic ic-b">✓</span>Tareas ilimitadas</li>
+      <li><span class="ic ic-b">✓</span>Todo del plan Profesional</li>
+      <li><span class="ic ic-b">✓</span>Múltiples workspaces</li>
+      <li><span class="ic ic-b">✓</span>Branding personalizado</li>
+      <li><span class="ic ic-b">✓</span>Instalación asistida</li>
+      <li><span class="ic ic-b">✓</span>Soporte prioritario</li>
+    </ul>
+  </div>
+
+</div>
+
+<div class="insight green">
+  <strong>Ventaja clave del modelo plano:</strong> Trello cobra <strong>$5 por usuario/mes</strong> — un equipo de 10 paga $50/mes. Con Luna Básico esos mismos 5 usuarios pagan $19 fijos. Con Luna Profesional hasta 20 usuarios pagan $39 fijos. <strong>Ninguno de los planes de Luna sube si el equipo suma integrantes dentro del rango.</strong>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     2. PLAN GRATIS — ESTRATEGIA DE ADQUISICIÓN
+════════════════════════════════════════════════ -->
+<div class="sec-num">02</div>
+<h2>El Plan Gratis como <span>Motor de Crecimiento</span></h2>
+<p class="sub">El plan Gratis no es un costo — es el vendedor más efectivo del producto. Sin presión de ventas, sin tarjeta de crédito, el usuario prueba y decide.</p>
+
+<div class="free-callout">
+  <div>
+    <div class="free-title">Freemium bien acotado = conversión natural</div>
+    <div class="free-desc">
+      El plan Gratis da acceso real al producto: 1 usuario, 1 pizarra, tareas y calendario ilimitados. Suficiente para enamorarse de la herramienta. Las limitaciones (más usuarios, más pizarras, notificaciones) son exactamente los puntos donde un usuario individual se convierte en un equipo — y ese es el momento de conversión ideal.
+    </div>
+    <div class="free-funnel">
+      <div class="funnel-step" style="background:rgba(100,116,139,.15);color:#94a3b8;border:1px solid rgba(100,116,139,.25)">Instala Gratis</div>
+      <div class="funnel-arrow">→</div>
+      <div class="funnel-step" style="background:rgba(6,182,212,.1);color:#67e8f9;border:1px solid rgba(6,182,212,.25)">Organiza su trabajo</div>
+      <div class="funnel-arrow">→</div>
+      <div class="funnel-step" style="background:rgba(91,106,240,.15);color:#a5b4fc;border:1px solid rgba(91,106,240,.3)">Quiere agregar al equipo</div>
+      <div class="funnel-arrow">→</div>
+      <div class="funnel-step" style="background:rgba(34,197,94,.12);color:#86efac;border:1px solid rgba(34,197,94,.3)">Compra Básico $19</div>
+    </div>
+  </div>
+  <div class="free-stats">
+    <div>
+      <div class="free-stat-val">$0</div>
+      <div class="free-stat-lbl">Barrera de entrada</div>
+    </div>
+    <div style="margin-top:16px">
+      <div class="free-stat-val" style="font-size:22px">1→5</div>
+      <div class="free-stat-lbl">Usuarios al comprar</div>
+    </div>
+  </div>
+</div>
+
+<div class="insight orange">
+  <strong>Lo que el plan Gratis NO da</strong> — y esto es intencional: sin notificaciones significa que en un equipo real los recordatorios automáticos y alertas de tareas son imprescindibles. Esta restricción solos se siente cuando hay más personas involucradas, que es exactamente cuando conviene pagar $19.
+</div>
+
+<!-- ════════════════════════════════════════════════
+     3. COMPETIDORES — ANÁLISIS DE PLANES
+════════════════════════════════════════════════ -->
+<div class="sec-num">03</div>
+<h2>Cómo Cobran <span>los Competidores</span></h2>
+<p class="sub">Todos los precios en USD por mes (plan anual). Comparativa del plan de entrada de cada competidor contra Luna Básico.</p>
+
+<div class="comp-grid">
+
+  <div class="comp-card">
+    <div class="comp-head">
+      <div class="comp-icon" style="background:#e8f0fe">🟦</div>
+      <div><div class="comp-name">Trello</div><div class="comp-cat">Kanban · Atlassian</div></div>
+    </div>
+    <div class="comp-body">
+      <div class="comp-price" style="background:rgba(0,82,204,.15);color:#93c5fd">$5/usuario/mes (Standard)</div>
+      <div class="comp-row"><span class="comp-row-lbl">5 usuarios</span><span class="comp-row-val r">$25/mes</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">10 usuarios</span><span class="comp-row-val r">$50/mes</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">20 usuarios</span><span class="comp-row-val r">$100/mes</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Plan gratis</span><span class="comp-row-val g">Sí (muy limitado)</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Pizarras gratis</span><span class="comp-row-val o">Máx. 10</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Notif. en gratis</span><span class="comp-row-val r">No</span></div>
+    </div>
+  </div>
+
+  <div class="comp-card">
+    <div class="comp-head">
+      <div class="comp-icon" style="background:#fff0f0">🔴</div>
+      <div><div class="comp-name">Monday.com</div><div class="comp-cat">Work OS · Todo-en-uno</div></div>
+    </div>
+    <div class="comp-body">
+      <div class="comp-price" style="background:rgba(240,46,101,.12);color:#fca5a5">$9/usuario/mes (Basic)</div>
+      <div class="comp-row"><span class="comp-row-lbl">5 usuarios</span><span class="comp-row-val r">$45/mes</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">10 usuarios</span><span class="comp-row-val r">$90/mes</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">20 usuarios</span><span class="comp-row-val r">$180/mes</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Plan gratis</span><span class="comp-row-val o">Solo hasta 2 usuarios</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Mínimo de facturación</span><span class="comp-row-val r">3 usuarios</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Idioma español</span><span class="comp-row-val g">Sí</span></div>
+    </div>
+  </div>
+
+  <div class="comp-card">
+    <div class="comp-head">
+      <div class="comp-icon" style="background:#fff5f0">🔆</div>
+      <div><div class="comp-name">Asana</div><div class="comp-cat">Gestión de tareas</div></div>
+    </div>
+    <div class="comp-body">
+      <div class="comp-price" style="background:rgba(240,106,106,.12);color:#fca5a5">$10.99/usuario/mes (Starter)</div>
+      <div class="comp-row"><span class="comp-row-lbl">5 usuarios</span><span class="comp-row-val r">$54.95/mes</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">10 usuarios</span><span class="comp-row-val r">$109.90/mes</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Plan gratis</span><span class="comp-row-val o">Hasta 10 usuarios</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Gratis: vistas</span><span class="comp-row-val o">Solo Lista y Tablero</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Gratis: reportes</span><span class="comp-row-val r">No</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Automatizaciones</span><span class="comp-row-val r">Starter+ (pago)</span></div>
+    </div>
+  </div>
+
+  <div class="comp-card">
+    <div class="comp-head">
+      <div class="comp-icon" style="background:#f0f0ff">💜</div>
+      <div><div class="comp-name">ClickUp</div><div class="comp-cat">Todo-en-uno</div></div>
+    </div>
+    <div class="comp-body">
+      <div class="comp-price" style="background:rgba(123,104,238,.15);color:#c4b5fd">$7/usuario/mes (Unlimited)</div>
+      <div class="comp-row"><span class="comp-row-lbl">5 usuarios</span><span class="comp-row-val r">$35/mes</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">10 usuarios</span><span class="comp-row-val r">$70/mes</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Plan gratis</span><span class="comp-row-val g">Sí (generoso)</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Gratis: almacenamiento</span><span class="comp-row-val o">100 MB</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Curva de aprendizaje</span><span class="comp-row-val r">Alta</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Velocidad UI</span><span class="comp-row-val o">Moderada</span></div>
+    </div>
+  </div>
+
+  <div class="comp-card">
+    <div class="comp-head">
+      <div class="comp-icon" style="background:#1a1a1a;border:1px solid #333">🔲</div>
+      <div><div class="comp-name">Notion</div><div class="comp-cat">Wiki + DB + Kanban</div></div>
+    </div>
+    <div class="comp-body">
+      <div class="comp-price" style="background:rgba(80,80,80,.2);color:#d1d5db">$10/usuario/mes (Plus)</div>
+      <div class="comp-row"><span class="comp-row-lbl">5 usuarios</span><span class="comp-row-val r">$50/mes</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">10 usuarios</span><span class="comp-row-val r">$100/mes</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Plan gratis</span><span class="comp-row-val g">Sí (1 usuario OK)</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Enfoque</span><span class="comp-row-val o">Docs/wiki, no tareas</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Curva de aprendizaje</span><span class="comp-row-val r">Alta</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Notificaciones</span><span class="comp-row-val o">Básicas</span></div>
+    </div>
+  </div>
+
+  <div class="comp-card">
+    <div class="comp-head">
+      <div class="comp-icon" style="background:#e8f0fe">🔵</div>
+      <div><div class="comp-name">Jira</div><div class="comp-cat">Dev teams · Atlassian</div></div>
+    </div>
+    <div class="comp-body">
+      <div class="comp-price" style="background:rgba(0,101,255,.12);color:#93c5fd">$7.75/usuario/mes (Standard)</div>
+      <div class="comp-row"><span class="comp-row-lbl">5 usuarios</span><span class="comp-row-val r">$38.75/mes</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">10 usuarios</span><span class="comp-row-val r">$77.50/mes</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Plan gratis</span><span class="comp-row-val o">Hasta 10 usuarios</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Enfoque</span><span class="comp-row-val r">Desarrolladores</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Curva de aprendizaje</span><span class="comp-row-val r">Muy alta</span></div>
+      <div class="comp-row"><span class="comp-row-lbl">Para PyMEs</span><span class="comp-row-val r">Excesivo</span></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════════════════
+     4. COMPARATIVA DE PRECIOS EN ESCENARIOS REALES
+════════════════════════════════════════════════ -->
+<div class="sec-num">04</div>
+<h2>¿Cuánto Pagan <span>en la Realidad?</span></h2>
+<p class="sub">Costo mensual total para equipos de distintos tamaños. Luna cobra una tarifa fija — el resto escala con cada usuario agregado.</p>
+
+<div class="tscroll">
+<table class="ctable">
+  <thead>
+    <tr>
+      <th>Escenario</th>
+      <th class="luna-col">🌙 Luna</th>
+      <th>Trello</th>
+      <th>Monday</th>
+      <th>ClickUp</th>
+      <th>Asana</th>
+      <th>Notion</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="cat-row"><td colspan="7">Solo · Emprendedor individual</td></tr>
+    <tr>
+      <td>1 usuario</td>
+      <td class="luna-col" style="color:#86efac;font-weight:800">$0 (Gratis)</td>
+      <td>$0</td>
+      <td>$0 (2 usr)</td>
+      <td>$0</td>
+      <td>$0</td>
+      <td>$0</td>
+    </tr>
+    <tr class="cat-row"><td colspan="7">Micro-equipo · Estudio / Agencia pequeña</td></tr>
+    <tr>
+      <td>3 usuarios</td>
+      <td class="luna-col" style="color:#86efac;font-weight:800">$19</td>
+      <td>$15</td>
+      <td>$27</td>
+      <td>$21</td>
+      <td>$32.97</td>
+      <td>$30</td>
+    </tr>
+    <tr>
+      <td>5 usuarios</td>
+      <td class="luna-col" style="color:#86efac;font-weight:800">$19</td>
+      <td>$25</td>
+      <td>$45</td>
+      <td>$35</td>
+      <td>$54.95</td>
+      <td>$50</td>
+    </tr>
+    <tr class="cat-row"><td colspan="7">Equipo mediano · PyME establecida</td></tr>
+    <tr>
+      <td>8 usuarios</td>
+      <td class="luna-col" style="color:#86efac;font-weight:800">$39</td>
+      <td>$40</td>
+      <td>$72</td>
+      <td>$56</td>
+      <td>$87.92</td>
+      <td>$80</td>
+    </tr>
+    <tr>
+      <td>15 usuarios</td>
+      <td class="luna-col" style="color:#86efac;font-weight:800">$39</td>
+      <td>$75</td>
+      <td>$135</td>
+      <td>$105</td>
+      <td>$164.85</td>
+      <td>$150</td>
+    </tr>
+    <tr>
+      <td>20 usuarios</td>
+      <td class="luna-col" style="color:#86efac;font-weight:800">$39</td>
+      <td>$100</td>
+      <td>$180</td>
+      <td>$140</td>
+      <td>$219.80</td>
+      <td>$200</td>
+    </tr>
+    <tr class="cat-row"><td colspan="7">Empresa · Equipo grande</td></tr>
+    <tr>
+      <td>30 usuarios</td>
+      <td class="luna-col" style="color:#c4b5fd;font-weight:800">$89</td>
+      <td>$150</td>
+      <td>$270</td>
+      <td>$210</td>
+      <td>$329.70</td>
+      <td>$300</td>
+    </tr>
+    <tr>
+      <td>50 usuarios</td>
+      <td class="luna-col" style="color:#c4b5fd;font-weight:800">$89</td>
+      <td>$250</td>
+      <td>$450</td>
+      <td>$350</td>
+      <td>$549.50</td>
+      <td>$500</td>
+    </tr>
+    <tr>
+      <td>100 usuarios</td>
+      <td class="luna-col" style="color:#c4b5fd;font-weight:800">$89</td>
+      <td>$500</td>
+      <td>$900</td>
+      <td>$700</td>
+      <td>$1.099</td>
+      <td>$1.000</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="insight green">
+  <strong>El efecto Corporativo es brutal a escala:</strong> un equipo de 100 personas paga $89/mes con Luna vs $500 con Trello vs $900 con Monday. El ahorro anual frente a Monday.com es de más de $9.700 USD. Para una empresa argentina o mexicana, eso importa enormemente.
+</div>
+
+<!-- ════════════════════════════════════════════════
+     5. AHORRO REAL vs COMPETIDORES
+════════════════════════════════════════════════ -->
+<div class="sec-num">05</div>
+<h2><span>Ahorro Real</span> para Equipos LATAM</h2>
+<p class="sub">Cuánto ahorra un equipo de 10 personas eligiendo Luna Profesional ($39/mes) frente a cada competidor.</p>
+
+<div class="saving-grid">
+  <div class="saving-box premium">
+    <div class="saving-logo">vs Trello Standard</div>
+    <div class="saving-vs">10 usuarios · $50/mes ellos vs $39 Luna</div>
+    <div class="saving-num">$132/año</div>
+    <div class="saving-note">+ pizarras ilimitadas · notif. WhatsApp</div>
+  </div>
+  <div class="saving-box premium">
+    <div class="saving-logo">vs Monday Basic</div>
+    <div class="saving-vs">10 usuarios · $90/mes ellos vs $39 Luna</div>
+    <div class="saving-num">$612/año</div>
+    <div class="saving-note">+ sin mínimo de 3 asientos obligatorios</div>
+  </div>
+  <div class="saving-box premium">
+    <div class="saving-logo">vs Asana Starter</div>
+    <div class="saving-vs">10 usuarios · $109.90/mes vs $39 Luna</div>
+    <div class="saving-num">$851/año</div>
+    <div class="saving-note">+ integración WhatsApp nativa</div>
+  </div>
+  <div class="saving-box">
+    <div class="saving-logo">vs ClickUp Unlimited</div>
+    <div class="saving-vs">10 usuarios · $70/mes vs $39 Luna</div>
+    <div class="saving-num">$372/año</div>
+    <div class="saving-note">+ curva de aprendizaje mucho menor</div>
+  </div>
+  <div class="saving-box">
+    <div class="saving-logo">vs Notion Plus</div>
+    <div class="saving-vs">10 usuarios · $100/mes vs $39 Luna</div>
+    <div class="saving-num">$732/año</div>
+    <div class="saving-note">+ gestión de tareas real vs base de datos</div>
+  </div>
+  <div class="saving-box">
+    <div class="saving-logo">vs Jira Standard</div>
+    <div class="saving-vs">10 usuarios · $77.50/mes vs $39 Luna</div>
+    <div class="saving-num">$462/año</div>
+    <div class="saving-note">+ sin configuración compleja · para todos</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     6. PRECIO DE ENTRADA (BAR CHART)
+════════════════════════════════════════════════ -->
+<div class="sec-num">06</div>
+<h2>Costo para <span>5 Usuarios</span></h2>
+<p class="sub">Comparativa visual del costo mensual real para un equipo típico de 5 personas en el plan de entrada de cada herramienta.</p>
+
+<div class="bar-chart">
+  <div class="bar-row">
+    <div class="bar-lbl">🌙 Luna Básico</div>
+    <div class="bar-wrap"><div class="bar-fill luna" style="width:35%">$19</div></div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-lbl">Trello Standard</div>
+    <div class="bar-wrap"><div class="bar-fill trello" style="width:47%">$25</div></div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-lbl">ClickUp Unlimited</div>
+    <div class="bar-wrap"><div class="bar-fill click" style="width:65%">$35</div></div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-lbl">Monday Basic</div>
+    <div class="bar-wrap"><div class="bar-fill monday" style="width:84%">$45</div></div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-lbl">Notion Plus</div>
+    <div class="bar-wrap"><div class="bar-fill notion" style="width:93%">$50</div></div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-lbl">Asana Starter</div>
+    <div class="bar-wrap"><div class="bar-fill asana" style="width:100%">$55</div></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     7. TABLA COMPARATIVA DE CARACTERÍSTICAS
+════════════════════════════════════════════════ -->
+<div class="sec-num">07</div>
+<h2>Comparativa de <span>Funcionalidades</span></h2>
+<p class="sub">Características clave comparadas entre Luna y sus principales competidores. Todos comparados en su plan de entrada pago.</p>
+
+<div class="tscroll">
+<table class="ctable">
+  <thead>
+    <tr>
+      <th>Característica</th>
+      <th class="luna-col">🌙 Luna</th>
+      <th>Trello</th>
+      <th>Monday</th>
+      <th>ClickUp</th>
+      <th>Asana</th>
+      <th>Notion</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="cat-row"><td colspan="7">Precio y modelo</td></tr>
+    <tr>
+      <td>Precio entrada (5 usr)</td>
+      <td class="luna-col"><strong style="color:#86efac">$19/mes</strong></td>
+      <td>$25/mes</td>
+      <td>$45/mes</td>
+      <td>$35/mes</td>
+      <td>$55/mes</td>
+      <td>$50/mes</td>
+    </tr>
+    <tr>
+      <td>Modelo de cobro</td>
+      <td class="luna-col"><strong style="color:#a5b4fc">Por rango fijo</strong></td>
+      <td class="part">Por usuario</td>
+      <td class="part">Por usuario</td>
+      <td class="part">Por usuario</td>
+      <td class="part">Por usuario</td>
+      <td class="part">Por usuario</td>
+    </tr>
+    <tr>
+      <td>Plan gratuito real</td>
+      <td class="luna-col"><span class="chk">✓</span> 1 usr / 1 pizarra</td>
+      <td><span class="part">Parcial</span></td>
+      <td><span class="part">2 usuarios</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+    </tr>
+    <tr>
+      <td>Pizarras ilimitadas (pago)</td>
+      <td class="luna-col"><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+    </tr>
+    <tr class="cat-row"><td colspan="7">Kanban y gestión de tareas</td></tr>
+    <tr>
+      <td>Kanban drag & drop</td>
+      <td class="luna-col"><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+    </tr>
+    <tr>
+      <td>Agregar tarea inline (Trello-style)</td>
+      <td class="luna-col"><span class="new">Nuevo ✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="part">Parcial</span></td>
+    </tr>
+    <tr>
+      <td>Filtros de búsqueda en tiempo real</td>
+      <td class="luna-col"><span class="new">Nuevo ✓</span></td>
+      <td><span class="part">Básico</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+    </tr>
+    <tr>
+      <td>Etiquetas / Tags en tareas</td>
+      <td class="luna-col"><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+    </tr>
+    <tr>
+      <td>Asignación de responsables</td>
+      <td class="luna-col"><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+    </tr>
+    <tr>
+      <td>Fechas de vencimiento</td>
+      <td class="luna-col"><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+    </tr>
+    <tr class="cat-row"><td colspan="7">Notificaciones</td></tr>
+    <tr>
+      <td>Notificaciones por email</td>
+      <td class="luna-col"><span class="chk">✓</span> (desde Básico)</td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="part">Básicas</span></td>
+    </tr>
+    <tr>
+      <td>Notificaciones WhatsApp nativo</td>
+      <td class="luna-col"><span class="new">Único ✓</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+    </tr>
+    <tr>
+      <td>Notificaciones Telegram nativo</td>
+      <td class="luna-col"><span class="new">Único ✓</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+    </tr>
+    <tr>
+      <td>Recordatorios automáticos</td>
+      <td class="luna-col"><span class="chk">✓</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="cross">✗</span></td>
+    </tr>
+    <tr class="cat-row"><td colspan="7">Experiencia de usuario</td></tr>
+    <tr>
+      <td>Modo oscuro nativo</td>
+      <td class="luna-col"><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="chk">✓</span></td>
+    </tr>
+    <tr>
+      <td>Paleta de colores personalizable</td>
+      <td class="luna-col"><span class="new">Único ✓</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="part">Parcial</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+    </tr>
+    <tr>
+      <td>Fondo personalizado por usuario</td>
+      <td class="luna-col"><span class="new">Único ✓</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+    </tr>
+    <tr>
+      <td>Idioma español nativo</td>
+      <td class="luna-col"><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+    </tr>
+    <tr>
+      <td>Calendario integrado</td>
+      <td class="luna-col"><span class="chk">✓</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="chk">✓</span></td>
+    </tr>
+    <tr>
+      <td>Velocidad / ligereza</td>
+      <td class="luna-col"><span class="chk">✓</span> Muy rápido</td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="part">Moderada</span></td>
+      <td><span class="part">Moderada</span></td>
+      <td><span class="chk">✓</span></td>
+      <td><span class="part">Moderada</span></td>
+    </tr>
+    <tr class="cat-row"><td colspan="7">Infraestructura y control</td></tr>
+    <tr>
+      <td>Self-hosted (en tu servidor)</td>
+      <td class="luna-col"><span class="new">Único ✓</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+    </tr>
+    <tr>
+      <td>Datos en tu propio hosting</td>
+      <td class="luna-col"><span class="chk">✓</span> 100%</td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+    </tr>
+    <tr>
+      <td>Plugin WordPress</td>
+      <td class="luna-col"><span class="chk">✓</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+    </tr>
+    <tr>
+      <td>Pago en USD fijo sin conversión</td>
+      <td class="luna-col"><span class="chk">✓</span> tarifa plana</td>
+      <td><span class="cross">✗</span> escala</td>
+      <td><span class="cross">✗</span> escala</td>
+      <td><span class="cross">✗</span> escala</td>
+      <td><span class="cross">✗</span> escala</td>
+      <td><span class="cross">✗</span> escala</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     8. NICHOS LATAM — DÓNDE GANA LUNA
+════════════════════════════════════════════════ -->
+<div class="sec-num">08</div>
+<h2>Nichos LATAM donde <span>Luna Gana</span></h2>
+<p class="sub">Casos de uso concretos donde la combinación de precio, WhatsApp y self-hosted crea una ventaja diferencial real.</p>
+
+<div class="latam-grid">
+  <div class="latam-card">
+    <div class="latam-icon">⚖️</div>
+    <div class="latam-name">Estudios jurídicos</div>
+    <div class="latam-desc">Manejo confidencial de casos. Datos en su propio servidor. Notificaciones a clientes por WhatsApp sin exponer datos a terceros.</div>
+    <div class="latam-plan">Básico $19 · 3-5 abogados</div>
+  </div>
+  <div class="latam-card">
+    <div class="latam-icon">🏗️</div>
+    <div class="latam-name">Constructoras / Arquitectura</div>
+    <div class="latam-desc">Seguimiento de obras por pizarras. El cliente recibe alertas por WhatsApp de avances. Equipos de campo sin email corporativo.</div>
+    <div class="latam-plan">Profesional $39 · 8-15 personas</div>
+  </div>
+  <div class="latam-card">
+    <div class="latam-icon">🏥</div>
+    <div class="latam-name">Clínicas y salud</div>
+    <div class="latam-desc">Gestión de turnos y seguimiento de pacientes. Datos sensibles en servidor propio. GDPR/privacidad local cumplida.</div>
+    <div class="latam-plan">Profesional $39 · hasta 20</div>
+  </div>
+  <div class="latam-card">
+    <div class="latam-icon">📱</div>
+    <div class="latam-name">Agencias digitales</div>
+    <div class="latam-desc">Gestión de proyectos por cliente en pizarras separadas. Equipo creativo que prefiere UX simple sobre complejidad de ClickUp.</div>
+    <div class="latam-plan">Profesional $39 · hasta 20</div>
+  </div>
+  <div class="latam-card">
+    <div class="latam-icon">🛒</div>
+    <div class="latam-name">E-commerce PyME</div>
+    <div class="latam-desc">Coordinación logística, stock, pedidos. Alertas WhatsApp para el equipo de despacho que no usa computadora todo el día.</div>
+    <div class="latam-plan">Básico $19 · 3-5 personas</div>
+  </div>
+  <div class="latam-card">
+    <div class="latam-icon">🏢</div>
+    <div class="latam-name">Empresas industriales</div>
+    <div class="latam-desc">Gran equipo, presupuesto acotado. Con Corporativo a $89 fijos una planta de 80 operarios coordina sin pagar $400+ mensual en Monday.</div>
+    <div class="latam-plan">Corporativo $89 · ilimitados</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     9. VENTAJAS ÚNICAS DE LUNA
+════════════════════════════════════════════════ -->
+<div class="sec-num">09</div>
+<h2>Las 3 Ventajas <span>que Nadie Más Tiene</span></h2>
+<p class="sub">Funciones que ningún competidor ofrece actualmente y que son argumentos de venta directos.</p>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:24px 0">
+
+  <div style="background:linear-gradient(145deg,rgba(34,197,94,.1),rgba(6,182,212,.07));border:1.5px solid rgba(34,197,94,.3);border-radius:16px;padding:24px">
+    <div style="font-size:28px;margin-bottom:12px">📲</div>
+    <div style="font-size:14px;font-weight:800;color:#86efac;margin-bottom:8px">WhatsApp & Telegram Nativo</div>
+    <div style="font-size:12px;color:var(--t2);line-height:1.6">En LATAM el 70% de la comunicación laboral ocurre por WhatsApp. Ningún competidor tiene notificaciones de tareas en WhatsApp sin integración de terceros (Zapier, etc.). Luna lo tiene integrado directamente.</div>
+  </div>
+
+  <div style="background:linear-gradient(145deg,rgba(91,106,240,.1),rgba(139,92,246,.07));border:1.5px solid rgba(91,106,240,.35);border-radius:16px;padding:24px">
+    <div style="font-size:28px;margin-bottom:12px">🏠</div>
+    <div style="font-size:14px;font-weight:800;color:#a5b4fc;margin-bottom:8px">Self-Hosted Total</div>
+    <div style="font-size:12px;color:var(--t2);line-height:1.6">Datos 100% en el servidor del cliente. Ideal para sectores con regulaciones de privacidad (salud, jurídico, finanzas). Ningún competidor ofrece esto — todos son SaaS puro con datos en la nube del proveedor.</div>
+  </div>
+
+  <div style="background:linear-gradient(145deg,rgba(245,158,11,.08),rgba(236,72,153,.06));border:1.5px solid rgba(245,158,11,.3);border-radius:16px;padding:24px">
+    <div style="font-size:28px;margin-bottom:12px">💰</div>
+    <div style="font-size:14px;font-weight:800;color:#fde68a;margin-bottom:8px">Precio Predecible</div>
+    <div style="font-size:12px;color:var(--t2);line-height:1.6">Tarifa fija por rango — no crece con cada usuario que se agrega. Las empresas en LATAM detestan las sorpresas en la factura mensual. Con Luna saben exactamente cuánto pagan sin importar si el equipo crece de 8 a 18 personas.</div>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════════════════
+     10. VEREDICTO
+════════════════════════════════════════════════ -->
+<div class="sec-num">10</div>
+<h2>Veredicto <span>y Recomendación</span></h2>
+
+<div class="verdict">
+  <h3>¿Cómo posicionar Luna en cada conversación de ventas?</h3>
+  <div class="verdict-grid">
+    <div class="verdict-col">
+      <h4 style="color:var(--grn)">Luna gana cuando...</h4>
+      <ul>
+        <li><span class="ic-g">✓</span>El equipo usa WhatsApp a diario</li>
+        <li><span class="ic-g">✓</span>Necesitan datos en su propio hosting</li>
+        <li><span class="ic-g">✓</span>El presupuesto es fijo/limitado</li>
+        <li><span class="ic-g">✓</span>Quieren algo simple y rápido</li>
+        <li><span class="ic-g">✓</span>Ya tienen WordPress</li>
+        <li><span class="ic-g">✓</span>El equipo crece (precio no sube)</li>
+        <li><span class="ic-g">✓</span>Sector privacidad-sensible</li>
+      </ul>
+    </div>
+    <div class="verdict-col">
+      <h4 style="color:var(--ora)">Competidor más fuerte es...</h4>
+      <ul>
+        <li><span class="ic-o">→</span>Trello: equipos pequeños muy básicos</li>
+        <li><span class="ic-o">→</span>Monday: grandes con reporting complejo</li>
+        <li><span class="ic-o">→</span>ClickUp: equipos que quieren todo-en-uno</li>
+        <li><span class="ic-o">→</span>Asana: startups tech con procesos ágiles</li>
+        <li><span class="ic-o">→</span>Notion: bases de conocimiento + wiki</li>
+        <li><span class="ic-o">→</span>Jira: equipos de desarrollo software</li>
+      </ul>
+    </div>
+    <div class="verdict-col">
+      <h4 style="color:#a5b4fc">Argumentos de cierre</h4>
+      <ul>
+        <li><span class="ic-b">★</span>Probalo gratis sin tarjeta</li>
+        <li><span class="ic-b">★</span>$19 para 5 personas (Trello cobra $25)</li>
+        <li><span class="ic-b">★</span>WhatsApp integrado sin Zapier</li>
+        <li><span class="ic-b">★</span>Tus datos, en tu servidor</li>
+        <li><span class="ic-b">★</span>Precio que no sube si sumas gente</li>
+        <li><span class="ic-b">★</span>Soporte en español, enfocado en LATAM</li>
+        <li><span class="ic-b">★</span>Instalación asistida en Corporativo</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="insight">
+  <strong>El mensaje de una línea para LATAM:</strong> "Luna Workspace es la única herramienta de gestión de proyectos self-hosted con notificaciones por WhatsApp y Telegram, a precio fijo independientemente de cuántas personas sumen al equipo."
+</div>
+
+</div><!-- /wrap -->
+
+<div class="footer">
+  Luna Workspace · Análisis Competitivo v2 · Junio 2026 · Precios orientativos en USD · Datos verificados contra sitios oficiales de cada competidor
+</div>
+
+</body>
+</html>
