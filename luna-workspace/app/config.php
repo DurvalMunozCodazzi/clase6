@@ -157,7 +157,7 @@ function getLicenseInfo() {
     static $info = null;
     if ($info !== null) return $info;
     $key = LUNA_LICENSE_KEY;
-    if (!$key) { $info = ['valid' => true, 'plan' => 'free', 'max_workspaces' => 1, 'max_users' => 1, 'notifications' => false]; return $info; }
+    if (!$key) { $info = ['valid' => false, 'plan' => 'none', 'max_workspaces' => 0, 'reason' => 'no_key']; return $info; }
     $cache_file = __DIR__ . '/luna-license-cache.json';
     if (file_exists($cache_file)) {
         $c = json_decode(file_get_contents($cache_file), true);
