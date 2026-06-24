@@ -524,7 +524,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 /* nav bar: subtle gradient tint matching the header palette */
 .cal-nav{display:flex;align-items:center;gap:10px;padding:12px 20px;background:linear-gradient(135deg,rgba(91,106,240,.1) 0%,rgba(139,92,246,.07) 100%);border-bottom:2px solid rgba(91,106,240,.18);flex-shrink:0}
 /* month label: gradient text for visual punch */
-.cal-month-label{font-size:17px;font-weight:800;flex:1;text-align:center;letter-spacing:-.3px}
+.cal-month-label{font-size:15px;font-weight:800;letter-spacing:-.2px;padding:6px 22px;border-radius:99px;white-space:nowrap;flex:1;text-align:center}
 /* nav arrow buttons: rounded-square icon button style */
 .cal-nb{width:34px;height:34px;border-radius:10px;border:1.5px solid rgba(91,106,240,.22);background:var(--surf);color:var(--acc);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .15s;font-weight:700;box-shadow:0 1px 4px rgba(91,106,240,.1)}
 .cal-nb:hover{background:var(--acc);color:#fff;transform:translateY(-1px);box-shadow:0 4px 12px rgba(91,106,240,.35);border-color:var(--acc)}
@@ -2989,11 +2989,19 @@ function renderCalendar(){
   const lbl = document.getElementById('cal-month-label');
   if(lbl){
     lbl.textContent = CAL_MONTHS[CAL.month]+' '+CAL.year;
-    // Month label uses month color as gradient
-    lbl.style.background = `linear-gradient(135deg, ${mc} 20%, ${lighten(mc)} 100%)`;
-    lbl.style.webkitBackgroundClip = 'text';
-    lbl.style.webkitTextFillColor  = 'transparent';
-    lbl.style.backgroundClip       = 'text';
+    // Solid badge: darken month color ~18% for richer background
+    const [mr,mg,mb] = hexRgb(mc).split(',').map(Number);
+    const br=Math.max(0,Math.round(mr*.82)), bg_=Math.max(0,Math.round(mg*.82)), bb=Math.max(0,Math.round(mb*.82));
+    const bgMc = `rgb(${br},${bg_},${bb})`;
+    // WCAG luminance → white or dark text
+    const lum = v=>{ v/=255; return v<=0.03928?v/12.92:Math.pow((v+.055)/1.055,2.4); };
+    const luminance = 0.2126*lum(br)+0.7152*lum(bg_)+0.0722*lum(bb);
+    const txtColor = luminance > 0.35 ? '#1a1a2e' : '#ffffff';
+    lbl.style.background          = bgMc;
+    lbl.style.color               = txtColor;
+    lbl.style.webkitBackgroundClip= '';
+    lbl.style.webkitTextFillColor = '';
+    lbl.style.backgroundClip      = '';
   }
 
   // Nav bar: subtle tint of the month color
