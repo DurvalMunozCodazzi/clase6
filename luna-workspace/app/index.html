@@ -3387,6 +3387,10 @@ function openNewWSModal(){
 function openMetrics(){
   const panel=document.getElementById('metrics-panel');
   if(!panel) return;
+  // Move to <body> so z-index:300 competes in the root stacking context,
+  // not inside #inner-app (position:fixed creates its own stacking context
+  // which sits below #topbar z-index:100, trapping the panel behind it).
+  if(panel.parentNode !== document.body) document.body.appendChild(panel);
   // Populate workspace selector
   const sel=document.getElementById('metrics-ws-sel');
   if(sel){
@@ -3399,6 +3403,7 @@ function openMetrics(){
 function closeMetrics(){
   document.getElementById('metrics-panel')?.classList.remove('on');
 }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeMetrics(); });
 
 async function loadMetrics(){
   const sel=document.getElementById('metrics-ws-sel');
