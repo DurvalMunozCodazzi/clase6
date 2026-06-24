@@ -7,7 +7,6 @@ class Luna_Admin {
         add_action('admin_menu',            [$this, 'register_menu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts']);
         add_action('admin_notices',         [$this, 'show_notices']);
-        add_action('admin_notices',         [$this, 'show_db_diagnostic']);
         add_action('admin_init',            [$this, 'maybe_migrate']);
         add_action('wp_ajax_luna_test_notification',  [$this, 'ajax_test_notification']);
         add_action('wp_ajax_luna_save_user_contact',  [$this, 'ajax_save_user_contact']);
@@ -509,16 +508,6 @@ class Luna_Admin {
     public function render_notifications_page() {
         global $wpdb;
 
-        // Read config file to know exactly what DB and prefix the app uses
-        $cfg_file  = plugin_dir_path(__FILE__) . '../app/luna-wp-config.php';
-        $cfg_raw   = file_exists($cfg_file) ? file_get_contents($cfg_file) : '';
-        $cfg_defs  = [];
-        preg_match_all("/define\('([^']+)',\s*'([^']*)'\)/", $cfg_raw, $cm, PREG_SET_ORDER);
-        foreach ($cm as $row) $cfg_defs[$row[1]] = $row[2];
-        $cfg_db_name = $cfg_defs['DB_NAME']        ?? '(no encontrado)';
-        $cfg_prefix  = $cfg_defs['LUNA_TB_PREFIX'] ?? '(no encontrado)';
-        $cfg_exists  = file_exists($cfg_file) ? 'Sí' : 'NO (falta el archivo)';
-
         // Try app DB first (may differ from WP DB)
         $appDb  = $this->get_app_db();
         $appPfx = $this->get_app_prefix();
@@ -599,18 +588,6 @@ class Luna_Admin {
         ?>
         <div class="wrap luna-wrap">
           <h1>🔔 Luna Workspace — Notificaciones</h1>
-
-          <div class="luna-card" style="margin-bottom:16px;background:#f8fafc;border:1px solid #cbd5e1">
-            <h3 style="margin-top:0;font-size:13px;color:#475569">🔍 Diagnóstico de conexión</h3>
-            <table style="font-size:12px;border-collapse:collapse;width:100%">
-              <tr><td style="padding:3px 8px;color:#64748b;width:200px">Archivo config:</td><td><code><?php echo $cfg_exists ?></code></td></tr>
-              <tr><td style="padding:3px 8px;color:#64748b">DB del app (config):</td><td><code><?php echo esc_html($cfg_db_name) ?></code></td></tr>
-              <tr><td style="padding:3px 8px;color:#64748b">Prefix del app (config):</td><td><code><?php echo esc_html($cfg_prefix) ?></code></td></tr>
-              <tr><td style="padding:3px 8px;color:#64748b">DB WordPress:</td><td><code><?php echo esc_html($wpdb->dbname) ?></code></td></tr>
-              <tr><td style="padding:3px 8px;color:#64748b">Fuente usada:</td><td><?php echo $db_source ?></td></tr>
-              <tr><td style="padding:3px 8px;color:#64748b">Usuarios encontrados:</td><td><strong><?php echo count($users) ?></strong></td></tr>
-            </table>
-          </div>
 
           <div class="luna-card" style="margin-bottom:20px">
             <h2 style="margin-top:0">Cómo funciona cada canal</h2>
