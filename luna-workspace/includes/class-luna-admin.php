@@ -454,12 +454,32 @@ class Luna_Admin {
 
     // ── Notifications page ────────────────────────────────────────────────────
     public function render_notifications_page() {
-        // Always use the WordPress DB directly — Luna tables are wp_luna_* in the same DB.
-        // Never use get_app_db() here: that file may contain credentials from a different site
-        // if the ZIP was built on another install (causing wrong-site users to appear).
-        global $wpdb;
-        $p     = $wpdb->prefix . 'luna_';
-        $users = $wpdb->get_results(
+        // Primary: use the app's own DB config (luna-wp-config.php) so we find users
+        // even when the app uses a different DB or table prefix than WordPress.
+        // The ZIP no longer bundles luna-wp-config.php and it auto-regenerates on load,
+        // so get_app_db() always reflects the current site's actual app database.
+        $appDb  = $this->get_app_db();
+        $appPfx = $this->get_app_prefix();
+        $users  = [];
+        if ($appDb && $appPfx) {
+            try {
+                $st = $appDb->query(
+                    "SELECT id, name, email,
+                            COALESCE(phone,'') AS phone,
+                            COALESCE(whatsapp_apikey,'') AS whatsapp_apikey,
+                            telegram_chat_id,
+                            COALESCE(notification_channel,'email') AS notification_channel,
+                            active
+                     FROM `{$appPfx}users` ORDER BY name ASC"
+                );
+                $users = $st->fetchAll();
+            } catch (Exception $e) { $users = []; }
+        }
+        // Fallback: WordPress DB with wp_luna_ prefix (single-DB installs)
+        if (empty($users)) {
+            global $wpdb;
+            $p = $wpdb->prefix . 'luna_';
+            $users = $wpdb->get_results(
                 "SELECT id, name, email,
                         COALESCE(phone,'') AS phone,
                         COALESCE(whatsapp_apikey,'') AS whatsapp_apikey,
@@ -469,6 +489,7 @@ class Luna_Admin {
                  FROM `{$p}users` ORDER BY name ASC",
                 ARRAY_A
             ) ?: [];
+        }
 
         $channel_labels = [
             'email'     => '📧 Email',
@@ -811,7 +832,21 @@ class Luna_Admin {
         $valid_channels = ['email', 'whatsapp', 'telegram', 'all', 'none'];
         if (!in_array($channel, $valid_channels, true)) $channel = 'email';
 
-        // Always use WordPress DB — same reason as render_notifications_page()
+        // Primary: app DB (may differ from WP DB — same logic as render_notifications_page)
+        $appDb  = $this->get_app_db();
+        $appPfx = $this->get_app_prefix();
+        if ($appDb && $appPfx) {
+            try {
+                $st = $appDb->prepare(
+                    "UPDATE `{$appPfx}users` SET phone=?, whatsapp_apikey=?, notification_channel=? WHERE id=?"
+                );
+                $st->execute([$phone, $wakey, $channel, $uid]);
+                wp_send_json_success();
+            } catch (Exception $e) {
+                wp_send_json_error('Error al guardar: ' . $e->getMessage());
+            }
+        }
+        // Fallback: WordPress DB
         global $wpdb;
         $p      = $wpdb->prefix . 'luna_';
         $result = $wpdb->update(
