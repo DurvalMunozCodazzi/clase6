@@ -20,6 +20,8 @@ define('LUNA_APP_URL',     LUNA_PLUGIN_URL . 'app/');
 require_once LUNA_PLUGIN_DIR . 'includes/class-luna-activator.php';
 require_once LUNA_PLUGIN_DIR . 'includes/class-luna-admin.php';
 require_once LUNA_PLUGIN_DIR . 'includes/class-luna-license.php';
+require_once LUNA_PLUGIN_DIR . 'includes/class-luna-register.php';
+add_action('init', ['Luna_Register', 'init']);
 
 register_activation_hook(__FILE__,   ['Luna_Activator', 'activate']);
 register_deactivation_hook(__FILE__, ['Luna_Activator', 'deactivate']);
