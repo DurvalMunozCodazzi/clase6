@@ -106,7 +106,7 @@ function showGraceBanner(days){
 :root{--bg:#f0f2f8;--surf:#ffffff;--elev:#f8f9fc;--hov:#e8eaf2;--act:#dde0ee;--bdr:#d0d4e8;--bdrl:#b0b8d8;--acc:#5b6af0;--accg:rgba(91,106,240,.18);--acch:#7080f5;--ok:#22d3a0;--wa:#f59e0b;--er:#ef4444;--t1:#1a1a2e;--t2:#4a4a6a;--t3:#8888aa;--sw:54px;--kw:320px;--th:48px;--r:8px;--rl:12px;--rxl:16px;--sh:0 2px 10px rgba(0,0,0,.12);--shl:0 4px 20px rgba(0,0,0,.18);--f:'Syne',sans-serif;--fm:'JetBrains Mono',monospace}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);-webkit-font-smoothing:antialiased;overflow:hidden}
-::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:var(--surf)}::-webkit-scrollbar-thumb{background:var(--bdrl);border-radius:99px}::-webkit-scrollbar-thumb:hover{background:var(--acc)}
+::-webkit-scrollbar{width:7px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:99px}::-webkit-scrollbar-thumb:hover{background:var(--acc)}
 
 /* LOGIN */
 #login-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#f0f2f8;z-index:9999}
@@ -244,7 +244,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 #acol:hover{border-color:var(--acc);color:var(--acc)}
 .mo{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(5px);z-index:1000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
 .mo.on{opacity:1;pointer-events:all}
-.md{background:var(--elev);border:1px solid var(--bdrl);border-radius:var(--rxl);padding:24px;width:520px;max-width:93vw;max-height:86vh;overflow-y:auto;box-shadow:var(--shl);transform:translateY(14px) scale(.97);transition:transform .2s}
+.md{background:var(--elev);border:1px solid var(--bdrl);border-radius:var(--rxl);padding:24px;width:520px;max-width:93vw;max-height:86vh;overflow-y:auto;overflow-x:hidden;box-shadow:var(--shl);transform:translateY(14px) scale(.97);transition:transform .2s}
 .mo.on .md{transform:translateY(0) scale(1)}
 .md.sm{width:380px}.md.lg{width:680px}
 .mh{display:flex;align-items:center;gap:10px;margin-bottom:18px}
@@ -1849,9 +1849,10 @@ function renderKanban(){
   const board=document.getElementById('kboard'),add=document.getElementById('acol');
   board.querySelectorAll('.kcol').forEach(c=>c.remove());
   const ro=isVisitor();
+  const filteredCards = filterCards([...CARDS]);
   COLS.sort((a,b)=>a.position-b.position).forEach(col=>{
     const el=document.createElement('div');el.className='kcol';el.dataset.colId=col.id;
-    const colCards=CARDS.filter(c=>c.column_id==col.id).sort((a,b)=>a.position-b.position);
+    const colCards=filteredCards.filter(c=>c.column_id==col.id).sort((a,b)=>a.position-b.position);
     el.innerHTML=`<div class="kch"><div class="cdot" style="background:${col.color}"></div><div class="ctit" onclick="${ro?'':`renCol(this,${col.id})`}">${esc(col.title)}</div><span class="cnt">${colCards.length}</span>${!ro?`<button class="cmb" onclick="showCM(event,${col.id})"><i class="fas fa-ellipsis-v"></i></button>`:''}</div><div class="kcards" id="kc-${col.id}" data-col-id="${col.id}"></div>${!ro?`<div class="qa-wrap"><button class="acb" id="qa-btn-${col.id}" onclick="showQA(${col.id},'qa')"><i class="fas fa-plus"></i> Agregar tarea</button><div class="qa-form" id="qa-form-${col.id}" style="display:none"><input class="qa-inp" id="qa-inp-${col.id}" placeholder="Título de la tarea..." onkeydown="qaKey(event,${col.id},'qa')"><div class="qa-btns"><button class="qa-ok" onclick="quickAddCard(${col.id},'qa')"><i class="fas fa-check"></i> Agregar</button><button class="qa-cancel" onclick="hideQA(${col.id},'qa')"><i class="fas fa-times"></i></button></div></div></div>`:''}`;
     board.insertBefore(el,add);
     const kce=document.getElementById('kc-'+col.id);
@@ -1945,9 +1946,10 @@ async function quickMoveCard(cardId,newColId){
 function renderFK(){
   const fv=document.getElementById('kfull');fv.innerHTML='';
   const ro=isVisitor();
+  const filteredCards = filterCards([...CARDS]);
   COLS.sort((a,b)=>a.position-b.position).forEach(col=>{
     const el=document.createElement('div');el.className='kcol';el.dataset.colId=col.id;
-    const colCards=CARDS.filter(c=>c.column_id==col.id).sort((a,b)=>a.position-b.position);
+    const colCards=filteredCards.filter(c=>c.column_id==col.id).sort((a,b)=>a.position-b.position);
     el.innerHTML=`<div class="kch"><div class="cdot" style="background:${col.color}"></div><div class="ctit">${esc(col.title)}</div><span class="cnt">${colCards.length}</span>${!ro?`<button class="cmb" onclick="showCM(event,${col.id})"><i class="fas fa-ellipsis-v"></i></button>`:''}</div><div class="kcards" id="fkc-${col.id}" data-col-id="${col.id}"></div>${!ro?`<div class="qa-wrap"><button class="acb" id="fqa-btn-${col.id}" onclick="showQA(${col.id},'fqa')"><i class="fas fa-plus"></i> Agregar</button><div class="qa-form" id="fqa-form-${col.id}" style="display:none"><input class="qa-inp" id="fqa-inp-${col.id}" placeholder="Título..." onkeydown="qaKey(event,${col.id},'fqa')"><div class="qa-btns"><button class="qa-ok" onclick="quickAddCard(${col.id},'fqa')"><i class="fas fa-check"></i></button><button class="qa-cancel" onclick="hideQA(${col.id},'fqa')"><i class="fas fa-times"></i></button></div></div></div>`:''}`;
     fv.appendChild(el);
     const kce=document.getElementById('fkc-'+col.id);
