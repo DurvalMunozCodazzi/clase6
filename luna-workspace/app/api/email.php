@@ -358,6 +358,12 @@ function sendTelegram($chatId, $text) {
  * $plainText: text for WhatsApp/Telegram
  */
 function sendNotificationToUser($user, $subject, $htmlBody, $plainText) {
+    // Free plan: notifications disabled
+    try { $lic = getLicenseInfo(); } catch (\Exception $e) { $lic = ['plan' => 'free']; }
+    if (($lic['plan'] ?? '') === 'free' || ($lic['notifications'] ?? true) === false) {
+        return ['ok' => true, 'skipped' => true, 'reason' => 'free_plan'];
+    }
+
     $channel = $user['notification_channel'] ?? 'email';
     $results = [];
 

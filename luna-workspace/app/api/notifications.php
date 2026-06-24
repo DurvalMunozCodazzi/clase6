@@ -47,6 +47,10 @@ if ($method === 'GET' && $action === 'count') {
 
 // ── POST send WhatsApp via CallMeBot ─────────
 if ($method === 'POST' && $action === 'send_whatsapp') {
+    try { $lic = getLicenseInfo(); } catch (\Exception $e) { $lic = ['plan' => 'free']; }
+    if (($lic['plan'] ?? '') === 'free' || ($lic['notifications'] ?? true) === false) {
+        jsonErr('Las notificaciones no están disponibles en el plan Gratis. Actualizá tu licencia.', 403);
+    }
     $b       = json_decode(file_get_contents('php://input'), true);
     $userIds = array_map('intval', (array)($b['user_ids'] ?? []));
     $message = trim($b['message'] ?? '');

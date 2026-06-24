@@ -43,6 +43,16 @@ if ($method === 'POST' && $action === 'create') {
     if (!$name)     jsonErr('El nombre completo es requerido');
     if (!$pass)     jsonErr('La contrasena es requerida');
 
+    // Plan user limit check
+    try { $lic = getLicenseInfo(); } catch (\Exception $e) { $lic = ['plan' => 'free', 'max_users' => 1]; }
+    $maxUsers = isset($lic['max_users']) ? (int)$lic['max_users'] : 999;
+    if ($maxUsers > 0 && $maxUsers < 999) {
+        $totalUsers = (int)$db->query("SELECT COUNT(*) FROM ".tb('users'))->fetchColumn();
+        if ($totalUsers >= $maxUsers) {
+            jsonErr('Límite de usuarios alcanzado para tu plan (' . $maxUsers . '). Actualizá tu licencia en el panel de WordPress.', 403);
+        }
+    }
+
     // Check duplicate username
     $chk = $db->prepare("SELECT id FROM ".tb('users')." WHERE username=?");
     $chk->execute([$username]);

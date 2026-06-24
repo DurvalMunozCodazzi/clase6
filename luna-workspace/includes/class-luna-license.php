@@ -10,9 +10,10 @@ class Luna_License {
     const HMAC_SECRET = 'ef1b13da2d745cd296dc66b90f950f440089b77080f3e3611f2000fdb162240d';
 
     const PLANS = [
-        'starter'      => ['label' => 'Starter',      'max_workspaces' => 1,   'max_sites' => 1],
-        'professional' => ['label' => 'Professional',  'max_workspaces' => 3,   'max_sites' => 3],
-        'unlimited'    => ['label' => 'Unlimited',     'max_workspaces' => 999, 'max_sites' => 999],
+        'free'         => ['label' => 'Gratis',        'max_workspaces' => 1,   'max_sites' => 1],
+        'starter'      => ['label' => 'Básico',        'max_workspaces' => 1,   'max_sites' => 1],
+        'professional' => ['label' => 'Profesional',   'max_workspaces' => 3,   'max_sites' => 3],
+        'unlimited'    => ['label' => 'Corporativo',   'max_workspaces' => 999, 'max_sites' => 999],
     ];
 
     public static function verify(string $key, string $domain): array {

@@ -366,15 +366,16 @@ class Luna_Admin {
             <div class="luna-card">
               <h2>Planes</h2>
               <table class="widefat striped">
-                <thead><tr><th>Plan</th><th>Workspaces</th><th>Sitios</th></tr></thead>
+                <thead><tr><th>Plan</th><th>Precio/mes</th><th>Usuarios</th><th>Pizarras</th><th>Notificaciones</th></tr></thead>
                 <tbody>
-                  <tr><td><strong>Starter</strong></td><td>1</td><td>1</td></tr>
-                  <tr><td><strong>Professional</strong></td><td>3</td><td>3</td></tr>
-                  <tr><td><strong>Unlimited</strong></td><td>Ilimitado</td><td>Ilimitado</td></tr>
+                  <tr><td><strong>Gratis</strong></td><td>$0</td><td>1</td><td>1</td><td>No</td></tr>
+                  <tr><td><strong>Básico</strong></td><td>$19</td><td>Hasta 5</td><td>Ilimitadas</td><td>Sí</td></tr>
+                  <tr><td><strong>Profesional</strong></td><td>$39</td><td>Hasta 20</td><td>Ilimitadas</td><td>Sí</td></tr>
+                  <tr><td><strong>Corporativo</strong></td><td>$89</td><td>Ilimitados</td><td>Ilimitadas</td><td>Sí</td></tr>
                 </tbody>
               </table>
               <p style="margin-top:12px;color:#666;font-size:12px">
-                Licencias anuales, vinculadas al dominio para prevenir uso no autorizado.<br>
+                Licencias mensuales, vinculadas al dominio para prevenir uso no autorizado.<br>
                 Comprar o renovar: <a href="https://websobreruedas.com" target="_blank">websobreruedas.com</a>
               </p>
             </div>
