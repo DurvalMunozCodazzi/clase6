@@ -1422,7 +1422,16 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 
     <!-- ACCENT COLOR -->
     <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Color de acento</div>
-    <div id="accent-presets" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px"></div>
+    <div id="accent-presets" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
+      <input type="color" id="accent-custom-pick" value="#5b6af0"
+             style="width:32px;height:32px;border-radius:50%;border:2px solid var(--bdr);background:none;cursor:pointer;padding:0;flex-shrink:0"
+             oninput="setAccent(this.value)" title="Color libre">
+      <input type="text" id="accent-custom-hex" placeholder="#5b6af0" maxlength="7"
+             style="flex:1;padding:5px 9px;border-radius:var(--r);border:1px solid var(--bdr);background:var(--bg);color:var(--t1);font-size:12px;font-family:var(--fm);outline:none;caret-color:var(--acc)"
+             oninput="onAccentHex(this.value)" onblur="onAccentHex(this.value)">
+      <div id="accent-custom-prev" style="width:32px;height:32px;border-radius:50%;background:var(--acc);border:2px solid var(--bdr);flex-shrink:0"></div>
+    </div>
 
     <!-- CUSTOM BACKGROUND -->
     <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Fondo personalizado</div>
@@ -5300,6 +5309,10 @@ function syncThemeUI(){
   const ov=document.getElementById('grid-oval');if(ov)ov.textContent=THEME.gridOpacity+'%';
   // top-solid preview
   const tsp=document.getElementById('top-solid-preview');if(tsp)tsp.style.background=THEME.accent;
+  // accent custom controls
+  const acp=document.getElementById('accent-custom-pick');if(acp)acp.value=THEME.accent;
+  const ahx=document.getElementById('accent-custom-hex');if(ahx)ahx.value=THEME.accent;
+  const apr=document.getElementById('accent-custom-prev');if(apr)apr.style.background=THEME.accent;
   // modal colors
   renderModalColorPresets();
 }
@@ -5456,9 +5469,16 @@ function setColorTheme(theme){
   notify((names[theme]||theme)+' activado','ok');
 }
 function setAccent(color){
+  if(!/^#[0-9a-fA-F]{3,6}$/.test(color)) return;
   THEME.accent=color; applyTheme(); saveTheme();
   renderAccentPresets();
   syncThemeUI();
+}
+function onAccentHex(val){
+  val=val.trim();
+  if(!/^#[0-9a-fA-F]{6}$/.test(val)) return;
+  const cp=document.getElementById('accent-custom-pick');if(cp)cp.value=val;
+  setAccent(val);
 }
 
 function setBg(type){

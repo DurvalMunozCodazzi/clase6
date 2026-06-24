@@ -98,7 +98,7 @@ class Luna_Activator {
             "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}luna_user_meta (
                 user_id INT NOT NULL,
                 meta_key VARCHAR(100) NOT NULL,
-                meta_value TEXT DEFAULT '',
+                meta_value MEDIUMTEXT DEFAULT NULL,
                 PRIMARY KEY (user_id, meta_key),
                 FOREIGN KEY (user_id) REFERENCES {$wpdb->prefix}luna_users(id) ON DELETE CASCADE
             ) $c",
@@ -285,6 +285,11 @@ class Luna_Activator {
         self::add_column_if_missing($wpdb, "{$p}luna_cards", 'start_date', "DATE DEFAULT NULL");
         self::add_column_if_missing($wpdb, "{$p}luna_cards", 'progress',   "INT DEFAULT 0");
         self::add_column_if_missing($wpdb, "{$p}luna_cards", 'estimated',  "INT DEFAULT NULL");
+        // user_meta: upgrade meta_value from TEXT to MEDIUMTEXT to support bg images (up to 16MB)
+        $col_type = $wpdb->get_var("SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='{$p}luna_user_meta' AND COLUMN_NAME='meta_value'");
+        if ($col_type && strtolower($col_type) === 'text') {
+            $wpdb->query("ALTER TABLE `{$p}luna_user_meta` MODIFY COLUMN `meta_value` MEDIUMTEXT DEFAULT NULL");
+        }
         // Workspaces columns
         self::add_column_if_missing($wpdb, "{$p}luna_workspaces", 'color',       "VARCHAR(10) DEFAULT ''");
         self::add_column_if_missing($wpdb, "{$p}luna_workspaces", 'icon',        "VARCHAR(10) DEFAULT ''");
