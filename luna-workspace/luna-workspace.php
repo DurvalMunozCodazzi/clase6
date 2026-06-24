@@ -28,6 +28,15 @@ register_deactivation_hook(__FILE__, ['Luna_Activator', 'deactivate']);
 
 add_action('plugins_loaded', 'luna_init');
 function luna_init() {
+    // Always regenerate app/luna-wp-config.php if missing.
+    // When WordPress replaces the plugin folder during an update it deletes this
+    // file. Without it the app cannot connect to the database and all data
+    // appears gone (it is NOT gone — it is still in MySQL). This guard ensures
+    // the file is recreated on the very next page load after any update.
+    if (!file_exists(LUNA_APP_DIR . 'luna-wp-config.php')) {
+        Luna_Activator::regenerate_app_config();
+    }
+
     if (is_admin()) {
         new Luna_Admin();
     }
