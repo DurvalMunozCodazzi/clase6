@@ -267,10 +267,14 @@ class Luna_Activator {
         self::add_column_if_missing($wpdb, "{$p}luna_workspaces", 'image',      "MEDIUMTEXT DEFAULT NULL");
         self::add_column_if_missing($wpdb, "{$p}luna_workspaces", 'created_by', "INT DEFAULT 0");
 
-        // Fix luna_app_settings: if meta_key column doesn't exist the table has old schema — recreate it
+        // Fix luna_app_settings: if meta_key column doesn't exist the table has old schema.
+        // NEVER drop it — rename to backup so existing data is preserved, then create fresh table.
         $has_meta_key = $wpdb->get_results("SHOW COLUMNS FROM `{$p}luna_app_settings` LIKE 'meta_key'");
         if (empty($has_meta_key)) {
-            $wpdb->query("DROP TABLE IF EXISTS `{$p}luna_app_settings`");
+            $bak = $p . 'luna_app_settings_bak_' . date('Ymd');
+            // Drop any previous same-day backup to avoid rename collision
+            $wpdb->query("DROP TABLE IF EXISTS `{$bak}`");
+            $wpdb->query("RENAME TABLE `{$p}luna_app_settings` TO `{$bak}`");
             $wpdb->query("CREATE TABLE `{$p}luna_app_settings` (meta_key VARCHAR(100) PRIMARY KEY, meta_value TEXT DEFAULT '') $c");
         }
 
