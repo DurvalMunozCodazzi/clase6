@@ -46,8 +46,9 @@ class Luna_Register {
             domain     VARCHAR(255) NOT NULL,
             otp        CHAR(6)      NOT NULL,
             attempts   TINYINT      DEFAULT 0,
+            verified   TINYINT      DEFAULT 0,
             created_at DATETIME     DEFAULT CURRENT_TIMESTAMP,
-            INDEX(token), INDEX(email)
+            INDEX(token), INDEX(email), INDEX(domain)
         ) $c;");
         dbDelta("CREATE TABLE IF NOT EXISTS {$wpdb->prefix}luna_free_licenses (
             id          BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -106,6 +107,11 @@ class Luna_Register {
         $exists = $wpdb->get_var($wpdb->prepare(
             "SELECT id FROM {$wpdb->prefix}luna_free_licenses WHERE domain=%s AND status='active'", $domain
         ));
+        if (!$exists) {
+            $exists = $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM {$wpdb->prefix}luna_free_pending WHERE domain=%s AND verified=1", $domain
+            ));
+        }
         self::json_out(['available' => !$exists, 'domain' => $domain]);
     }
 
@@ -128,16 +134,24 @@ class Luna_Register {
 
         $taken_domain = $wpdb->get_var($wpdb->prepare(
             "SELECT id FROM {$wpdb->prefix}luna_free_licenses WHERE domain=%s AND status='active'", $domain));
+        if (!$taken_domain) {
+            $taken_domain = $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM {$wpdb->prefix}luna_free_pending WHERE domain=%s AND verified=1", $domain));
+        }
         if ($taken_domain)
-            self::json_out(['ok'=>false,'field'=>'domain','msg'=>'Ese dominio ya tiene una licencia activa. Revisá tu email.']);
+            self::json_out(['ok'=>false,'field'=>'domain','msg'=>'Ese dominio ya tiene un registro pendiente o una licencia activa. Revisá tu email.']);
 
         $taken_email = $wpdb->get_var($wpdb->prepare(
             "SELECT id FROM {$wpdb->prefix}luna_free_licenses WHERE email=%s AND status='active'", $email));
+        if (!$taken_email) {
+            $taken_email = $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM {$wpdb->prefix}luna_free_pending WHERE email=%s AND verified=1", $email));
+        }
         if ($taken_email)
-            self::json_out(['ok'=>false,'field'=>'email','msg'=>'Ese email ya tiene una licencia activa. Revisá tu bandeja.']);
+            self::json_out(['ok'=>false,'field'=>'email','msg'=>'Ese email ya tiene un registro pendiente. Revisá tu bandeja o escribinos.']);
 
         $wpdb->query($wpdb->prepare(
-            "DELETE FROM {$wpdb->prefix}luna_free_pending WHERE email=%s OR created_at < DATE_SUB(NOW(), INTERVAL 20 MINUTE)", $email));
+            "DELETE FROM {$wpdb->prefix}luna_free_pending WHERE (email=%s AND verified=0) OR (created_at < DATE_SUB(NOW(), INTERVAL 20 MINUTE) AND verified=0)", $email));
 
         $otp   = self::gen_otp();
         $token = self::gen_token();
@@ -173,17 +187,13 @@ class Luna_Register {
             self::json_out(['ok'=>false,'msg'=>"Código incorrecto. Intentos restantes: $left."]);
         }
 
-        $key = self::gen_key();
-        $wpdb->insert("{$wpdb->prefix}luna_free_licenses",
-            ['license_key'=>$key,'name'=>$p['name'],'email'=>$p['email'],'phone'=>$p['phone'],'domain'=>$p['domain']]);
-        $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}luna_free_pending WHERE token=%s",$token));
+        // Mark as verified — do NOT generate key. Company reviews manually and sends key by email.
+        $wpdb->query($wpdb->prepare(
+            "UPDATE {$wpdb->prefix}luna_free_pending SET verified=1, otp='', attempts=0 WHERE token=%s", $token));
 
-        self::send_key_email($p['email'], $p['name'], $key, $p['domain']);
-        self::notify_vendor($p['name'], $p['email'], $p['phone'], $p['domain'], $key);
-        self::send_whatsapp($p['phone'],
-            "🌙 *Luna Workspace — Plan Gratis*\n\nHola ".explode(' ',$p['name'])[0]."! Tu registro fue confirmado ✅\n\n*Dominio:* {$p['domain']}\n*Tu clave:*\n`$key`\n\nPegala en _Luna Workspace → Licencia_ en WordPress.\n\n¿Dudas? Respondé este mensaje 👋");
+        self::notify_vendor($p['name'], $p['email'], $p['phone'], $p['domain']);
 
-        self::json_out(['ok'=>true,'key'=>$key,'name'=>$p['name'],'domain'=>$p['domain']]);
+        self::json_out(['ok'=>true,'name'=>$p['name'],'domain'=>$p['domain']]);
     }
 
     // ── AJAX: Reenviar OTP ────────────────────────────────────────────────────
@@ -246,10 +256,16 @@ class Luna_Register {
         return (bool) wp_mail($to, $subject, $body, ['Content-Type: text/html; charset=UTF-8', 'From: '.self::MAIL_NAME.' <'.self::MAIL_FROM.'>']);
     }
 
-    private static function notify_vendor(string $name, string $email, string $phone, string $domain, string $key): void {
+    private static function notify_vendor(string $name, string $email, string $phone, string $domain): void {
         if (!self::VENDOR_EMAIL) return;
-        $subject = "🌙 Nuevo registro Plan Gratis — $domain";
-        $body    = "Nuevo usuario registrado:\n\nNombre:  $name\nEmail:   $email\nTeléfono: $phone\nDominio: $domain\nClave:   $key\nFecha:   ".date('d/m/Y H:i')." UTC";
+        $subject = "🌙 Nuevo registro Plan Gratis PENDIENTE — $domain";
+        $body    = "Nuevo registro verificado — pendiente de revisión y envío de clave:\n\n"
+                 . "Nombre:   $name\n"
+                 . "Email:    $email\n"
+                 . "Teléfono: $phone\n"
+                 . "Dominio:  $domain\n"
+                 . "Fecha:    " . date('d/m/Y H:i') . " UTC\n\n"
+                 . "El email fue verificado por OTP. Revisá los datos y enviá la clave manualmente.";
         wp_mail(self::VENDOR_EMAIL, $subject, $body, ['From: '.self::MAIL_NAME.' <'.self::MAIL_FROM.'>']);
     }
 
@@ -666,7 +682,7 @@ HTML;
   <div style="text-align:center;margin-bottom:40px;position:relative;z-index:1">
     <div class="lr-sec-badge">Registro gratuito</div>
     <h2 style="font-size:clamp(22px,3.5vw,34px);font-weight:900;letter-spacing:-.6px;margin-bottom:10px">Conseguí tu clave <em style="font-style:normal;background:linear-gradient(135deg,#a5b4fc,#67e8f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">en 2 minutos</em></h2>
-    <p style="font-size:14px;color:var(--t2)">Sin tarjeta de crédito. La clave llega a tu email y por WhatsApp.</p>
+    <p style="font-size:14px;color:var(--t2)">Sin tarjeta de crédito. Registrate y te enviamos tu clave por email.</p>
   </div>
 
   <div class="lr-form-card">
@@ -740,7 +756,7 @@ HTML;
         </div>
 
         <button class="lr-btn lr-btn-primary" id="lr-b2" style="margin-top:18px" onclick="lrVerifyOtp()" disabled>
-          <span class="lr-btn-txt">Verificar y obtener mi clave ✓</span>
+          <span class="lr-btn-txt">Verificar y enviar solicitud →</span>
           <div class="lr-spin"></div>
         </button>
         <button class="lr-btn lr-btn-ghost" onclick="lrBack()">← Cambiar datos</button>
@@ -754,25 +770,22 @@ HTML;
       <!-- PASO 3 -->
       <div id="lr-s3" style="display:none">
         <div class="lr-success">
-          <div class="lr-success-icon">🎉</div>
-          <div class="lr-success-title">¡Tu clave está lista!</div>
-          <p class="lr-success-sub">Te la enviamos por email<span id="lr-wa-sent"></span>. También la podés copiar ahora:</p>
-          <div class="lr-key-box" onclick="lrCopyKey()">
-            <div class="lr-key-lbl">Clave de licencia — Plan Gratis</div>
-            <div class="lr-key-val" id="lr-key"></div>
-            <span class="lr-copy-badge" id="lr-cb">Copiar</span>
+          <div class="lr-success-icon">📬</div>
+          <div class="lr-success-title" style="color:var(--cya)">¡Registro recibido!</div>
+          <p class="lr-success-sub">Tu email fue verificado. Vamos a revisar tus datos y te enviamos la clave de licencia a <strong id="lr-s3-email" style="color:var(--t1)"></strong> a la brevedad.</p>
+          <div style="background:var(--elev);border:1px solid var(--bdr);border-radius:10px;padding:18px;text-align:left;margin-bottom:16px">
+            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:10px">Datos registrados</div>
+            <div style="font-size:13px;color:var(--t2);line-height:1.9">
+              🌐 Dominio: <strong id="lr-s3-domain" style="color:var(--t1)"></strong><br>
+              📧 Email: <strong id="lr-s3-email2" style="color:var(--t1)"></strong>
+            </div>
           </div>
-          <a class="lr-wa-btn" href="<?= esc_url($wa) ?>" target="_blank" id="lr-wa-link">
-            📲 Escribinos si necesitás ayuda
+          <div style="background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.25);border-radius:10px;padding:14px 16px;font-size:12px;color:#67e8f9;line-height:1.7;margin-bottom:16px">
+            ⏱ El proceso de validación puede tomar hasta 24 hs hábiles. Revisá también tu carpeta de spam.
+          </div>
+          <a class="lr-wa-btn" href="<?= esc_url($wa) ?>" target="_blank">
+            📲 Escribinos si tenés preguntas
           </a>
-          <div class="lr-steps-mini">
-            <div class="lr-steps-mini-title">Próximos pasos</div>
-            <ol>
-              <li><span class="lr-num">1</span><span>Descargá <strong>luna-workspace.zip</strong> desde tu email</span></li>
-              <li><span class="lr-num">2</span><span>Instalalo en WordPress → Plugins → Añadir nuevo</span></li>
-              <li><span class="lr-num">3</span><span>Andá a <strong>Luna Workspace → Licencia</strong> y pegá la clave</span></li>
-            </ol>
-          </div>
         </div>
       </div>
 
@@ -890,10 +903,15 @@ window.lrVerifyOtp = async function(){
       otpInputs[0].focus();
       return;
     }
-    document.getElementById('lr-key').textContent = d.key;
+    // Populate confirmation data
+    const emailVal = document.getElementById('li-email').value;
+    ['lr-s3-email','lr-s3-email2'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.textContent = emailVal;
+    });
+    const domEl = document.getElementById('lr-s3-domain');
+    if(domEl) domEl.textContent = d.domain || document.getElementById('li-domain').value;
     clearInterval(resendTmr);
     goStep(3);
-    lrConfetti();
   } catch(e){ showGErr('lr-e2','Error de conexión.'); }
   finally{ setLoad('lr-b2',false); }
 };
@@ -934,16 +952,6 @@ window.lrBack = function(){
   otpInputs.forEach(x=>x.value='');
   hideGErr('lr-e2');
   goStep(1);
-};
-
-// ── Copiar clave ──
-window.lrCopyKey = function(){
-  const key = document.getElementById('lr-key').textContent;
-  navigator.clipboard.writeText(key).then(()=>{
-    const cb = document.getElementById('lr-cb');
-    cb.textContent = '✓ Copiado'; cb.classList.add('lr-copied');
-    setTimeout(()=>{ cb.textContent='Copiar'; cb.classList.remove('lr-copied'); },2500);
-  });
 };
 
 // ── Navegación entre pasos ──
