@@ -1009,7 +1009,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
         <div class="fg">
           <label class="fl" style="display:flex;align-items:center;justify-content:space-between">
             <span>Etiquetas</span>
-            <span style="font-size:10px;color:var(--t3);font-weight:400">Administrar en <i class="fas fa-tags"></i></span>
+            <button onclick="closeMo('cardMo');toggleLabelsPanel()" type="button" style="background:none;border:none;font-size:10px;color:var(--acc);font-weight:600;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px"><i class="fas fa-tags"></i> Administrar</button>
           </label>
           <div id="cm-global-labels" style="display:flex;flex-wrap:wrap;gap:6px;min-height:32px;padding:4px 0"></div>
         </div>
@@ -5248,7 +5248,7 @@ async function deleteGlobalLabel(id, name, usageCount){
 function renderCMGlobalLabels(){
   const el = document.getElementById('cm-global-labels'); if(!el) return;
   if(!GLOBAL_LABELS.length){
-    el.innerHTML='<span style="font-size:10px;color:var(--t3);font-style:italic">Sin etiquetas — administrá desde el ícono <i class="fas fa-tags"></i> en el menú superior</span>';
+    el.innerHTML='<button onclick="closeMo(\'cardMo\');toggleLabelsPanel()" type="button" style="background:none;border:1px dashed var(--bdr);border-radius:var(--r);color:var(--t3);font-size:11px;cursor:pointer;padding:7px 12px;width:100%;text-align:left"><i class="fas fa-tags" style="margin-right:6px"></i>Sin etiquetas aún — clic para crear</button>';
     return;
   }
   const ro = isVisitor();
