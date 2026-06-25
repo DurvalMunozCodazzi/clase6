@@ -14,6 +14,11 @@ class Luna_Admin {
         add_action('wp_ajax_luna_db_maintenance',     [$this, 'ajax_db_maintenance']);
         add_action('wp_ajax_luna_save_reminders',     [$this, 'ajax_save_reminders']);
         add_action('wp_ajax_luna_send_reminders_now', [$this, 'ajax_send_reminders_now']);
+        add_action('wp_ajax_luna_backup_create',      [$this, 'ajax_backup_create']);
+        add_action('wp_ajax_luna_backup_list',        [$this, 'ajax_backup_list']);
+        add_action('wp_ajax_luna_backup_delete',      [$this, 'ajax_backup_delete']);
+        add_action('wp_ajax_luna_backup_download',    [$this, 'ajax_backup_download']);
+        add_action('wp_ajax_luna_backup_restore',     [$this, 'ajax_backup_restore']);
     }
 
     public function show_db_diagnostic() {
@@ -126,6 +131,7 @@ class Luna_Admin {
         add_submenu_page('luna-workspace', 'Licencia',      'Licencia',      'manage_options', 'luna-license',         [$this, 'render_license_page']);
         add_submenu_page('luna-workspace', 'Notificaciones','Notificaciones','manage_options', 'luna-notifications',   [$this, 'render_notifications_page']);
         add_submenu_page('luna-workspace', 'Base de datos', 'Base de datos', 'manage_options', 'luna-database',        [$this, 'render_database_page']);
+        add_submenu_page('luna-workspace', 'Backup & Restore', 'Backup & Restore', 'manage_options', 'luna-backup', [$this, 'render_backup_page']);
     }
 
     public function enqueue_scripts($hook) {
@@ -1529,6 +1535,398 @@ class Luna_Admin {
         }
 
         wp_send_json_success(['message' => implode('<br>', $lines), 'detail' => $data]);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  BACKUP & RESTORE
+    // ══════════════════════════════════════════════════════════════════════════
+
+    private function backup_dir() {
+        $dir = plugin_dir_path(__FILE__) . '../app/backups/';
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        // Bloquear acceso web directo
+        $ht = $dir . '.htaccess';
+        if (!file_exists($ht)) {
+            file_put_contents($ht, "Options -Indexes\nDeny from all\n");
+        }
+        return $dir;
+    }
+
+    private function luna_tables() {
+        return [
+            // Settings y templates primero (sin dependencias)
+            'app_settings', 'workspace_templates',
+            // Entidades base
+            'users', 'workspaces', 'workspace_members', 'user_meta',
+            // Kanban
+            'columns_k', 'cards',
+            // Relaciones de tarjetas
+            'card_tags', 'card_assignees', 'card_checklist', 'card_dependencies',
+            // Contenido
+            'attachments', 'chat_messages', 'notifications',
+            // Extras
+            'workspace_labels', 'activity_log',
+        ];
+    }
+
+    // ── Crear backup ──────────────────────────────────────────────────────────
+    public function ajax_backup_create() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Sin permisos');
+
+        global $wpdb;
+        $p = $wpdb->prefix . 'luna_';
+
+        $backup = [
+            'luna_backup'    => true,
+            'schema_version' => '1.0',
+            'plugin_version' => LUNA_VERSION,
+            'created_at'     => current_time('c'),
+            'wp_prefix'      => $wpdb->prefix,
+            'tables'         => [],
+            'counts'         => [],
+        ];
+
+        foreach ($this->luna_tables() as $table) {
+            $full = $p . $table;
+            if (!$wpdb->get_var("SHOW TABLES LIKE '{$full}'")) continue;
+            $rows = $wpdb->get_results("SELECT * FROM `{$full}`", ARRAY_A) ?: [];
+            // Excluir rate limiting de app_settings (efímero, no sirve en un restore)
+            if ($table === 'app_settings') {
+                $rows = array_values(array_filter($rows, fn($r) => strpos($r['meta_key'] ?? '', 'rate_login_') !== 0));
+            }
+            $backup['tables'][$table] = $rows;
+            $backup['counts'][$table] = count($rows);
+        }
+
+        $dir      = $this->backup_dir();
+        $filename = 'luna-backup-' . date('Ymd-His') . '.json';
+        $filepath = $dir . $filename;
+        $json     = json_encode($backup, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+
+        if (file_put_contents($filepath, $json) === false) {
+            wp_send_json_error('No se pudo escribir el archivo. Verificá permisos en: ' . $dir);
+        }
+
+        // Mantener solo los últimos 10 backups
+        $files = glob($dir . 'luna-backup-*.json') ?: [];
+        if (count($files) > 10) {
+            sort($files);
+            foreach (array_slice($files, 0, count($files) - 10) as $old) @unlink($old);
+        }
+
+        wp_send_json_success([
+            'filename' => $filename,
+            'size'     => size_format(strlen($json)),
+            'total'    => array_sum($backup['counts']),
+            'counts'   => $backup['counts'],
+        ]);
+    }
+
+    // ── Listar backups ────────────────────────────────────────────────────────
+    public function ajax_backup_list() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Sin permisos');
+
+        $dir   = $this->backup_dir();
+        $files = glob($dir . 'luna-backup-*.json') ?: [];
+        rsort($files);
+
+        $list = [];
+        foreach ($files as $f) {
+            $name  = basename($f);
+            $mtime = filemtime($f);
+            // Leer solo los primeros 8KB para obtener counts sin cargar todo el archivo
+            $head   = file_get_contents($f, false, null, 0, 8192);
+            $meta   = json_decode($head, true);
+            $counts = $meta['counts'] ?? [];
+            $list[] = [
+                'filename' => $name,
+                'size'     => size_format(filesize($f)),
+                'date'     => date_i18n('d/m/Y H:i:s', $mtime),
+                'total'    => array_sum($counts),
+                'counts'   => $counts,
+            ];
+        }
+
+        wp_send_json_success(['backups' => $list]);
+    }
+
+    // ── Descargar backup ──────────────────────────────────────────────────────
+    public function ajax_backup_download() {
+        if (!check_ajax_referer('luna_admin_nonce', 'nonce', false)) wp_die('Nonce inválido');
+        if (!current_user_can('manage_options')) wp_die('Sin permisos');
+
+        $filename = sanitize_file_name($_GET['filename'] ?? '');
+        if (!preg_match('/^luna-backup-\d{8}-\d{6}\.json$/', $filename)) wp_die('Archivo inválido');
+
+        $filepath = $this->backup_dir() . $filename;
+        if (!file_exists($filepath)) wp_die('Archivo no encontrado');
+
+        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Length: ' . filesize($filepath));
+        header('Cache-Control: no-cache, must-revalidate');
+        readfile($filepath);
+        exit;
+    }
+
+    // ── Eliminar backup ───────────────────────────────────────────────────────
+    public function ajax_backup_delete() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Sin permisos');
+
+        $filename = sanitize_file_name($_POST['filename'] ?? '');
+        if (!preg_match('/^luna-backup-\d{8}-\d{6}\.json$/', $filename)) {
+            wp_send_json_error('Nombre de archivo inválido');
+        }
+
+        $filepath = $this->backup_dir() . $filename;
+        if (!file_exists($filepath)) wp_send_json_error('Archivo no encontrado');
+        if (!unlink($filepath)) wp_send_json_error('No se pudo eliminar el archivo');
+
+        wp_send_json_success(['deleted' => $filename]);
+    }
+
+    // ── Restaurar backup ──────────────────────────────────────────────────────
+    public function ajax_backup_restore() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Sin permisos');
+
+        if (empty($_FILES['backup_file']) || $_FILES['backup_file']['error'] !== UPLOAD_ERR_OK) {
+            wp_send_json_error('No se recibió ningún archivo válido');
+        }
+
+        $json = file_get_contents($_FILES['backup_file']['tmp_name']);
+        $data = json_decode($json, true);
+
+        if (!$data || empty($data['luna_backup']) || !isset($data['tables'])) {
+            wp_send_json_error('Archivo inválido — no es un backup de Luna Workspace');
+        }
+
+        global $wpdb;
+        $p = $wpdb->prefix . 'luna_';
+
+        // Crear backup automático antes de restaurar (seguro)
+        $this->ajax_backup_create_silent();
+
+        $wpdb->query('SET FOREIGN_KEY_CHECKS=0');
+        $restored = [];
+
+        foreach ($this->luna_tables() as $table) {
+            if (!isset($data['tables'][$table])) continue;
+            $full = $p . $table;
+            if (!$wpdb->get_var("SHOW TABLES LIKE '{$full}'")) continue;
+
+            $wpdb->query("TRUNCATE TABLE `{$full}`");
+            $count = 0;
+            foreach ($data['tables'][$table] as $row) {
+                if ($wpdb->insert($full, $row) !== false) $count++;
+            }
+            $restored[$table] = $count;
+        }
+
+        $wpdb->query('SET FOREIGN_KEY_CHECKS=1');
+
+        // Regenerar luna-wp-config.php por si cambió algo
+        Luna_Activator::regenerate_app_config();
+
+        wp_send_json_success([
+            'message'  => 'Restore completado exitosamente',
+            'restored' => $restored,
+            'total'    => array_sum($restored),
+        ]);
+    }
+
+    // Crear backup silencioso (sin respuesta JSON) — usado internamente antes de restore
+    private function ajax_backup_create_silent() {
+        global $wpdb;
+        $p = $wpdb->prefix . 'luna_';
+        $backup = [
+            'luna_backup' => true, 'schema_version' => '1.0',
+            'plugin_version' => LUNA_VERSION, 'created_at' => current_time('c'),
+            'wp_prefix' => $wpdb->prefix, 'tables' => [], 'counts' => [],
+        ];
+        foreach ($this->luna_tables() as $table) {
+            $full = $p . $table;
+            if (!$wpdb->get_var("SHOW TABLES LIKE '{$full}'")) continue;
+            $rows = $wpdb->get_results("SELECT * FROM `{$full}`", ARRAY_A) ?: [];
+            $backup['tables'][$table] = $rows;
+            $backup['counts'][$table] = count($rows);
+        }
+        $dir      = $this->backup_dir();
+        $filename = 'luna-backup-' . date('Ymd-His') . '-pre-restore.json';
+        file_put_contents($dir . $filename, json_encode($backup, JSON_UNESCAPED_UNICODE));
+    }
+
+    // ── Página Backup & Restore ───────────────────────────────────────────────
+    public function render_backup_page() {
+        if (!current_user_can('manage_options')) return;
+        $nonce = wp_create_nonce('luna_admin_nonce');
+        ?>
+        <div class="wrap luna-admin-wrap">
+            <h1 style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+                <span style="font-size:24px">🗄️</span> Backup &amp; Restore
+            </h1>
+            <p style="color:#666;margin-bottom:24px;font-size:13px">
+                Exporta e importa todos los datos de Luna Workspace. Los archivos adjuntos físicos (imágenes, PDFs) no se incluyen en el backup — solo sus metadatos (nombre, URL). Se guardan hasta 10 backups en el servidor.
+            </p>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+
+                <!-- Crear backup -->
+                <div class="luna-card">
+                    <h2 style="margin-top:0;font-size:15px;display:flex;align-items:center;gap:8px">
+                        <span>📦</span> Crear Backup
+                    </h2>
+                    <p style="color:#555;font-size:13px;margin-bottom:16px">
+                        Genera un archivo JSON con todas las tablas de Luna: tareas, usuarios, columnas, etiquetas, configuraciones y más.
+                    </p>
+                    <button id="luna-btn-backup" class="button button-primary" style="font-size:13px;padding:6px 18px">
+                        ⬇️ Descargar backup completo
+                    </button>
+                    <div id="luna-backup-result" style="margin-top:12px;display:none"></div>
+                </div>
+
+                <!-- Restaurar -->
+                <div class="luna-card">
+                    <h2 style="margin-top:0;font-size:15px;display:flex;align-items:center;gap:8px">
+                        <span>♻️</span> Restaurar
+                    </h2>
+                    <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#856404;line-height:1.5">
+                        ⚠️ <strong>Atención:</strong> Restaurar reemplaza TODOS los datos actuales de Luna con los del archivo. Antes de restaurar se crea un backup automático de seguridad.
+                    </div>
+                    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">Seleccioná un archivo .json de backup:</label>
+                    <input type="file" id="luna-restore-file" accept=".json" style="margin-bottom:12px;display:block;font-size:13px">
+                    <button id="luna-btn-restore" class="button" style="font-size:13px;padding:6px 18px;border-color:#dc3545;color:#dc3545" disabled>
+                        ♻️ Restaurar desde archivo
+                    </button>
+                    <div id="luna-restore-result" style="margin-top:12px;display:none"></div>
+                </div>
+
+            </div>
+
+            <!-- Lista de backups -->
+            <div class="luna-card" style="margin-top:24px">
+                <h2 style="margin-top:0;font-size:15px;display:flex;align-items:center;justify-content:space-between">
+                    <span>📋 Backups guardados en el servidor</span>
+                    <button id="luna-btn-refresh-list" class="button" style="font-size:11px">↻ Actualizar</button>
+                </h2>
+                <div id="luna-backup-list"><p style="color:#999;font-size:13px">Cargando...</p></div>
+            </div>
+        </div>
+
+        <script>
+        jQuery(function($){
+            const nonce   = '<?php echo esc_js($nonce); ?>';
+            const ajaxUrl = '<?php echo esc_js(admin_url('admin-ajax.php')); ?>';
+
+            function showMsg(selector, html, type) {
+                const bg = { ok:'#d4edda', err:'#f8d7da', info:'#cce5ff' };
+                $(selector).html('<div style="padding:10px 14px;border-radius:6px;background:' + (bg[type]||bg.info) + ';font-size:13px;line-height:1.6">' + html + '</div>').show();
+            }
+
+            // ── Crear backup ──────────────────────────────────────────────────
+            $('#luna-btn-backup').on('click', function() {
+                const $btn = $(this).prop('disabled', true).text('⏳ Generando...');
+                $.post(ajaxUrl, { action: 'luna_backup_create', nonce }, function(r) {
+                    if (r.success) {
+                        const d = r.data;
+                        const dlUrl = ajaxUrl + '?action=luna_backup_download&nonce=' + nonce + '&filename=' + encodeURIComponent(d.filename);
+                        showMsg('#luna-backup-result',
+                            '✅ <strong>' + d.filename + '</strong> creado (' + d.size + ' — ' + d.total + ' registros)<br>' +
+                            '<a href="' + dlUrl + '" style="color:#0d6efd;font-weight:600">⬇️ Descargar ahora</a>',
+                            'ok');
+                        loadList();
+                    } else {
+                        showMsg('#luna-backup-result', '❌ ' + r.data, 'err');
+                    }
+                }).fail(() => showMsg('#luna-backup-result', '❌ Error de conexión', 'err'))
+                  .always(() => $btn.prop('disabled', false).text('⬇️ Descargar backup completo'));
+            });
+
+            // ── Restaurar ─────────────────────────────────────────────────────
+            $('#luna-restore-file').on('change', function() {
+                $('#luna-btn-restore').prop('disabled', !this.files.length);
+            });
+
+            $('#luna-btn-restore').on('click', function() {
+                if (!confirm('⚠️ Esta acción reemplazará TODOS los datos de Luna con el archivo seleccionado.\n\nAntes de continuar se creará un backup automático de seguridad.\n\n¿Confirmas?')) return;
+                const $btn = $(this).prop('disabled', true).text('⏳ Restaurando...');
+                const fd = new FormData();
+                fd.append('action', 'luna_backup_restore');
+                fd.append('nonce', nonce);
+                fd.append('backup_file', $('#luna-restore-file')[0].files[0]);
+                $.ajax({
+                    url: ajaxUrl, type: 'POST', data: fd,
+                    contentType: false, processData: false,
+                    success(r) {
+                        if (r.success) {
+                            const rows = Object.entries(r.data.restored)
+                                .filter(([,v]) => v > 0)
+                                .map(([k,v]) => k + ': ' + v).join(' · ');
+                            showMsg('#luna-restore-result',
+                                '✅ <strong>' + r.data.message + '</strong> — ' + r.data.total + ' registros restaurados.<br><small style="color:#555">' + rows + '</small>',
+                                'ok');
+                            loadList();
+                        } else {
+                            showMsg('#luna-restore-result', '❌ ' + r.data, 'err');
+                        }
+                    },
+                    error() { showMsg('#luna-restore-result', '❌ Error de conexión', 'err'); },
+                    complete() { $btn.prop('disabled', false).text('♻️ Restaurar desde archivo'); }
+                });
+            });
+
+            // ── Lista de backups ──────────────────────────────────────────────
+            function loadList() {
+                $.post(ajaxUrl, { action: 'luna_backup_list', nonce }, function(r) {
+                    if (!r.success || !r.data.backups.length) {
+                        $('#luna-backup-list').html('<p style="color:#999;font-size:13px">No hay backups guardados aún. Creá el primero con el botón de arriba.</p>');
+                        return;
+                    }
+                    let html = '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+                        + '<thead><tr style="border-bottom:2px solid #eee;text-align:left">'
+                        + '<th style="padding:8px 10px">Fecha</th>'
+                        + '<th style="padding:8px 10px">Archivo</th>'
+                        + '<th style="padding:8px 10px;text-align:right">Tamaño</th>'
+                        + '<th style="padding:8px 10px;text-align:right">Registros</th>'
+                        + '<th style="padding:8px 10px;text-align:right">Acciones</th>'
+                        + '</tr></thead><tbody>';
+                    r.data.backups.forEach(function(b) {
+                        const dlUrl = ajaxUrl + '?action=luna_backup_download&nonce=' + nonce + '&filename=' + encodeURIComponent(b.filename);
+                        const isPre = b.filename.includes('pre-restore');
+                        html += '<tr style="border-bottom:1px solid #f3f3f3' + (isPre ? ';background:#fffbf0' : '') + '">'
+                            + '<td style="padding:8px 10px">' + b.date + (isPre ? ' <span style="font-size:10px;color:#856404;background:#fff3cd;padding:1px 6px;border-radius:4px">pre-restore</span>' : '') + '</td>'
+                            + '<td style="padding:8px 10px;font-family:monospace;font-size:11px;color:#555">' + b.filename + '</td>'
+                            + '<td style="padding:8px 10px;text-align:right">' + b.size + '</td>'
+                            + '<td style="padding:8px 10px;text-align:right">' + b.total + '</td>'
+                            + '<td style="padding:8px 10px;text-align:right;white-space:nowrap">'
+                            + '<a href="' + dlUrl + '" class="button button-small" style="margin-right:6px">⬇️ Descargar</a>'
+                            + '<button class="button button-small luna-del-backup" data-file="' + b.filename + '" style="color:#dc3545;border-color:#dc3545">🗑️</button>'
+                            + '</td></tr>';
+                    });
+                    html += '</tbody></table>';
+                    $('#luna-backup-list').html(html);
+                }).fail(() => $('#luna-backup-list').html('<p style="color:#c00;font-size:13px">Error al cargar la lista de backups.</p>'));
+            }
+
+            $(document).on('click', '.luna-del-backup', function() {
+                const filename = $(this).data('file');
+                if (!confirm('¿Eliminar el backup "' + filename + '"?\nEsta acción no se puede deshacer.')) return;
+                $.post(ajaxUrl, { action: 'luna_backup_delete', nonce, filename }, function(r) {
+                    if (r.success) loadList();
+                    else alert('Error: ' + r.data);
+                });
+            });
+
+            $('#luna-btn-refresh-list').on('click', loadList);
+            loadList();
+        });
+        </script>
+        <?php
     }
 
 }
