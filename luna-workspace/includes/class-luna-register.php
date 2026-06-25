@@ -13,7 +13,7 @@ class Luna_Register {
     const VENDOR_EMAIL = 'pedidos47@gmail.com';
     const MAIL_FROM    = 'no-reply@websobreruedas.com';
     const MAIL_NAME    = 'Luna Workspace';
-    const WA_SOPORTE   = ''; // Completar: ej. 5491112345678
+    const WA_SOPORTE   = '5491153283558';
 
     // UltraMsg (opcional — dejar vacío para deshabilitar)
     const WA_TOKEN    = '';
