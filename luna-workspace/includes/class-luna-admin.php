@@ -12,6 +12,8 @@ class Luna_Admin {
         add_action('wp_ajax_luna_save_user_contact',  [$this, 'ajax_save_user_contact']);
         add_action('wp_ajax_luna_reset_admin_pass',   [$this, 'ajax_reset_admin_pass']);
         add_action('wp_ajax_luna_db_maintenance',     [$this, 'ajax_db_maintenance']);
+        add_action('wp_ajax_luna_save_reminders',     [$this, 'ajax_save_reminders']);
+        add_action('wp_ajax_luna_send_reminders_now', [$this, 'ajax_send_reminders_now']);
     }
 
     public function show_db_diagnostic() {
@@ -358,11 +360,113 @@ class Luna_Admin {
               <p><button type="submit" name="luna_save_smtp" class="button button-primary">Guardar configuración SMTP</button></p>
             </form>
           </div>
+
+          <?php
+          // ── Reminder settings ────────────────────────────────────────────────
+          $appDb  = $this->get_app_db();
+          $appPfx = $this->get_app_prefix();
+          $rem    = [];
+          if ($appDb && $appPfx !== null) {
+              $tbl = $appPfx !== '' ? "{$appPfx}app_settings" : 'app_settings';
+              try {
+                  $row = $appDb->query("SELECT meta_value FROM `{$tbl}` WHERE meta_key='reminder_schedule' LIMIT 1")->fetch();
+                  $rem = $row ? (json_decode($row['meta_value'], true) ?: []) : [];
+              } catch (Exception $e) {}
+          }
+          if (empty($rem)) {
+              $row = $wpdb->get_var("SELECT meta_value FROM `{$smtp_p}app_settings` WHERE meta_key='reminder_schedule'");
+              $rem = $row ? (json_decode($row, true) ?: []) : [];
+          }
+          $rem_enabled = !empty($rem['enabled']);
+          $rem_hour    = (int)($rem['hour'] ?? 8);
+          $last_sent   = '';
+          if ($appDb && $appPfx !== null) {
+              $tbl = $appPfx !== '' ? "{$appPfx}app_settings" : 'app_settings';
+              try {
+                  $r = $appDb->query("SELECT meta_value FROM `{$tbl}` WHERE meta_key='reminders_last_sent' LIMIT 1")->fetch();
+                  $last_sent = $r ? $r['meta_value'] : '';
+              } catch (Exception $e) {}
+          }
+          if (!$last_sent) {
+              $last_sent = $wpdb->get_var("SELECT meta_value FROM `{$smtp_p}app_settings` WHERE meta_key='reminders_last_sent'") ?: '';
+          }
+          ?>
+          <div class="luna-card" style="margin-top:20px" id="luna-reminders-card">
+            <h2 style="margin-top:0">⏰ Recordatorios diarios</h2>
+            <p style="color:#666;font-size:13px;margin-top:-8px">
+              Cada día a la hora configurada Luna envía a cada usuario un resumen personalizado de sus tareas vencidas,
+              de hoy y de esta semana — por email, WhatsApp o Telegram según la preferencia de cada uno.
+            </p>
+
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding:14px 18px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600">
+                <input type="checkbox" id="rem-enabled" <?php checked($rem_enabled) ?>
+                       style="width:18px;height:18px;accent-color:#16a34a;cursor:pointer">
+                Activar recordatorios automáticos
+              </label>
+              <?php if ($rem_enabled): ?>
+                <span style="font-size:12px;color:#16a34a;font-weight:600">✅ Activo</span>
+              <?php else: ?>
+                <span style="font-size:12px;color:#94a3b8">Desactivado</span>
+              <?php endif; ?>
+            </div>
+
+            <table class="form-table" style="margin-bottom:16px">
+              <tr>
+                <th>Hora de envío</th>
+                <td>
+                  <select id="rem-hour" style="font-size:13px;padding:5px 10px;border-radius:7px;border:1px solid #ddd">
+                    <?php for ($h = 0; $h < 24; $h++):
+                      $label = sprintf('%02d:00 hs', $h);
+                      if ($h === 8)  $label .= ' (mañana — recomendado)';
+                      if ($h === 9)  $label .= ' (mañana)';
+                      if ($h === 18) $label .= ' (tarde)';
+                      if ($h === 19) $label .= ' (tarde)';
+                    ?>
+                      <option value="<?php echo $h ?>" <?php selected($rem_hour, $h) ?>><?php echo $label ?></option>
+                    <?php endfor; ?>
+                  </select>
+                  <p class="description" style="margin-top:6px">
+                    Hora del servidor. <?php
+                      echo 'Ahora son las <strong>' . date('H:i') . ' hs</strong> en el servidor.';
+                    ?>
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <th>Último envío</th>
+                <td>
+                  <span style="font-size:13px">
+                    <?php echo $last_sent
+                      ? '<strong style="color:#16a34a">' . esc_html($last_sent) . '</strong>'
+                      : '<span style="color:#94a3b8">Nunca enviado</span>'; ?>
+                  </span>
+                </td>
+              </tr>
+            </table>
+
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <button id="luna-btn-save-reminders" class="button button-primary" style="font-size:13px;padding:6px 18px">
+                💾 Guardar configuración
+              </button>
+              <button id="luna-btn-send-now" class="button button-secondary" style="font-size:13px;padding:6px 18px">
+                🚀 Enviar ahora (prueba)
+              </button>
+              <span id="luna-rem-msg" style="font-size:13px;display:none"></span>
+            </div>
+
+            <div id="luna-rem-preview" style="display:none;margin-top:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px">
+              <strong style="font-size:13px">📋 Resultado del envío:</strong>
+              <div id="luna-rem-preview-body" style="margin-top:10px;font-size:12px"></div>
+            </div>
+          </div>
         </div>
 
         <script>
         jQuery(function($){
           var nonce = <?php echo wp_json_encode(wp_create_nonce('luna_admin_nonce')); ?>;
+
+          // ── Reset admin password ─────────────────────────────────────────────
           $('#luna-btn-reset-pass').on('click', function(){
             if (!confirm('¿Generar una nueva contraseña para el admin de Luna?\nLa contraseña actual dejará de funcionar y se cerrarán todas las sesiones.')) return;
             var btn = $(this);
@@ -381,6 +485,72 @@ class Luna_Admin {
             }).fail(function(){
               btn.prop('disabled', false).text('🔄 Generar nueva contraseña para admin Luna');
               msg.text('Error de conexión. Recargá la página e intentá de nuevo.').show();
+            });
+          });
+
+          // ── Guardar config recordatorios ─────────────────────────────────────
+          $('#luna-btn-save-reminders').on('click', function(){
+            var btn = $(this);
+            var msg = $('#luna-rem-msg');
+            btn.prop('disabled', true).text('Guardando…');
+            msg.hide();
+            $.post(ajaxurl, {
+              action:  'luna_save_reminders',
+              nonce:   nonce,
+              enabled: $('#rem-enabled').is(':checked') ? 1 : 0,
+              hour:    parseInt($('#rem-hour').val())
+            }, function(res){
+              btn.prop('disabled', false).text('💾 Guardar configuración');
+              if (res.success) {
+                msg.css('color','#16a34a').text('✅ ' + (res.data.message || 'Configuración guardada.')).show();
+              } else {
+                msg.css('color','#dc2626').text('❌ ' + (res.data || 'Error al guardar.')).show();
+              }
+              setTimeout(function(){ msg.fadeOut(); }, 4000);
+            }).fail(function(){
+              btn.prop('disabled', false).text('💾 Guardar configuración');
+              msg.css('color','#dc2626').text('❌ Error de conexión.').show();
+            });
+          });
+
+          // ── Enviar recordatorios ahora ───────────────────────────────────────
+          $('#luna-btn-send-now').on('click', function(){
+            if (!confirm('¿Enviar recordatorios ahora a todos los usuarios con tareas pendientes?\n(Ignorará el control de "ya enviado hoy")')) return;
+            var btn = $(this);
+            var msg = $('#luna-rem-msg');
+            btn.prop('disabled', true).text('Enviando…');
+            msg.hide();
+            $('#luna-rem-preview').hide();
+            $.ajax({
+              url:     ajaxurl,
+              type:    'POST',
+              timeout: 60000,
+              data:    { action: 'luna_send_reminders_now', nonce: nonce },
+              success: function(res){
+                btn.prop('disabled', false).text('🚀 Enviar ahora (prueba)');
+                if (res.success && res.data) {
+                  var d = res.data;
+                  msg.css('color','#16a34a').text('✅ Enviados: ' + d.sent + ' · Errores: ' + (d.errors||0)).show();
+                  if (d.preview && d.preview.length) {
+                    var rows = '';
+                    $.each(d.preview, function(_, p){
+                      rows += '<div style="padding:6px 0;border-bottom:1px solid #e2e8f0">'
+                            + '<strong>' + p.name + '</strong> (' + p.to + ') — '
+                            + p.total + ' tarea(s) · <em style="color:#64748b;font-size:11px">' + p.subject + '</em></div>';
+                    });
+                    if (!rows) rows = '<p style="color:#94a3b8;margin:0">No hay tareas próximas a vencer para ningún usuario.</p>';
+                    $('#luna-rem-preview-body').html(rows);
+                    $('#luna-rem-preview').show();
+                  }
+                } else {
+                  msg.css('color','#dc2626').text('❌ ' + (res.data || 'Error al enviar.')).show();
+                }
+              },
+              error: function(xhr, status){
+                btn.prop('disabled', false).text('🚀 Enviar ahora (prueba)');
+                var m = status === 'timeout' ? 'Tiempo de espera agotado (60s).' : 'Error de conexión.';
+                msg.css('color','#dc2626').text('❌ ' + m).show();
+              }
             });
           });
         });
@@ -1245,6 +1415,115 @@ class Luna_Admin {
             default:
                 wp_send_json_error('Operación desconocida.');
         }
+    }
+
+    // ── Save daily reminder schedule ─────────────────────────────────────
+    public function ajax_save_reminders() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Sin permisos');
+
+        $enabled = (int)($_POST['enabled'] ?? 0) ? 1 : 0;
+        $hour    = max(0, min(23, (int)($_POST['hour'] ?? 8)));
+        $data    = json_encode(['enabled' => (bool)$enabled, 'hour' => $hour]);
+
+        // Try app DB first, fall back to WP options
+        $appDb  = $this->get_app_db();
+        $appPfx = $this->get_app_prefix();
+        $saved  = false;
+
+        if ($appDb && $appPfx !== null) {
+            $tbl = $appPfx !== '' ? "`{$appPfx}app_settings`" : '`app_settings`';
+            try {
+                $appDb->prepare("INSERT INTO {$tbl} (meta_key, meta_value) VALUES ('reminder_schedule', ?)
+                                 ON DUPLICATE KEY UPDATE meta_value=?")
+                      ->execute([$data, $data]);
+                $saved = true;
+            } catch (Exception $e) {}
+        }
+
+        if (!$saved) {
+            update_option('luna_reminder_schedule', $data);
+        }
+
+        // Reschedule WP cron based on new config
+        $hook = 'luna_send_daily_reminders';
+        wp_clear_scheduled_hook($hook);
+        if ($enabled) {
+            $next = mktime($hour, 0, 0);
+            if ($next < time()) $next = strtotime('+1 day', $next);
+            wp_schedule_event($next, 'daily', $hook);
+        }
+
+        wp_send_json_success([
+            'message' => $enabled
+                ? "Recordatorios activados — se enviarán diariamente a las {$hour}:00 hs."
+                : 'Recordatorios desactivados.',
+        ]);
+    }
+
+    // ── Send reminders immediately (test/preview) ────────────────────────
+    public function ajax_send_reminders_now() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Sin permisos');
+
+        // Build the URL to reminders.php
+        $secret   = defined('LUNA_CRON_SECRET') ? LUNA_CRON_SECRET : get_option('luna_cron_secret', '');
+        $app_url  = defined('LUNA_APP_URL')      ? LUNA_APP_URL      : '';
+
+        if (!$app_url) {
+            // Derive from the plugin directory URL
+            $app_url = plugin_dir_url(__FILE__) . '../app/';
+        }
+
+        $url = rtrim($app_url, '/') . '/api/reminders.php?action=send'
+             . ($secret ? '&cron_secret=' . urlencode($secret) : '');
+
+        $resp = wp_remote_get($url, ['timeout' => 60, 'sslverify' => false]);
+
+        if (is_wp_error($resp)) {
+            // Fall back: run directly via PHP include (same process)
+            ob_start();
+            try {
+                $reminders_file = plugin_dir_path(__FILE__) . '../app/api/reminders.php';
+                if (file_exists($reminders_file)) {
+                    $_GET['action'] = 'send';
+                    $_GET['force']  = '1';
+                    include $reminders_file;
+                    $out = ob_get_clean();
+                    $decoded = json_decode($out, true);
+                    if ($decoded) {
+                        wp_send_json_success($decoded);
+                    }
+                    wp_send_json_success(['message' => 'Enviado (CLI). ' . $out]);
+                }
+            } catch (Exception $e) {
+                ob_end_clean();
+            }
+            wp_send_json_error('No se pudo contactar reminders.php: ' . $resp->get_error_message());
+        }
+
+        $code = wp_remote_retrieve_response_code($resp);
+        $body = wp_remote_retrieve_body($resp);
+        $data = json_decode($body, true);
+
+        if (!$data || !isset($data['ok'])) {
+            wp_send_json_error("Respuesta inesperada (HTTP {$code}): " . substr($body, 0, 300));
+        }
+
+        $sent    = $data['sent']    ?? 0;
+        $errors  = $data['errors']  ?? 0;
+        $preview = $data['preview'] ?? [];
+        $skipped = $data['skipped'] ?? false;
+
+        $lines = $skipped
+            ? ['⚠️ Ya se enviaron recordatorios hoy. Usá force=1 desde CLI para forzar.']
+            : ["✅ Enviados: {$sent} | ❌ Errores: {$errors}"];
+
+        foreach ($preview as $p) {
+            $lines[] = "  → {$p['name']} &lt;{$p['to']}&gt; — {$p['total']} tarea(s)";
+        }
+
+        wp_send_json_success(['message' => implode('<br>', $lines), 'detail' => $data]);
     }
 
 }
