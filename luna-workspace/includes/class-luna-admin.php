@@ -8,6 +8,10 @@ class Luna_Admin {
         add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts']);
         add_action('admin_notices',         [$this, 'show_notices']);
         add_action('admin_init',            [$this, 'maybe_migrate']);
+        add_action('admin_init',            [$this, 'maybe_redirect_to_wizard']);
+        add_action('wp_ajax_luna_wizard_validate_license', [$this, 'ajax_wizard_validate_license']);
+        add_action('wp_ajax_luna_dismiss_pass',            [$this, 'ajax_dismiss_initial_pass']);
+        add_action('wp_ajax_luna_wizard_done',             [$this, 'ajax_wizard_done']);
         add_action('wp_ajax_luna_test_notification',  [$this, 'ajax_test_notification']);
         add_action('wp_ajax_luna_save_user_contact',  [$this, 'ajax_save_user_contact']);
         add_action('wp_ajax_luna_reset_admin_pass',   [$this, 'ajax_reset_admin_pass']);
@@ -132,6 +136,8 @@ class Luna_Admin {
         add_submenu_page('luna-workspace', 'Notificaciones','Notificaciones','manage_options', 'luna-notifications',   [$this, 'render_notifications_page']);
         add_submenu_page('luna-workspace', 'Base de datos', 'Base de datos', 'manage_options', 'luna-database',        [$this, 'render_database_page']);
         add_submenu_page('luna-workspace', 'Backup & Restore', 'Backup & Restore', 'manage_options', 'luna-backup', [$this, 'render_backup_page']);
+        // Wizard — oculto del menú pero accesible por URL
+        add_submenu_page(null, 'Luna — Configuración inicial', '', 'manage_options', 'luna-onboarding', [$this, 'render_onboarding_wizard']);
     }
 
     public function enqueue_scripts($hook) {
@@ -272,9 +278,12 @@ class Luna_Admin {
                   <button onclick="navigator.clipboard.writeText('<?php echo esc_js($pending_pass) ?>');this.textContent='✓ Copiado!';setTimeout(()=>this.textContent='Copiar',2000)"
                           style="background:#854d0e;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-weight:700;cursor:pointer">Copiar</button>
                 </div>
-                <p style="margin:10px 0 0;font-size:12px;color:#854d0e">Entrá a Luna con usuario <strong>admin</strong> y esta contraseña, luego cámbiala desde tu perfil.</p>
+                <p style="margin:10px 0 0;font-size:12px;color:#854d0e">
+                  Entrá a Luna con usuario <strong>admin</strong> y esta contraseña. Podés cambiarla desde tu perfil dentro de Luna.<br>
+                  <a href="#" onclick="if(confirm('¿Confirmas que ya guardaste la contraseña?')){fetch('<?php echo esc_js(admin_url('admin-ajax.php')) ?>?action=luna_dismiss_pass&nonce=<?php echo wp_create_nonce('luna_dismiss_pass') ?>').then(()=>location.reload())};return false"
+                     style="font-size:11px;color:#854d0e;margin-top:4px;display:inline-block">✓ Ya la guardé, ocultar este cuadro</a>
+                </p>
               </div>
-              <?php delete_option('luna_initial_admin_pass'); ?>
             <?php endif; ?>
             <div id="luna-new-pass-result" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:16px 20px;margin-bottom:16px">
               <strong style="color:#166534">✅ Nueva contraseña generada — guardala ahora:</strong><br>
@@ -1535,6 +1544,327 @@ class Luna_Admin {
         }
 
         wp_send_json_success(['message' => implode('<br>', $lines), 'detail' => $data]);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  ONBOARDING WIZARD
+    // ══════════════════════════════════════════════════════════════════════════
+
+    public function maybe_redirect_to_wizard() {
+        if (!get_transient('luna_activation_redirect')) return;
+        if (!current_user_can('manage_options')) return;
+        delete_transient('luna_activation_redirect');
+        // Solo redirigir si el wizard no fue completado todavía
+        if (!get_option('luna_onboarding_done')) {
+            wp_redirect(admin_url('admin.php?page=luna-onboarding'));
+            exit;
+        }
+    }
+
+    // AJAX: dismiss contraseña inicial (usuario confirmó que la guardó)
+    public function ajax_dismiss_initial_pass() {
+        check_ajax_referer('luna_dismiss_pass', 'nonce');
+        if (!current_user_can('manage_options')) wp_die('Sin permisos');
+        delete_option('luna_initial_admin_pass');
+        wp_send_json_success();
+    }
+
+    // AJAX: marcar wizard como completado
+    public function ajax_wizard_done() {
+        if (!check_ajax_referer('luna_admin_nonce', 'nonce', false)) wp_die();
+        if (!current_user_can('manage_options')) wp_die('Sin permisos');
+        update_option('luna_onboarding_done', 1);
+        wp_send_json_success();
+    }
+
+    // AJAX: validar licencia desde el wizard
+    public function ajax_wizard_validate_license() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Sin permisos');
+
+        $key    = sanitize_text_field($_POST['license_key'] ?? '');
+        $domain = parse_url(get_site_url(), PHP_URL_HOST) ?? ($_SERVER['HTTP_HOST'] ?? '');
+
+        if (!$key) {
+            wp_send_json_error('Ingresá una clave de licencia');
+        }
+
+        $result = Luna_License::verify($key, $domain);
+
+        if (!empty($result['valid'])) {
+            update_option('luna_license_key', $key);
+            Luna_Activator::regenerate_app_config();
+            @unlink(LUNA_APP_DIR . 'luna-license-cache.json');
+            $plan = Luna_License::plan_label($result['plan'] ?? 'unknown');
+            wp_send_json_success([
+                'plan'       => $plan,
+                'expires_at' => $result['expires_at'] ?? '—',
+            ]);
+        } else {
+            $msg = $result['message'] ?? 'Licencia inválida';
+            wp_send_json_error($msg);
+        }
+    }
+
+    // ── Wizard de onboarding ──────────────────────────────────────────────────
+    public function render_onboarding_wizard() {
+        if (!current_user_can('manage_options')) return;
+
+        // Si ya completó el wizard → redirigir a configuración
+        if (get_option('luna_onboarding_done') && !isset($_GET['force'])) {
+            wp_redirect(admin_url('admin.php?page=luna-workspace'));
+            exit;
+        }
+
+        $nonce        = wp_create_nonce('luna_admin_nonce');
+        $license_key  = get_option('luna_license_key', '');
+        $pass         = get_option('luna_initial_admin_pass', '');
+        $entry_token  = get_option('luna_entry_token', '');
+        $permanent_url = $entry_token ? add_query_arg('luna_enter', $entry_token, home_url('/')) : '';
+        $has_license  = !empty($license_key);
+
+        // Marcar wizard como completado si se llega al paso 3
+        if (isset($_GET['step']) && (int)$_GET['step'] === 3) {
+            update_option('luna_onboarding_done', 1);
+        }
+        ?>
+        <!DOCTYPE html>
+        <html <?php language_attributes(); ?>>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <title>Luna Workspace — Configuración inicial</title>
+            <?php wp_head(); ?>
+            <style>
+                *{box-sizing:border-box;margin:0;padding:0}
+                body{background:#f0f2ff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+                .wz-wrap{width:100%;max-width:560px}
+                .wz-logo{text-align:center;margin-bottom:28px}
+                .wz-logo span{font-size:40px}
+                .wz-logo h1{font-size:22px;font-weight:800;color:#1e1e3f;margin-top:8px}
+                .wz-logo p{color:#6b7280;font-size:14px;margin-top:4px}
+                /* Progress steps */
+                .wz-steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:32px}
+                .wz-step{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;position:relative}
+                .wz-step-num{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;border:2px solid #d1d5db;background:#fff;color:#9ca3af;transition:all .3s;z-index:1}
+                .wz-step-label{font-size:11px;color:#9ca3af;font-weight:600;white-space:nowrap}
+                .wz-step.active .wz-step-num{background:#5b6af0;border-color:#5b6af0;color:#fff}
+                .wz-step.active .wz-step-label{color:#5b6af0}
+                .wz-step.done .wz-step-num{background:#22c55e;border-color:#22c55e;color:#fff}
+                .wz-step.done .wz-step-label{color:#22c55e}
+                .wz-step:not(:last-child)::after{content:'';position:absolute;top:18px;left:calc(50% + 18px);right:calc(-50% + 18px);height:2px;background:#d1d5db}
+                .wz-step.done:not(:last-child)::after{background:#22c55e}
+                /* Card */
+                .wz-card{background:#fff;border-radius:16px;padding:36px;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+                .wz-card h2{font-size:20px;font-weight:800;color:#1e1e3f;margin-bottom:8px}
+                .wz-card p.sub{color:#6b7280;font-size:14px;margin-bottom:24px;line-height:1.6}
+                /* License input */
+                .wz-input{width:100%;padding:14px 16px;border:2px solid #e5e7eb;border-radius:10px;font-size:15px;font-family:monospace;letter-spacing:2px;outline:none;transition:border .2s}
+                .wz-input:focus{border-color:#5b6af0}
+                .wz-input.err{border-color:#ef4444}
+                .wz-input.ok{border-color:#22c55e}
+                /* Buttons */
+                .wz-btn{width:100%;padding:14px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;border:none;transition:all .2s;margin-top:12px}
+                .wz-btn-primary{background:#5b6af0;color:#fff}
+                .wz-btn-primary:hover{background:#4a58d4}
+                .wz-btn-primary:disabled{background:#a5b4fc;cursor:not-allowed}
+                .wz-btn-secondary{background:#f3f4f6;color:#374151;border:2px solid #e5e7eb}
+                .wz-btn-secondary:hover{background:#e9eaf0}
+                .wz-btn-green{background:#22c55e;color:#fff}
+                .wz-btn-green:hover{background:#16a34a}
+                /* Msg */
+                .wz-msg{padding:12px 16px;border-radius:8px;font-size:13px;margin-top:12px;display:none;line-height:1.5}
+                .wz-msg.err{background:#fef2f2;color:#dc2626;border:1px solid #fca5a5}
+                .wz-msg.ok{background:#f0fdf4;color:#166534;border:1px solid #86efac}
+                /* Password box */
+                .wz-pass-box{background:#fefce8;border:2px solid #fde047;border-radius:12px;padding:20px;margin:20px 0}
+                .wz-pass-box label{font-size:12px;font-weight:700;color:#854d0e;display:block;margin-bottom:8px}
+                .wz-pass-row{display:flex;align-items:center;gap:10px}
+                .wz-pass-val{font-size:20px;font-family:monospace;letter-spacing:3px;background:#fff;padding:10px 16px;border-radius:8px;border:1px solid #fde047;color:#1e1e3f;flex:1;word-break:break-all}
+                .wz-copy-btn{background:#854d0e;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap}
+                .wz-copy-btn:hover{background:#92400e}
+                /* Success icon */
+                .wz-success-icon{text-align:center;font-size:64px;margin-bottom:16px}
+                .wz-skip{text-align:center;margin-top:16px}
+                .wz-skip a{font-size:12px;color:#9ca3af;text-decoration:none}
+                .wz-skip a:hover{color:#6b7280}
+            </style>
+        </head>
+        <body>
+        <div class="wz-wrap">
+
+            <!-- Logo -->
+            <div class="wz-logo">
+                <span>🌙</span>
+                <h1>Luna Workspace</h1>
+                <p>Configuración inicial — solo toma 2 minutos</p>
+            </div>
+
+            <!-- Steps indicator -->
+            <div class="wz-steps" id="wz-steps">
+                <div class="wz-step active" id="step-ind-1">
+                    <div class="wz-step-num">1</div>
+                    <div class="wz-step-label">Licencia</div>
+                </div>
+                <div class="wz-step" id="step-ind-2">
+                    <div class="wz-step-num">2</div>
+                    <div class="wz-step-label">Credenciales</div>
+                </div>
+                <div class="wz-step" id="step-ind-3">
+                    <div class="wz-step-num">3</div>
+                    <div class="wz-step-label">¡Listo!</div>
+                </div>
+            </div>
+
+            <!-- Paso 1: Licencia -->
+            <div class="wz-card" id="wz-step-1">
+                <h2>🔑 Activá tu licencia</h2>
+                <p class="sub">Ingresá la clave que recibiste al registrarte. La verificación es automática y solo tarda unos segundos.</p>
+                <input type="text" id="wz-license-input" class="wz-input"
+                       placeholder="LUNA-XXXX-XXXX-XXXX-XXXX"
+                       value="<?php echo esc_attr($license_key) ?>"
+                       spellcheck="false" autocomplete="off">
+                <div class="wz-msg" id="wz-license-msg"></div>
+                <button class="wz-btn wz-btn-primary" id="wz-btn-license">Validar licencia →</button>
+                <div class="wz-skip">
+                    <a href="#" id="wz-skip-license">Continuar sin licencia (modo limitado)</a>
+                </div>
+            </div>
+
+            <!-- Paso 2: Credenciales -->
+            <div class="wz-card" id="wz-step-2" style="display:none">
+                <h2>🔐 Tus credenciales de acceso</h2>
+                <p class="sub">Estas son las credenciales para ingresar a Luna Workspace. Guardalas en un lugar seguro — también las vas a encontrar siempre en <strong>Luna Workspace → Configuración</strong>.</p>
+
+                <div style="background:#f8f9fa;border-radius:10px;padding:16px;margin-bottom:16px">
+                    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e9ecef;font-size:14px">
+                        <span style="color:#6b7280;font-weight:600">Usuario</span>
+                        <strong style="font-family:monospace">admin</strong>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:14px">
+                        <span style="color:#6b7280;font-weight:600">Contraseña</span>
+                        <span style="display:flex;align-items:center;gap:8px">
+                            <strong id="wz-pass-display" style="font-family:monospace;font-size:16px;letter-spacing:2px">
+                                <?php echo esc_html($pass ?: '(generá una desde Configuración)') ?>
+                            </strong>
+                        </span>
+                    </div>
+                </div>
+
+                <?php if ($pass): ?>
+                <button onclick="navigator.clipboard.writeText('<?php echo esc_js($pass) ?>');this.textContent='✓ ¡Copiada!';this.style.background='#16a34a';setTimeout(()=>{this.textContent='📋 Copiar contraseña';this.style.background=''},2000)"
+                        style="width:100%;padding:12px;background:#5b6af0;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:12px">
+                    📋 Copiar contraseña
+                </button>
+                <?php endif; ?>
+
+                <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;font-size:12px;color:#1e40af;line-height:1.6;margin-bottom:16px">
+                    💡 <strong>Tip:</strong> Una vez adentro de Luna, andá a tu perfil y cambiá la contraseña por una que recuerdes fácilmente.
+                </div>
+
+                <button class="wz-btn wz-btn-primary" id="wz-btn-credentials">Continuar →</button>
+            </div>
+
+            <!-- Paso 3: Listo -->
+            <div class="wz-card" id="wz-step-3" style="display:none">
+                <div class="wz-success-icon">🎉</div>
+                <h2 style="text-align:center;margin-bottom:12px">¡Luna está lista!</h2>
+                <p class="sub" style="text-align:center">Todo está configurado. Hacé clic en el botón para ingresar a tu nuevo espacio de trabajo.</p>
+
+                <?php if ($permanent_url): ?>
+                <a href="<?php echo esc_url($permanent_url) ?>"
+                   style="display:block;width:100%;padding:16px;background:linear-gradient(135deg,#5b6af0,#7c3aed);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;text-align:center;text-decoration:none;margin-bottom:12px">
+                    🚀 Entrar a Luna Workspace →
+                </a>
+                <?php endif; ?>
+
+                <a href="<?php echo admin_url('admin.php?page=luna-workspace') ?>"
+                   style="display:block;width:100%;padding:12px;background:#f3f4f6;color:#374151;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-align:center;text-decoration:none">
+                    ⚙️ Ir a Configuración
+                </a>
+            </div>
+
+        </div>
+
+        <script>
+        (function(){
+            const nonce = '<?php echo esc_js($nonce) ?>';
+            const ajaxUrl = '<?php echo esc_js(admin_url('admin-ajax.php')) ?>';
+            let currentStep = <?php echo $has_license ? 2 : 1 ?>;
+
+            function goToStep(n) {
+                currentStep = n;
+                [1,2,3].forEach(i => {
+                    document.getElementById('wz-step-' + i).style.display = i === n ? '' : 'none';
+                    const ind = document.getElementById('step-ind-' + i);
+                    ind.className = 'wz-step' + (i < n ? ' done' : i === n ? ' active' : '');
+                    if (i < n) ind.querySelector('.wz-step-num').textContent = '✓';
+                    else if (i >= n) ind.querySelector('.wz-step-num').textContent = i;
+                });
+                // Marcar wizard como completado al llegar al paso 3
+                if (n === 3) {
+                    fetch(ajaxUrl + '?action=luna_wizard_done&nonce=' + nonce);
+                }
+            }
+
+            // Si ya tiene licencia, ir directo al paso 2
+            if (currentStep === 2) goToStep(2);
+
+            // ── Paso 1: Validar licencia ──────────────────────────────────────
+            function showMsg(id, text, type) {
+                const el = document.getElementById(id);
+                el.textContent = text;
+                el.className = 'wz-msg ' + type;
+                el.style.display = 'block';
+            }
+
+            document.getElementById('wz-btn-license').addEventListener('click', function() {
+                const key = document.getElementById('wz-license-input').value.trim();
+                if (!key) { showMsg('wz-license-msg', 'Ingresá tu clave de licencia', 'err'); return; }
+
+                this.disabled = true;
+                this.textContent = '⏳ Validando...';
+                document.getElementById('wz-license-input').className = 'wz-input';
+
+                const fd = new FormData();
+                fd.append('action', 'luna_wizard_validate_license');
+                fd.append('nonce', nonce);
+                fd.append('license_key', key);
+
+                fetch(ajaxUrl, { method: 'POST', body: fd })
+                    .then(r => r.json())
+                    .then(r => {
+                        if (r.success) {
+                            document.getElementById('wz-license-input').className = 'wz-input ok';
+                            showMsg('wz-license-msg', '✅ Licencia activada — Plan: ' + r.data.plan + ' (vence: ' + r.data.expires_at + ')', 'ok');
+                            setTimeout(() => goToStep(2), 1200);
+                        } else {
+                            document.getElementById('wz-license-input').className = 'wz-input err';
+                            showMsg('wz-license-msg', '❌ ' + r.data, 'err');
+                        }
+                    })
+                    .catch(() => showMsg('wz-license-msg', '❌ Error de conexión', 'err'))
+                    .finally(() => {
+                        this.disabled = false;
+                        this.textContent = 'Validar licencia →';
+                    });
+            });
+
+            document.getElementById('wz-skip-license').addEventListener('click', function(e) {
+                e.preventDefault();
+                goToStep(2);
+            });
+
+            // ── Paso 2: Credenciales ──────────────────────────────────────────
+            document.getElementById('wz-btn-credentials').addEventListener('click', function() {
+                goToStep(3);
+            });
+        })();
+        </script>
+        <?php wp_footer(); ?>
+        </body>
+        </html>
+        <?php
     }
 
     // ══════════════════════════════════════════════════════════════════════════

@@ -24,7 +24,15 @@ require_once LUNA_PLUGIN_DIR . 'includes/class-luna-register.php';
 add_action('init', ['Luna_Register', 'init']);
 
 register_activation_hook(__FILE__,   ['Luna_Activator', 'activate']);
+register_activation_hook(__FILE__,   'luna_set_activation_redirect');
 register_deactivation_hook(__FILE__, ['Luna_Activator', 'deactivate']);
+
+function luna_set_activation_redirect() {
+    // Solo redirigir si es una activación real (no una actualización masiva)
+    if (!isset($_GET['activate-multi'])) {
+        set_transient('luna_activation_redirect', 1, 60);
+    }
+}
 
 add_action('plugins_loaded', 'luna_init');
 function luna_init() {
