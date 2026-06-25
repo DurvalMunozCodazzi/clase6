@@ -62,15 +62,37 @@ body{font-family:'Inter',sans-serif;background:var(--dark);color:var(--text);min
 .section-title{text-align:center;font-size:1.5rem;font-weight:800;margin-bottom:6px;letter-spacing:-.5px}
 .section-sub{text-align:center;color:var(--muted);font-size:.9rem;margin-bottom:36px}
 
-.app-shell{max-width:1100px;margin:0 auto;background:var(--dark2);border-radius:20px;border:1px solid var(--border);overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5)}
-.app-topbar{height:48px;background:var(--dark3);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px}
-.ws-dots{display:flex;gap:6px}
+/* ── APP TOPBAR ── */
+.app-topbar{height:48px;background:var(--dark3);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:10px;overflow:hidden}
+.ws-dots{display:flex;gap:6px;flex-shrink:0}
 .dot{width:11px;height:11px;border-radius:50%}
 .dot-r{background:#ef4444}.dot-y{background:#f59e0b}.dot-g{background:#22d3a0}
-.ws-name{color:var(--muted);font-size:.82rem;font-weight:500}
-.ws-actions{margin-left:auto;display:flex;gap:8px}
-.ws-btn{background:var(--dark4);border:1px solid var(--border);color:var(--muted);font-size:.72rem;padding:4px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:inherit}
-.ws-btn:hover{color:var(--text);border-color:var(--luna)}
+.ws-badge{display:flex;align-items:center;gap:7px;background:var(--dark4);border:1px solid var(--border);border-radius:8px;padding:4px 10px;cursor:pointer;flex-shrink:0}
+.ws-badge:hover{border-color:var(--luna)}
+.ws-badge-dot{width:20px;height:20px;border-radius:6px;background:var(--luna);display:flex;align-items:center;justify-content:center;font-size:.65rem;color:#fff;flex-shrink:0}
+.ws-badge-name{font-size:.75rem;font-weight:600;color:var(--text);white-space:nowrap}
+.ws-badge-arrow{font-size:.6rem;color:var(--muted)}
+.vtab-demo{display:flex;align-items:center;gap:4px;font-size:.73rem;font-weight:700;color:var(--text);background:var(--luna);border:none;border-radius:7px;padding:4px 11px;cursor:pointer;font-family:inherit}
+.search-demo{flex:1;max-width:280px;position:relative;flex-shrink:1;min-width:0}
+.search-demo i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.75rem;pointer-events:none}
+.search-demo input{width:100%;background:var(--dark4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:5px 10px 5px 28px;font-size:.73rem;font-family:inherit;outline:none}
+.search-demo input:focus{border-color:var(--luna)}
+.search-demo input::placeholder{color:var(--muted)}
+.live-pill{display:flex;align-items:center;gap:5px;font-size:.62rem;font-weight:700;color:var(--ok);letter-spacing:.5px;flex-shrink:0}
+.live-dot2{width:6px;height:6px;border-radius:50%;background:var(--ok);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.tb{height:28px;padding:0 9px;border-radius:7px;font-size:.7rem;font-weight:700;font-family:inherit;cursor:pointer;border:1px solid var(--border);background:var(--dark4);color:var(--muted);display:flex;align-items:center;gap:5px;transition:.15s;white-space:nowrap;flex-shrink:0}
+.tb:hover{border-color:var(--luna);color:var(--text)}
+.tb.accent{background:linear-gradient(135deg,var(--luna),var(--luna2));border-color:transparent;color:#fff}
+.notif-wrap{position:relative;flex-shrink:0}
+.notif-wrap .tb{padding:0 9px}
+.notif-count{position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;font-size:.55rem;font-weight:800;width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.tb-sep{width:1px;height:20px;background:var(--border);flex-shrink:0}
+.user-chip{display:flex;align-items:center;gap:7px;cursor:pointer;flex-shrink:0}
+.user-av{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--luna),var(--luna2));display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;color:#fff}
+.user-inf{display:flex;flex-direction:column;line-height:1.2}
+.user-nm{font-size:.7rem;font-weight:700;color:var(--text)}
+.user-rl{font-size:.6rem;color:var(--muted)}
 
 .kanban-board{display:flex;gap:14px;padding:20px;overflow-x:auto;min-height:420px}
 .kanban-board::-webkit-scrollbar{height:5px}
@@ -259,15 +281,39 @@ footer p{color:var(--muted);font-size:.78rem}
 
   <div class="app-shell">
     <div class="app-topbar">
-      <div class="ws-dots">
-        <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+      <div class="ws-dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+      <!-- Workspace badge -->
+      <div class="ws-badge">
+        <div class="ws-badge-dot"><i class="fas fa-project-diagram"></i></div>
+        <span class="ws-badge-name">Proyecto Web</span>
+        <i class="fas fa-chevron-down ws-badge-arrow"></i>
       </div>
-      <span class="ws-name"><i class="fas fa-th-large" style="color:var(--luna);margin-right:5px"></i> Mi Workspace — Proyecto Web</span>
-      <div class="ws-actions">
-        <button class="ws-btn"><i class="fas fa-users"></i> Equipo</button>
-        <button class="ws-btn"><i class="fas fa-filter"></i> Filtrar</button>
-        <button class="ws-btn" id="addColBtn"><i class="fas fa-plus"></i> Columna</button>
+      <!-- Vista activa -->
+      <button class="vtab-demo"><i class="fas fa-columns"></i> Tareas</button>
+      <!-- Búsqueda -->
+      <div class="search-demo">
+        <i class="fas fa-search"></i>
+        <input type="text" placeholder="Buscar tareas..." id="demoSearch" oninput="demoSearchFilter(this.value)">
       </div>
+      <!-- Spacer -->
+      <div style="flex:1"></div>
+      <!-- EN VIVO -->
+      <div class="live-pill"><div class="live-dot2"></div>EN VIVO</div>
+      <div class="tb-sep"></div>
+      <!-- Acciones -->
+      <button class="tb" title="Equipo"><i class="fas fa-users"></i> <span>Equipo</span></button>
+      <button class="tb" title="Calendario"><i class="fas fa-calendar-alt"></i></button>
+      <button class="tb" title="Analítica"><i class="fas fa-chart-bar"></i></button>
+      <div class="notif-wrap"><button class="tb" title="Notificaciones"><i class="fas fa-bell"></i></button><span class="notif-count">3</span></div>
+      <button class="tb" title="Personalizar"><i class="fas fa-palette"></i></button>
+      <button class="tb accent" id="addColBtn" title="Exportar"><i class="fas fa-download"></i> Exportar</button>
+      <div class="tb-sep"></div>
+      <!-- Usuario -->
+      <div class="user-chip">
+        <div class="user-av">DM</div>
+        <div class="user-inf"><span class="user-nm">Durval M.</span><span class="user-rl">Admin</span></div>
+      </div>
+      <button class="tb" style="color:#ef4444;border-color:transparent;background:transparent" title="Cerrar sesión"><i class="fas fa-sign-out-alt"></i></button>
     </div>
 
     <div class="kanban-board" id="board">
@@ -299,8 +345,8 @@ footer p{color:var(--muted);font-size:.78rem}
     </div>
     <div class="feat-card">
       <div class="feat-icon" style="background:rgba(245,158,11,.12);color:var(--warn)"><i class="fas fa-chart-bar"></i></div>
-      <h3>Métricas y reportes</h3>
-      <p>Dashboard con velocidad del equipo, tarjetas por estado, tiempos promedio y carga de trabajo.</p>
+      <h3>Analítica</h3>
+      <p>Panel con velocidad del equipo, tarjetas por estado, tiempos promedio y carga de trabajo por persona.</p>
     </div>
     <div class="feat-card">
       <div class="feat-icon" style="background:rgba(124,58,237,.12);color:var(--luna2)"><i class="fas fa-project-diagram"></i></div>
@@ -369,9 +415,9 @@ footer p{color:var(--muted);font-size:.78rem}
       <ul class="plan-features">
         <li><i class="fas fa-check"></i> Todo lo del plan Básico</li>
         <li><i class="fas fa-check"></i> WhatsApp + Telegram</li>
-        <li><i class="fas fa-check"></i> Gantt y dependencias</li>
-        <li><i class="fas fa-check"></i> Métricas avanzadas</li>
+        <li><i class="fas fa-check"></i> Analítica avanzada</li>
         <li><i class="fas fa-check"></i> Prioridad de soporte</li>
+        <li class="no"><i class="fas fa-times"></i> Vista Gantt</li>
       </ul>
       <button class="plan-btn plan-btn-primary" onclick="goTo('profesional')">Elegir Profesional</button>
     </div>
@@ -383,6 +429,7 @@ footer p{color:var(--muted);font-size:.78rem}
       <ul class="plan-features">
         <li><i class="fas fa-check"></i> Todo lo del plan Pro</li>
         <li><i class="fas fa-check"></i> <strong>$6 por usuario adicional</strong></li>
+        <li><i class="fas fa-check"></i> Vista Gantt + dependencias</li>
         <li><i class="fas fa-check"></i> Workspaces ilimitados</li>
         <li><i class="fas fa-check"></i> Soporte dedicado</li>
         <li><i class="fas fa-check"></i> Onboarding incluido</li>
@@ -501,8 +548,8 @@ footer p{color:var(--muted);font-size:.78rem}
           <td><i class="fas fa-check ico-yes"></i></td>
         </tr>
         <tr>
-          <td>Vista Gantt</td>
-          <td class="col-luna"><i class="fas fa-check ico-yes"></i></td>
+          <td>Vista Gantt <span class="winner-badge">CORPORATIVO</span></td>
+          <td class="col-luna"><i class="fas fa-check ico-yes" title="Solo plan Corporativo"></i> <span style="font-size:.7rem;color:var(--muted)">solo Corp.</span></td>
           <td><i class="fas fa-times ico-no"></i> <span style="font-size:.7rem;color:var(--muted)">(plugin pago)</span></td>
           <td><i class="fas fa-check ico-yes"></i></td>
           <td><i class="fas fa-check ico-yes"></i></td>
@@ -533,7 +580,7 @@ footer p{color:var(--muted);font-size:.78rem}
           <td><i class="fas fa-check ico-yes"></i></td>
         </tr>
         <tr>
-          <td>Dashboard de métricas</td>
+          <td>Panel de Analítica</td>
           <td class="col-luna"><i class="fas fa-check ico-yes"></i></td>
           <td><i class="fas fa-times ico-no"></i></td>
           <td><i class="fas fa-check ico-yes"></i></td>
@@ -916,6 +963,14 @@ function toast(msg) {
   document.getElementById('toastMsg').textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function demoSearchFilter(q) {
+  q = q.toLowerCase().trim();
+  document.querySelectorAll('.kcard').forEach(card => {
+    const text = card.textContent.toLowerCase();
+    card.style.display = (!q || text.includes(q)) ? '' : 'none';
+  });
 }
 
 function goTo(plan) {
