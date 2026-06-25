@@ -6,10 +6,11 @@ class LLS_Admin {
     public function __construct() {
         add_action('admin_menu',             [$this, 'add_menu']);
         add_action('admin_enqueue_scripts',  [$this, 'enqueue']);
-        add_action('admin_post_lls_create',  [$this, 'handle_create']);
-        add_action('admin_post_lls_update',  [$this, 'handle_update']);
-        add_action('admin_post_lls_delete',  [$this, 'handle_delete']);
-        add_action('admin_post_lls_toggle',  [$this, 'handle_toggle']);
+        add_action('admin_post_lls_create',       [$this, 'handle_create']);
+        add_action('admin_post_lls_update',       [$this, 'handle_update']);
+        add_action('admin_post_lls_delete',       [$this, 'handle_delete']);
+        add_action('admin_post_lls_toggle',       [$this, 'handle_toggle']);
+        add_action('admin_post_lls_save_banners', [$this, 'handle_save_banners']);
         // Run schema migrations on every admin load (not just on plugin activation)
         add_action('admin_init', [$this, 'maybe_migrate']);
     }
@@ -56,6 +57,7 @@ class LLS_Admin {
         add_submenu_page('luna-licenses', 'Todas las Licencias', 'Todas las Licencias', 'manage_options', 'luna-licenses',          [$this, 'page_list']);
         add_submenu_page('luna-licenses', 'Nueva Licencia',      'Nueva Licencia',      'manage_options', 'luna-licenses-new',       [$this, 'page_new']);
         add_submenu_page('luna-licenses', 'Log de Verificaciones','Log',                'manage_options', 'luna-licenses-log',       [$this, 'page_log']);
+        add_submenu_page('luna-licenses', 'Banners',              'Banners 📢',          'manage_options', 'luna-licenses-banners',   [$this, 'page_banners']);
         add_submenu_page('luna-licenses', 'Configuración',        'Configuración',       'manage_options', 'luna-licenses-settings',  [$this, 'page_settings']);
     }
 
@@ -97,6 +99,65 @@ class LLS_Admin {
         }
         $hmac = get_option('lls_hmac_secret', LLS_HMAC_SECRET);
         require LLS_PLUGIN_DIR . 'admin/views/settings.php';
+    }
+
+    // ── BANNERS ───────────────────────────────────────────────────────────────
+    public function page_banners(): void {
+        $msg     = sanitize_text_field($_GET['msg'] ?? '');
+        $banners = get_option('lls_banners', $this->default_banners());
+        require LLS_PLUGIN_DIR . 'admin/views/banners.php';
+    }
+
+    public function handle_save_banners(): void {
+        check_admin_referer('lls_save_banners');
+        if (!current_user_can('manage_options')) wp_die('Sin permisos');
+
+        $texts   = $_POST['banner_text']   ?? [];
+        $imgs    = $_POST['banner_img']    ?? [];
+        $links   = $_POST['banner_link']   ?? [];
+        $ctas    = $_POST['banner_cta']    ?? [];
+        $actives = $_POST['banner_active'] ?? [];
+
+        $banners = [];
+        for ($i = 0; $i < 5; $i++) {
+            $text = sanitize_text_field($texts[$i] ?? '');
+            if (!$text) continue;
+            $banners[] = [
+                'text'   => $text,
+                'img'    => esc_url_raw($imgs[$i]  ?? ''),
+                'link'   => esc_url_raw($links[$i] ?? 'https://websobreruedas.com/luna-planes'),
+                'cta'    => sanitize_text_field($ctas[$i] ?? 'Ver más →'),
+                'active' => isset($actives[$i]),
+            ];
+        }
+
+        $data = [
+            'banners'      => array_values(array_filter($banners, fn($b) => $b['active'])),
+            'upgrade_url'  => esc_url_raw($_POST['upgrade_url']  ?? 'https://websobreruedas.com/luna-planes'),
+            'upgrade_text' => sanitize_text_field($_POST['upgrade_text'] ?? '⚡ Quitar anuncios'),
+        ];
+
+        // All banners (including inactive) saved to option for the admin UI
+        $option = $banners;
+        update_option('lls_banners', $option);
+        update_option('lls_banners_meta', ['upgrade_url' => $data['upgrade_url'], 'upgrade_text' => $data['upgrade_text']]);
+
+        // Write public JSON to WordPress root — served as websobreruedas.com/luna-ads.json
+        $json_path = ABSPATH . 'luna-ads.json';
+        file_put_contents($json_path, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+
+        wp_redirect(admin_url('admin.php?page=luna-licenses-banners&msg=saved'));
+        exit;
+    }
+
+    private function default_banners(): array {
+        return [
+            ['text' => 'Actualizá al plan Básico — equipos de hasta 5 personas desde $19/mes', 'img' => '', 'link' => 'https://websobreruedas.com/luna-planes', 'cta' => 'Ver planes →',  'active' => true],
+            ['text' => 'Luna Workspace Pro — WhatsApp, Telegram y métricas avanzadas',          'img' => '', 'link' => 'https://websobreruedas.com/luna-planes', 'cta' => 'Conocer →',     'active' => true],
+            ['text' => 'Gantt, recordatorios automáticos y soporte prioritario',                 'img' => '', 'link' => 'https://websobreruedas.com/luna-planes', 'cta' => 'Ver más →',    'active' => false],
+            ['text' => '', 'img' => '', 'link' => 'https://websobreruedas.com/luna-planes', 'cta' => 'Ver →', 'active' => false],
+            ['text' => '', 'img' => '', 'link' => 'https://websobreruedas.com/luna-planes', 'cta' => 'Ver →', 'active' => false],
+        ];
     }
 
     // ── HANDLERS ─────────────────────────────────────────────────────────────
