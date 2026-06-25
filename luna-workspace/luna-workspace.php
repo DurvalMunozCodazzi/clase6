@@ -41,9 +41,6 @@ function luna_init() {
         Luna_Activator::regenerate_app_config();
     }
 
-    // Always ensure the ad bar is injected into index.html.
-    // On plugin update the file is replaced — this re-injects on the next page load.
-    luna_ensure_ad_bar();
 
     if (is_admin()) {
         new Luna_Admin();
@@ -119,7 +116,7 @@ function luna_handle_admin_enter() {
         'samesite' => 'Lax',
     ]);
 
-    wp_redirect(LUNA_APP_URL . 'index.html');
+    wp_redirect(home_url('/?luna_app=1'));
     exit;
 }
 
@@ -140,14 +137,14 @@ function luna_handle_admin_enter_legacy() {
     $wpdb->insert("{$p}sessions", ['token' => $token, 'user_id' => $admin['id'], 'expires_at' => $expires]);
     $wpdb->update("{$p}users", ['last_login' => current_time('mysql')], ['id' => $admin['id']]);
     setcookie('luna_token', $token, ['expires' => time() + $hours * 3600, 'path' => '/', 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
-    wp_redirect(LUNA_APP_URL . 'index.html');
+    wp_redirect(home_url('/?luna_app=1'));
     exit;
 }
 
 // ── Full-page redirect ──────────────────────────────────────────────────────
 function luna_fullpage_redirect() {
     $slug = get_option('luna_page_slug', 'luna-app');
-    if (is_page($slug) || get_query_var('luna_app')) {
+    if (is_page($slug) || !empty($_GET['luna_app'])) {
         luna_serve_app();
         exit;
     }
@@ -156,7 +153,7 @@ function luna_fullpage_redirect() {
 // ── Shortcode ───────────────────────────────────────────────────────────────
 function luna_render_shortcode($atts) {
     $height = isset($atts['height']) ? esc_attr($atts['height']) : '100vh';
-    $app_url = LUNA_APP_URL . 'index.html';
+    $app_url = home_url('/?luna_app=1');
     $license = get_option('luna_license_key', '');
     ob_start(); ?>
     <div id="luna-wp-container" style="width:100%;height:<?php echo $height ?>;overflow:hidden;position:relative">
@@ -206,36 +203,21 @@ function luna_serve_app() {
     // Fix relative API paths to absolute plugin paths
     $content = str_replace('src="api/', 'src="' . LUNA_APP_URL . 'api/', $content);
     $content = str_replace("src='api/", "src='" . LUNA_APP_URL . "api/", $content);
+    // Inject permanent branding bar — always visible on all plans
+    $content = str_replace('</body>', luna_branding_bar() . '</body>', $content);
     header('Content-Type: text/html; charset=utf-8');
     echo $content;
 }
 
-// ── Ad bar: inject into index.html and keep it there across plugin updates ───
-function luna_ensure_ad_bar() {
-    $index = LUNA_APP_DIR . 'index.html';
-    if (!file_exists($index) || !is_writable($index)) return;
-
-    $content = file_get_contents($index);
-    if ($content === false) return;
-
-    // Already injected — nothing to do
-    if (strpos($content, '<!-- LUNA-ADS-BAR -->') !== false) return;
-
-    // Permanent branding bar — always visible on all plans, all users.
-    // position:fixed + z-index max + solid background = immune to any user customization
-    // (background colors, images, themes). paddingBottom pushes app content up so
-    // nothing is hidden behind the bar.
-    $bar = '<!-- LUNA-ADS-BAR -->'
-        . '<style>'
+// ── Branding bar — injected at serve time, no file writes needed ─────────────
+function luna_branding_bar(): string {
+    return '<style>'
         . '#lads{'
         .   'position:fixed!important;bottom:0!important;left:0!important;right:0!important;'
-        .   'height:36px!important;'
-        .   'background:#050810!important;'  // solid — never transparent, never overridable
+        .   'height:36px!important;background:#050810!important;'
         .   'border-top:1px solid #161d38!important;'
         .   'display:flex!important;align-items:center!important;justify-content:center!important;'
-        .   'z-index:2147483647!important;'  // max possible z-index
-        .   'font-family:"Segoe UI",system-ui,sans-serif!important;'
-        .   'pointer-events:auto!important;'
+        .   'z-index:2147483647!important;font-family:"Segoe UI",system-ui,sans-serif!important;'
         . '}'
         . '#lads a{'
         .   'color:#2e3a6e!important;text-decoration:none!important;'
@@ -250,12 +232,7 @@ function luna_ensure_ad_bar() {
         .     '🌙 Luna Workspace &nbsp;·&nbsp; websobreruedas.com'
         .   '</a>'
         . '</div>'
-        . '<script>'
-        . 'document.documentElement.style.setProperty("padding-bottom","36px","important");'
-        . '</script>';
-
-    $content = str_replace('</body>', $bar . '</body>', $content);
-    file_put_contents($index, $content, LOCK_EX);
+        . '<script>document.documentElement.style.setProperty("padding-bottom","36px","important");</script>';
 }
 
 // ── AJAX: save license key ───────────────────────────────────────────────────
