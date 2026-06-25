@@ -10,9 +10,18 @@
         <span class="lls-hint">Este es el URL que debe configurarse en el plugin Luna Workspace del cliente.</span>
       </div>
       <div class="lls-field">
-        <label class="lls-label">HMAC Secret</label>
-        <input type="text" class="lls-input lls-mono" name="hmac_secret" value="<?= esc_attr($hmac) ?>">
-        <span class="lls-hint">Debe coincidir con la constante <code>HMAC_SECRET</code> en el plugin Luna Workspace.</span>
+        <label class="lls-label">Clave Privada RSA <span style="color:#c62828">&#9888;&#65039; Solo en este servidor — nunca compartir</span></label>
+        <textarea class="lls-input lls-mono" name="lls_private_key" rows="10"
+                  style="font-size:11px;resize:vertical"
+                  placeholder="-----BEGIN PRIVATE KEY-----"><?= esc_textarea(get_option('lls_private_key','')) ?></textarea>
+        <span class="lls-hint">
+          <?php if ($private_key_set): ?>
+            <span style="color:#2e7d32">&#10003; Clave privada configurada.</span>
+          <?php else: ?>
+            <span style="color:#c62828">Sin clave privada — las licencias no firmadas con RSA.</span>
+          <?php endif; ?>
+          Pega aqui la clave privada RSA generada. La clave publica va en el plugin.
+        </span>
       </div>
       <div class="lls-form-footer">
         <button type="submit" class="lls-btn lls-btn-primary">Guardar</button>

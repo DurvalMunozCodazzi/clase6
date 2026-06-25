@@ -182,7 +182,16 @@ class LLS_License {
             $expires_at,
             $issued_at,
         ]);
-        $hmac = hash_hmac('sha256', $sign_payload, LLS_HMAC_SECRET);
+
+        $sig = '';
+        $private_pem = get_option('lls_private_key', '');
+        if ($private_pem) {
+            $pkey = openssl_pkey_get_private($private_pem);
+            if ($pkey) {
+                openssl_sign($sign_payload, $raw_sig, $pkey, OPENSSL_ALGO_SHA256);
+                $sig = base64_encode($raw_sig);
+            }
+        }
 
         return [
             'valid'          => true,
@@ -192,7 +201,7 @@ class LLS_License {
             'issued_at'      => $issued_at,
             'max_workspaces' => (int) $lic['max_workspaces'],
             'max_sites'      => (int) $lic['max_sites'],
-            'hmac'           => $hmac,
+            'sig'            => $sig,
         ];
     }
 
