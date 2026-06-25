@@ -252,7 +252,7 @@ footer p{color:var(--muted);font-size:.78rem}
 <!-- TOP BAR -->
 <nav class="topbar">
   <div class="topbar-logo">
-    <div class="icon"><i class="fas fa-columns" style="color:#fff"></i></div>
+    <div class="icon"><i class="fas fa-moon" style="color:#fff"></i></div>
     Luna Workspace
     <span class="demo-badge">DEMO</span>
   </div>
@@ -420,7 +420,7 @@ footer p{color:var(--muted);font-size:.78rem}
         <li><i class="fas fa-check"></i> WhatsApp + Telegram</li>
         <li><i class="fas fa-check"></i> Analítica avanzada</li>
         <li><i class="fas fa-check"></i> Prioridad de soporte</li>
-        <li class="no"><i class="fas fa-times"></i> Vista Gantt</li>
+        <li><i class="fas fa-check"></i> Recordatorios automáticos</li>
       </ul>
       <button class="plan-btn plan-btn-primary" onclick="goTo('profesional')">Elegir Profesional</button>
     </div>
@@ -432,7 +432,7 @@ footer p{color:var(--muted);font-size:.78rem}
       <ul class="plan-features">
         <li><i class="fas fa-check"></i> Todo lo del plan Pro</li>
         <li><i class="fas fa-check"></i> <strong>$6 por usuario adicional</strong></li>
-        <li><i class="fas fa-check"></i> Vista Gantt + dependencias</li>
+        <li><i class="fas fa-check"></i> Analítica avanzada + reportes</li>
         <li><i class="fas fa-check"></i> Workspaces ilimitados</li>
         <li><i class="fas fa-check"></i> Soporte dedicado</li>
         <li><i class="fas fa-check"></i> Onboarding incluido</li>
@@ -551,11 +551,11 @@ footer p{color:var(--muted);font-size:.78rem}
           <td><i class="fas fa-check ico-yes"></i></td>
         </tr>
         <tr>
-          <td>Vista Gantt <span class="winner-badge">CORPORATIVO</span></td>
-          <td class="col-luna"><i class="fas fa-check ico-yes" title="Solo plan Corporativo"></i> <span style="font-size:.7rem;color:var(--muted)">solo Corp.</span></td>
-          <td><i class="fas fa-times ico-no"></i> <span style="font-size:.7rem;color:var(--muted)">(plugin pago)</span></td>
-          <td><i class="fas fa-check ico-yes"></i></td>
-          <td><i class="fas fa-check ico-yes"></i></td>
+          <td>Alertas vencimiento en tablero <span class="winner-badge">LUNA</span></td>
+          <td class="col-luna"><i class="fas fa-check ico-yes"></i> <span style="font-size:.7rem;color:var(--ok)">nativo</span></td>
+          <td><i class="fas fa-times ico-partial"></i> <span style="font-size:.7rem;color:var(--muted)">solo badge</span></td>
+          <td><i class="fas fa-times ico-partial"></i> <span style="font-size:.7rem;color:var(--muted)">solo badge</span></td>
+          <td><i class="fas fa-times ico-partial"></i> <span style="font-size:.7rem;color:var(--muted)">solo badge</span></td>
           <td><i class="fas fa-times ico-no"></i></td>
         </tr>
         <tr>
@@ -686,7 +686,7 @@ footer p{color:var(--muted);font-size:.78rem}
 
 <footer>
   <div class="footer-logo">
-    <div class="icon"><i class="fas fa-columns" style="color:#fff;font-size:.7rem"></i></div>
+    <div class="icon"><i class="fas fa-moon" style="color:#fff;font-size:.7rem"></i></div>
     Luna Workspace
   </div>
   <p>© <?php echo date('Y') ?> websobreruedas.ar — Todos los derechos reservados</p>
