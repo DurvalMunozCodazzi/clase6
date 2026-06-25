@@ -1008,15 +1008,20 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
         </div>
         <div class="fg">
           <label class="fl">Etiquetas</label>
-          <!-- Global labels (predefined) -->
-          <div id="cm-global-labels" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px"></div>
+          <!-- Global labels: click to toggle -->
+          <div id="cm-global-labels-wrap" style="margin-bottom:8px">
+            <div style="font-size:10px;color:var(--t3);margin-bottom:5px;font-weight:600">Clic para aplicar:</div>
+            <div id="cm-global-labels" style="display:flex;flex-wrap:wrap;gap:5px;min-height:28px"></div>
+          </div>
+          <!-- Applied labels -->
+          <div class="tagd" id="cmtags"></div>
           <!-- Custom label input -->
+          <div style="font-size:10px;color:var(--t3);margin:6px 0 4px;font-weight:600">O creá una personalizada:</div>
           <div class="tagrow">
-            <input class="fi" id="cmti" placeholder="Etiqueta personalizada..." style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addCT()}">
-            <input type="color" id="cmtc" value="#5b6af0" style="width:34px;height:34px;border-radius:var(--r);border:1px solid var(--bdr);cursor:pointer;background:transparent;padding:2px">
+            <input type="color" id="cmtc" value="#5b6af0" style="width:34px;height:34px;border-radius:var(--r);border:1px solid var(--bdr);cursor:pointer;background:transparent;padding:2px;flex-shrink:0">
+            <input class="fi" id="cmti" placeholder="Nombre de etiqueta..." style="flex:1" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();addCT()}">
             <button class="btn bp" onclick="addCT()" style="padding:8px 11px"><i class="fas fa-plus"></i></button>
           </div>
-          <div class="tagd" id="cmtags"></div>
         </div>
       </div>
       <div class="tp" id="tp-asn"><p style="font-size:11px;color:var(--t3);margin-bottom:10px">Clic para asignar/desasignar:</p><div class="agrid" id="cmasn"></div></div>
@@ -2138,6 +2143,7 @@ async function openCardM(cardId){
     mChecklist = [...(d.checklist||[]).map(c=>({...c}))];
     mDeps      = [...(d.dependencies||[]).map(x=>({...x}))];
     renderMTags();
+    renderCMGlobalLabels();
     renderMAtts();
     renderAsn(d.assignees);
     renderChat(d.chat||[]);
@@ -2716,6 +2722,7 @@ async function switchWS(wsId) {
   renderKanban();
   if(S.view==='kn') renderFK();
   await loadBoard();
+  await loadGlobalLabels();
   notify('Workspace cambiado: '+WORKSPACES.find(w=>w.id==wsId)?.name, 'ok');
 }
 
@@ -5273,7 +5280,10 @@ async function deleteGlobalLabel(id, name, usageCount){
 // Render global labels as clickable chips in card modal
 function renderCMGlobalLabels(){
   const el = document.getElementById('cm-global-labels'); if(!el) return;
-  if(!GLOBAL_LABELS.length){ el.innerHTML=''; return; }
+  if(!GLOBAL_LABELS.length){
+    el.innerHTML='<span style="font-size:10px;color:var(--t3);font-style:italic">Sin etiquetas — el admin puede crearlas desde el ícono 🏷️ en el menú</span>';
+    return;
+  }
   el.innerHTML = GLOBAL_LABELS.map(lbl=>{
     const active = mTags.some(t=>t.label===lbl.name);
     return `<span class="glabel" 
