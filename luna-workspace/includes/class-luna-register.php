@@ -15,9 +15,8 @@ class Luna_Register {
     const MAIL_NAME    = 'Luna Workspace';
     const WA_SOPORTE   = '5491153283558';
 
-    // UltraMsg (opcional — dejar vacío para deshabilitar)
-    const WA_TOKEN    = '';
-    const WA_INSTANCE = '';
+    // CallMeBot — notificaciones WA al vendor (ya activado para WA_SOPORTE)
+    const WA_CALLMEBOT_APIKEY = '6291539';
 
     public static function init(): void {
         add_shortcode('luna_gratis', [self::class, 'shortcode']);
@@ -267,16 +266,24 @@ class Luna_Register {
                  . "Fecha:    " . date('d/m/Y H:i') . " UTC\n\n"
                  . "El email fue verificado por OTP. Revisá los datos y enviá la clave manualmente.";
         wp_mail(self::VENDOR_EMAIL, $subject, $body, ['From: '.self::MAIL_NAME.' <'.self::MAIL_FROM.'>']);
+
+        $wa = "🌙 *Luna Workspace — Nuevo registro*\n\n"
+            . "Nombre: $name\n"
+            . "Email: $email\n"
+            . "Teléfono: $phone\n"
+            . "Dominio: $domain\n\n"
+            . "✅ Email verificado por OTP. Revisá y enviá la clave.";
+        self::send_whatsapp($wa);
     }
 
-    private static function send_whatsapp(string $phone, string $msg): void {
-        if (!self::WA_TOKEN || !self::WA_INSTANCE) return;
-        $phone = preg_replace('/[^0-9]/', '', $phone);
-        if (!$phone) return;
-        $ctx = stream_context_create(['http'=>['method'=>'POST','timeout'=>8,'ignore_errors'=>true,
-            'header'=>"Content-Type: application/x-www-form-urlencoded\r\n",
-            'content'=>http_build_query(['token'=>self::WA_TOKEN,'to'=>$phone,'body'=>$msg])]]);
-        @file_get_contents("https://api.ultramsg.com/".self::WA_INSTANCE."/messages/chat", false, $ctx);
+    private static function send_whatsapp(string $msg): void {
+        if (!self::WA_CALLMEBOT_APIKEY || !self::WA_SOPORTE) return;
+        $url = 'https://api.callmebot.com/whatsapp.php'
+             . '?phone=' . self::WA_SOPORTE
+             . '&text='  . rawurlencode($msg)
+             . '&apikey=' . self::WA_CALLMEBOT_APIKEY;
+        $ctx = stream_context_create(['http' => ['method' => 'GET', 'timeout' => 8, 'ignore_errors' => true]]);
+        @file_get_contents($url, false, $ctx);
     }
 
     private static function email_tpl(string $name, string $content): string {
