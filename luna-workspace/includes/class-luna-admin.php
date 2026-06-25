@@ -1020,27 +1020,32 @@ class Luna_Admin {
             </div>
 
             <div class="luna-card">
-              <h2 style="margin-top:0">⚡ Acciones rápidas</h2>
-              <div style="display:flex;flex-direction:column;gap:10px">
+              <h2 style="margin-top:0">⚡ Acciones de mantenimiento</h2>
+              <div style="display:flex;flex-direction:column;gap:8px">
                 <button class="button button-primary luna-db-action" data-action="check"
-                        style="text-align:left;padding:8px 16px">
-                  🔍 Verificar integridad de tablas (CHECK TABLE)
+                        style="text-align:left;padding:10px 16px;height:auto;line-height:1.3">
+                  <strong style="display:block">🔍 VERIFICAR INTEGRIDAD</strong>
+                  <span style="font-size:11px;font-weight:normal;opacity:.85">verifica índices y detecta errores en las tablas</span>
                 </button>
                 <button class="button button-secondary luna-db-action" data-action="optimize"
-                        style="text-align:left;padding:8px 16px">
-                  ⚙️ Optimizar &amp; reconstruir índices (OPTIMIZE TABLE)
+                        style="text-align:left;padding:10px 16px;height:auto;line-height:1.3">
+                  <strong style="display:block">⚙️ OPTIMIZAR TABLAS</strong>
+                  <span style="font-size:11px;font-weight:normal;opacity:.85">reconstruye índices y recupera espacio en disco, sin tocar datos</span>
                 </button>
                 <button class="button button-secondary luna-db-action" data-action="repair"
-                        style="text-align:left;padding:8px 16px">
-                  🔧 Reparar tablas corruptas (REPAIR TABLE)
+                        style="text-align:left;padding:10px 16px;height:auto;line-height:1.3">
+                  <strong style="display:block">🔧 REPARAR TABLAS</strong>
+                  <span style="font-size:11px;font-weight:normal;opacity:.85">repara índices corruptos, no borra ningún dato</span>
                 </button>
                 <button class="button button-secondary luna-db-action" data-action="clean_sessions"
-                        style="text-align:left;padding:8px 16px">
-                  🧹 Limpiar sesiones expiradas
+                        style="text-align:left;padding:10px 16px;height:auto;line-height:1.3">
+                  <strong style="display:block">🧹 LIMPIAR SESIONES</strong>
+                  <span style="font-size:11px;font-weight:normal;opacity:.85">borra solo los tokens de acceso vencidos, no los usuarios</span>
                 </button>
                 <button class="button luna-db-action" data-action="regen_config"
-                        style="text-align:left;padding:8px 16px;background:#fef9c3;border-color:#d97706;color:#92400e">
-                  🔄 Regenerar luna-wp-config.php
+                        style="text-align:left;padding:10px 16px;height:auto;line-height:1.3;background:#fef9c3;border-color:#d97706;color:#92400e">
+                  <strong style="display:block">🔄 REGENERAR CONFIGURACIÓN</strong>
+                  <span style="font-size:11px;font-weight:normal;opacity:.85">recrea luna-wp-config.php si WordPress lo borró durante una actualización</span>
                 </button>
               </div>
               <div id="luna-db-action-result" style="margin-top:14px;display:none"></div>
@@ -1106,11 +1111,11 @@ class Luna_Admin {
             var result = $('#luna-db-action-result');
 
             var labels = {
-              check:          '🔍 Verificando integridad...',
-              optimize:       '⚙️ Optimizando tablas...',
+              check:          '🔍 Verificando integridad de tablas...',
+              optimize:       '⚙️ Optimizando tablas, puede demorar unos segundos...',
               repair:         '🔧 Reparando tablas...',
-              clean_sessions: '🧹 Limpiando sesiones...',
-              regen_config:   '🔄 Regenerando config...'
+              clean_sessions: '🧹 Limpiando sesiones expiradas...',
+              regen_config:   '🔄 Regenerando archivo de configuración...'
             };
             btn.prop('disabled', true);
             result.html('<span style="color:#64748b">' + (labels[action] || 'Procesando...') + '</span>').show();
