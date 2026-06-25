@@ -1615,24 +1615,25 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 
   <!-- GLOBAL LABELS PANEL -->
   <div id="labels-panel">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
       <h3 style="font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px">
-        <i class="fas fa-tags" style="color:var(--acc)"></i> Etiquetas del workspace
+        <i class="fas fa-tags" style="color:var(--acc)"></i> Etiquetas
       </h3>
       <button class="mx" onclick="toggleLabelsPanel()"><i class="fas fa-times"></i></button>
     </div>
-    <p style="font-size:11px;color:var(--t3);margin-bottom:14px;line-height:1.6">
-      El admin define las etiquetas disponibles. Todos los miembros las usan al crear tareas.
-    </p>
-    <!-- Existing labels -->
-    <div id="global-labels-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <p style="font-size:11px;color:var(--t3);line-height:1.5;margin:0">El admin define las etiquetas disponibles.<br>Los miembros las aplican en cada tarea.</p>
+      <span id="label-counter" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;background:var(--surf);border:1px solid var(--bdr);white-space:nowrap;color:var(--t2)">0/20</span>
+    </div>
+    <!-- Labels list -->
+    <div id="global-labels-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px"></div>
     <!-- Add new label (admin only) -->
     <div id="add-label-form" style="border-top:1px solid var(--bdr);padding-top:14px;display:none">
-      <div class="fl" style="margin-bottom:8px">Nueva etiqueta</div>
-      <div style="display:flex;gap:7px">
-        <input class="fi" id="new-label-name" placeholder="Nombre..." style="flex:1" onkeydown="if(event.key==='Enter')createGlobalLabel()">
-        <input type="color" id="new-label-color" value="#5b6af0" style="width:36px;height:36px;border-radius:var(--r);border:1px solid var(--bdr);cursor:pointer;padding:2px">
-        <button class="btn bp" onclick="createGlobalLabel()" style="padding:8px 12px"><i class="fas fa-plus"></i></button>
+      <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">Nueva etiqueta</div>
+      <div style="display:flex;gap:7px;align-items:center">
+        <input type="color" id="new-label-color" value="#5b6af0" style="width:36px;height:36px;border-radius:var(--r);border:1px solid var(--bdr);cursor:pointer;padding:2px;flex-shrink:0">
+        <input class="fi" id="new-label-name" placeholder="Nombre de la etiqueta..." style="flex:1" maxlength="40" autocomplete="off" onkeydown="if(event.key==='Enter')createGlobalLabel()">
+        <button class="btn bp" onclick="createGlobalLabel()" style="padding:8px 12px;flex-shrink:0"><i class="fas fa-plus"></i></button>
       </div>
     </div>
   </div>
@@ -5166,21 +5167,76 @@ function toggleLabelsPanel(){
   }
 }
 
+const LABEL_MAX = 20;
+
 function renderGlobalLabels(){
-  const el = document.getElementById('global-labels-list'); if(!el) return;
-  if(!GLOBAL_LABELS.length){
-    el.innerHTML = '<div style="font-size:11px;color:var(--t3);padding:8px 0">' +
-      (isAdmin() ? 'Creá la primera etiqueta abajo.' : 'El admin no ha creado etiquetas aún.') + '</div>';
+  const el      = document.getElementById('global-labels-list'); if(!el) return;
+  const counter = document.getElementById('label-counter');
+  const total   = GLOBAL_LABELS.length;
+  if(counter){
+    counter.textContent = `${total}/${LABEL_MAX}`;
+    counter.style.color = total >= LABEL_MAX ? '#ef4444' : total >= 16 ? '#f59e0b' : 'var(--t2)';
+    counter.style.borderColor = total >= LABEL_MAX ? 'rgba(239,68,68,.4)' : 'var(--bdr)';
+  }
+  // Show/hide create form based on limit and role
+  const form = document.getElementById('add-label-form');
+  if(form) form.style.display = isAdmin() && total < LABEL_MAX ? '' : 'none';
+
+  if(!total){
+    el.innerHTML = `<div style="font-size:11px;color:var(--t3);padding:10px 0;text-align:center">${isAdmin()?'Creá la primera etiqueta abajo.':'El admin no ha creado etiquetas aún.'}</div>`;
     return;
   }
   el.innerHTML = GLOBAL_LABELS.map(lbl=>`
-    <span class="glabel" style="background:${lbl.color}22;color:${lbl.color};border-color:${lbl.color}44">
-      ${esc(lbl.name)}
-      ${isAdmin()?`<button class="glabel-del" onclick="deleteGlobalLabel(${lbl.id},'${esc(lbl.name)}')" title="Eliminar"><i class="fas fa-times"></i></button>`:''}
-    </span>`).join('');
+    <div id="lbl-row-${lbl.id}" style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--r);background:var(--surf);border:1px solid var(--bdr)">
+      <div style="width:14px;height:14px;border-radius:50%;background:${lbl.color};flex-shrink:0"></div>
+      <span style="flex:1;font-size:12px;font-weight:600;color:var(--t1)">${esc(lbl.name)}</span>
+      ${lbl.usage_count>0?`<span style="font-size:10px;color:var(--t3)" title="${lbl.usage_count} tarea(s)">${lbl.usage_count} <i class="fas fa-tasks"></i></span>`:''}
+      ${isAdmin()?`
+        <button onclick="startEditLabel(${lbl.id})" title="Editar" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:12px;padding:2px 5px"><i class="fas fa-pen"></i></button>
+        <button onclick="deleteGlobalLabel(${lbl.id},'${esc(lbl.name)}',${lbl.usage_count||0})" title="Eliminar" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:12px;padding:2px 5px"><i class="fas fa-trash"></i></button>
+      `:''}
+    </div>
+    <div id="lbl-edit-${lbl.id}" style="display:none;gap:7px;align-items:center;padding:7px 10px;border-radius:var(--r);background:var(--elev);border:1px solid var(--acc)">
+      <input type="color" id="lbl-ec-${lbl.id}" value="${lbl.color}" style="width:32px;height:32px;border-radius:var(--r);border:1px solid var(--bdr);cursor:pointer;padding:2px;flex-shrink:0">
+      <input class="fi" id="lbl-en-${lbl.id}" value="${esc(lbl.name)}" maxlength="40" style="flex:1;padding:6px 9px;font-size:12px" onkeydown="if(event.key==='Enter')saveEditLabel(${lbl.id});if(event.key==='Escape')cancelEditLabel(${lbl.id})">
+      <button class="btn bp" onclick="saveEditLabel(${lbl.id})" style="padding:6px 10px;font-size:11px"><i class="fas fa-check"></i></button>
+      <button class="btn" onclick="cancelEditLabel(${lbl.id})" style="padding:6px 10px;font-size:11px"><i class="fas fa-times"></i></button>
+    </div>`).join('');
+}
+
+function startEditLabel(id){
+  document.getElementById(`lbl-row-${id}`).style.display='none';
+  const editEl = document.getElementById(`lbl-edit-${id}`);
+  editEl.style.display='flex';
+  document.getElementById(`lbl-en-${id}`)?.focus();
+}
+
+function cancelEditLabel(id){
+  document.getElementById(`lbl-edit-${id}`).style.display='none';
+  document.getElementById(`lbl-row-${id}`).style.display='flex';
+}
+
+async function saveEditLabel(id){
+  const name  = document.getElementById(`lbl-en-${id}`)?.value.trim();
+  const color = document.getElementById(`lbl-ec-${id}`)?.value || '#5b6af0';
+  if(!name){ notify('Ingresá un nombre','wa'); return; }
+  try{
+    const d = await _wsApi(`kanban.php?action=update_label&id=${id}`,'PUT',{name,color});
+    const idx = GLOBAL_LABELS.findIndex(l=>l.id==id);
+    if(idx>=0) Object.assign(GLOBAL_LABELS[idx],{name,color});
+    // Update tags in memory
+    TAGS = TAGS.map(t=>t.label===GLOBAL_LABELS[idx]?.name ? {...t,label:name,color} : t);
+    mTags = mTags.map(t=>t.id==`gl_${id}` ? {...t,label:name,color} : t);
+    renderGlobalLabels();
+    renderCMGlobalLabels();
+    renderMTags();
+    renderBoard();
+    notify('Etiqueta actualizada ✓','ok');
+  }catch(e){ notify('Error: '+e.message,'er'); }
 }
 
 async function createGlobalLabel(){
+  if(GLOBAL_LABELS.length >= LABEL_MAX){ notify(`Límite de ${LABEL_MAX} etiquetas alcanzado`,'wa'); return; }
   const nameEl  = document.getElementById('new-label-name');
   const colorEl = document.getElementById('new-label-color');
   const name    = nameEl?.value.trim();
@@ -5188,25 +5244,28 @@ async function createGlobalLabel(){
   const color = colorEl?.value || '#5b6af0';
   try{
     const d = await _wsApi('kanban.php?action=create_label','POST',{name,color});
-    GLOBAL_LABELS.push(d.label);
-    if(nameEl) nameEl.value = '';
+    GLOBAL_LABELS.push({...d.label, usage_count:0});
+    if(nameEl){ nameEl.value=''; nameEl.focus(); }
     renderGlobalLabels();
-    // Refresh card modal if open
     renderCMGlobalLabels();
     notify('Etiqueta creada ✓','ok');
   }catch(e){ notify('Error: '+e.message,'er'); }
 }
 
-async function deleteGlobalLabel(id, name){
-  if(!confirm(`¿Eliminar la etiqueta "${name}"?\nSe quitará de todas las tareas que la usen.`)) return;
+async function deleteGlobalLabel(id, name, usageCount){
+  const msg = usageCount > 0
+    ? `¿Eliminar "${name}"?\nEstá siendo usada en ${usageCount} tarea(s). Se quitará de todas.`
+    : `¿Eliminar la etiqueta "${name}"?`;
+  if(!confirm(msg)) return;
   try{
     await _wsApi(`kanban.php?action=delete_label&id=${id}`,'DELETE');
     GLOBAL_LABELS = GLOBAL_LABELS.filter(l=>l.id!=id);
-    // Remove from current card modal if open
+    TAGS  = TAGS.filter(t=>t.label!==name);
     mTags = mTags.filter(t=>t.label!==name);
     renderMTags();
     renderGlobalLabels();
     renderCMGlobalLabels();
+    renderBoard();
     notify('Etiqueta eliminada','ok');
   }catch(e){ notify('Error: '+e.message,'er'); }
 }

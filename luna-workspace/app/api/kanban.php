@@ -346,23 +346,61 @@ if ($method === 'GET' && $action === 'poll') {
     jsonOut(['ts' => max($r['updated_at'], $lastCards ?? '')]);
 }
 
-// ── GET global labels ──────────────────────────────────────────
+// ── GET global labels (with usage count) ───────────────────────
 if ($method === 'GET' && $action === 'labels') {
-    $st = $db->prepare("SELECT * FROM ".tb('workspace_labels')." WHERE workspace_id=? ORDER BY name");
+    $st = $db->prepare("
+        SELECT wl.*, COUNT(ct.card_id) as usage_count
+        FROM ".tb('workspace_labels')." wl
+        LEFT JOIN ".tb('card_tags')." ct ON ct.label = wl.name
+        LEFT JOIN ".tb('cards')." c ON c.id = ct.card_id AND c.workspace_id = wl.workspace_id
+        WHERE wl.workspace_id=?
+        GROUP BY wl.id ORDER BY wl.name
+    ");
     $st->execute([$wsId]);
     jsonOut(['labels' => $st->fetchAll()]);
 }
 
-// ── POST create label ──────────────────────────────────────────
+// ── POST create label (max 20 per workspace) ───────────────────
 if ($method === 'POST' && $action === 'create_label') {
+    if ($me['role'] !== 'admin') jsonErr('Solo admins', 403);
     $b    = json_decode(file_get_contents('php://input'), true);
-    $name = trim($b['name'] ?? '');
+    $name = substr(trim($b['name'] ?? ''), 0, 40);
     if (!$name) jsonErr('Nombre requerido');
-    $color = substr(trim($b['color'] ?? '#5b6af0'), 0, 10);
+    $color = preg_match('/^#[0-9a-fA-F]{3,6}$/', trim($b['color'] ?? '')) ? trim($b['color']) : '#5b6af0';
+    // Enforce limit
+    $count = (int)$db->prepare("SELECT COUNT(*) FROM ".tb('workspace_labels')." WHERE workspace_id=?")->execute([$wsId]) && 1;
+    $cnt   = $db->query("SELECT COUNT(*) FROM ".tb('workspace_labels')." WHERE workspace_id={$wsId}")->fetchColumn();
+    if ($cnt >= 20) jsonErr('Límite de 20 etiquetas alcanzado', 422);
+    // Prevent duplicates
+    $dup = $db->prepare("SELECT id FROM ".tb('workspace_labels')." WHERE workspace_id=? AND LOWER(name)=LOWER(?)");
+    $dup->execute([$wsId, $name]);
+    if ($dup->fetch()) jsonErr('Ya existe una etiqueta con ese nombre', 422);
     $db->prepare("INSERT INTO ".tb('workspace_labels')." (workspace_id,name,color,created_by) VALUES (?,?,?,?)")
        ->execute([$wsId, $name, $color, $me['id']]);
     $newId = $db->lastInsertId();
-    jsonOut(['label' => ['id'=>$newId,'name'=>$name,'color'=>$color,'workspace_id'=>$wsId]], 201);
+    jsonOut(['label' => ['id'=>$newId,'name'=>$name,'color'=>$color,'workspace_id'=>$wsId,'usage_count'=>0]], 201);
+}
+
+// ── PUT update label ───────────────────────────────────────────
+if ($method === 'PUT' && $action === 'update_label') {
+    if ($me['role'] !== 'admin') jsonErr('Solo admins', 403);
+    $b     = json_decode(file_get_contents('php://input'), true);
+    $name  = substr(trim($b['name'] ?? ''), 0, 40);
+    $color = preg_match('/^#[0-9a-fA-F]{3,6}$/', trim($b['color'] ?? '')) ? trim($b['color']) : '#5b6af0';
+    if (!$name) jsonErr('Nombre requerido');
+    $old = $db->prepare("SELECT name FROM ".tb('workspace_labels')." WHERE id=? AND workspace_id=?");
+    $old->execute([$id, $wsId]);
+    $oldRow = $old->fetch();
+    if (!$oldRow) jsonErr('Etiqueta no encontrada', 404);
+    // Check duplicate (excluding self)
+    $dup = $db->prepare("SELECT id FROM ".tb('workspace_labels')." WHERE workspace_id=? AND LOWER(name)=LOWER(?) AND id!=?");
+    $dup->execute([$wsId, $name, $id]);
+    if ($dup->fetch()) jsonErr('Ya existe una etiqueta con ese nombre', 422);
+    $db->prepare("UPDATE ".tb('workspace_labels')." SET name=?, color=? WHERE id=?")->execute([$name, $color, $id]);
+    // Propagate rename + recolor to all card_tags
+    $db->prepare("UPDATE ".tb('card_tags')." ct JOIN ".tb('cards')." c ON c.id=ct.card_id SET ct.label=?, ct.color=? WHERE c.workspace_id=? AND ct.label=?")
+       ->execute([$name, $color, $wsId, $oldRow['name']]);
+    jsonOut(['ok' => true, 'label' => ['id'=>$id,'name'=>$name,'color'=>$color]]);
 }
 
 // ── DELETE label ────────────────────────────────────────────────
