@@ -1,17 +1,17 @@
 <?php
 /**
  * Plugin Name:       Luna Workspace
- * Plugin URI:        https://websobreruedas.ar
- * Description:       Workspace colaborativo estilo Kanban con gestión de tareas, equipos y proyectos.
- * Version:           2.0.0
- * Author:            Luna Team
+ * Plugin URI:        https://misioneslahermosa.com
+ * Description:       Pizarra Colaborativa, gestión de tareas, equipos y proyectos.
+ * Version:           11.1.3
+ * Author:            Web Sobre Ruedas
  * License:           Proprietary
  * Text Domain:       luna-workspace
  */
 
 defined('ABSPATH') || exit;
 
-define('LUNA_VERSION',     '2.0.0');
+define('LUNA_VERSION',     '11.1.3');
 define('LUNA_PLUGIN_DIR',  plugin_dir_path(__FILE__));
 define('LUNA_PLUGIN_URL',  plugin_dir_url(__FILE__));
 define('LUNA_APP_DIR',     LUNA_PLUGIN_DIR . 'app/');
