@@ -379,9 +379,10 @@ footer p{color:var(--muted);font-size:.78rem}
     <div class="plan-card">
       <div class="plan-name">Corporativo</div>
       <div class="plan-price"><sup>$</sup>89 <span>/ mes</span></div>
-      <div class="plan-users"><i class="fas fa-building" style="color:var(--luna)"></i> Usuarios ilimitados</div>
+      <div class="plan-users"><i class="fas fa-building" style="color:var(--luna)"></i> Hasta 20 usuarios incluidos</div>
       <ul class="plan-features">
         <li><i class="fas fa-check"></i> Todo lo del plan Pro</li>
+        <li><i class="fas fa-check"></i> <strong>$6 por usuario adicional</strong></li>
         <li><i class="fas fa-check"></i> Workspaces ilimitados</li>
         <li><i class="fas fa-check"></i> Soporte dedicado</li>
         <li><i class="fas fa-check"></i> Onboarding incluido</li>
@@ -447,7 +448,7 @@ footer p{color:var(--muted);font-size:.78rem}
         </tr>
         <tr>
           <td>Precio por usuario extra</td>
-          <td class="col-luna"><i class="fas fa-check ico-yes"></i> <span style="font-size:.75rem;color:var(--ok)">sin costo adicional</span></td>
+          <td class="col-luna"><span style="font-size:.82rem;color:var(--ok);font-weight:700">$6/usuario</span><span class="price-sub">plan Corporativo</span></td>
           <td><span style="font-size:.78rem;color:var(--warn)">+$10/usuario</span></td>
           <td><span style="font-size:.78rem;color:var(--warn)">+$10.99/usuario</span></td>
           <td><span style="font-size:.78rem;color:var(--warn)">+$12/usuario</span></td>
