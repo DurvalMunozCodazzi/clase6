@@ -479,13 +479,12 @@ class Luna_Activator {
             . "define('DB_CHARSET',     'utf8mb4');\n"
             . "define('LUNA_TB_PREFIX', " . var_export($tb_prefix,      true) . ");\n"
             . "define('SESSION_HOURS',  24);\n"
-            . "define('LUNA_VERSION',   '2.0');\n"
+            . "define('LUNA_VERSION',   " . var_export(LUNA_VERSION, true) . ");\n"
             . "define('LUNA_LICENSE_KEY',    " . var_export($license_key,    true) . ");\n"
             . "define('LUNA_LICENSE_SERVER', " . var_export($license_server, true) . ");\n"
             . "define('LUNA_SITE_URL',       " . var_export($site_url,       true) . ");\n"
             . "define('LUNA_UPLOAD_URL',     " . var_export($upload_url,     true) . ");\n"
-            . "define('LUNA_CRON_SECRET',  " . var_export(get_option('luna_cron_secret',''), true)  . ");\n"
-            . "define('LUNA_HMAC_SECRET',  " . var_export(get_option('luna_hmac_secret',''), true)  . ");\n";
+            . "define('LUNA_CRON_SECRET',  " . var_export(get_option('luna_cron_secret',''), true)  . ");\n";
 
         $result = file_put_contents(LUNA_APP_DIR . 'luna-wp-config.php', $content);
 
