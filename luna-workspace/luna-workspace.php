@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Luna Workspace
  * Plugin URI:        https://misioneslahermosa.com
- * Description:       Pizarra Colaborativa, gestión de tareas, equipos y proyectos.
+ * Description:       Pizarra Colaborativa, gestión de tareas, equipos y proyectos. Versión 11.1.3 | Por Web Sobre Ruedas | 2026 | misioneslahermosa.com
  * Version:           11.1.3
  * Author:            Web Sobre Ruedas
  * License:           Proprietary
