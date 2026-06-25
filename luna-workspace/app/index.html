@@ -880,17 +880,16 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
     <div id="tavs" style="display:flex;align-items:center;cursor:pointer" onclick="openUP()"></div>
     <button class="tbtn" id="teambtn" onclick="openUP()"><i class="fas fa-users"></i> Equipo</button>
     <div class="sep"></div>
-    <button class="tbtn" id="dbtn" onclick="toggleDP()"><i class="fab fa-google-drive"></i> Drive</button>
-    <button class="tbtn" id="smtp-btn" onclick="toggleSMTPPanel()" title="Configurar emails" style="display:none"><i class="fas fa-envelope"></i></button>
-        <button class="tbtn" id="import-btn" onclick="openMo('importMo')" title="Importar desde Trello" style="display:none"><i class="fas fa-file-import"></i></button>
     <button class="tbtn" onclick="toggleCalPanel()" title="Calendario"><i class="fas fa-calendar-alt"></i></button>
-    <button class="tbtn" onclick="openMetrics()" title="Métricas y estadísticas"><i class="fas fa-chart-bar"></i></button>
+    <button class="tbtn" onclick="openMetrics()" title="Analítica"><i class="fas fa-chart-bar"></i></button>
     <div class="notif-bell tbtn" onclick="toggleNotifPanel()" title="Notificaciones">
       <i class="fas fa-bell"></i>
       <span class="notif-badge" id="notif-badge">0</span>
     </div>
     <button class="tbtn" onclick="toggleTP()" title="Personalizar"><i class="fas fa-palette"></i></button>
-
+    <button class="tbtn" id="dbtn" onclick="toggleDP()"><i class="fab fa-google-drive"></i> Drive</button>
+    <button class="tbtn" id="smtp-btn" onclick="toggleSMTPPanel()" title="Correo" style="display:none"><i class="fas fa-envelope"></i></button>
+    <button class="tbtn" id="import-btn" onclick="openMo('importMo')" title="Importar desde Trello" style="display:none"><i class="fas fa-file-import"></i></button>
     <button class="tbtn p" onclick="exportWS()"><i class="fas fa-download"></i> Exportar</button>
     <div class="sep"></div>
     <div class="cu" id="cu" onclick="openPM()">
