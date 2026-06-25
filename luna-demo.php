@@ -305,8 +305,11 @@ footer p{color:var(--muted);font-size:.78rem}
       <button class="tb" title="Calendario"><i class="fas fa-calendar-alt"></i></button>
       <button class="tb" title="Analítica"><i class="fas fa-chart-bar"></i></button>
       <div class="notif-wrap"><button class="tb" title="Notificaciones"><i class="fas fa-bell"></i></button><span class="notif-count">3</span></div>
-      <button class="tb" title="Personalizar"><i class="fas fa-palette"></i></button>
-      <button class="tb accent" id="addColBtn" title="Exportar"><i class="fas fa-download"></i> Exportar</button>
+      <button class="tb" title="Personalizar tema"><i class="fas fa-palette"></i></button>
+      <button class="tb" title="Google Drive"><i class="fab fa-google-drive"></i></button>
+      <button class="tb" title="Configurar correo SMTP"><i class="fas fa-envelope"></i></button>
+      <button class="tb" title="Importar desde Trello"><i class="fas fa-file-import"></i></button>
+      <button class="tb accent" id="addColBtn" title="Exportar workspace"><i class="fas fa-download"></i> Exportar</button>
       <div class="tb-sep"></div>
       <!-- Usuario -->
       <div class="user-chip">
