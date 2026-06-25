@@ -580,6 +580,9 @@ class Luna_Admin {
             if (!empty($_POST['luna_license_server_url'])) {
                 update_option('luna_license_server_url', esc_url_raw(trim($_POST['luna_license_server_url'])));
             }
+            if (isset($_POST['luna_hmac_secret'])) {
+                update_option('luna_hmac_secret', sanitize_text_field($_POST['luna_hmac_secret']));
+            }
             update_option('luna_license_key', $new_key);
             Luna_Activator::regenerate_app_config();
             @unlink(LUNA_APP_DIR . 'luna-license-cache.json');
@@ -653,6 +656,16 @@ class Luna_Admin {
                              value="<?php echo esc_attr(get_option('luna_license_server_url', Luna_License::SERVER)) ?>"
                              class="large-text" style="font-family:monospace;font-size:12px">
                       <p class="description">Dejá el valor por defecto si no cambiaste el servidor.</p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><label for="luna-hmac-secret">HMAC Secret</label></th>
+                    <td>
+                      <input type="password" id="luna-hmac-secret" name="luna_hmac_secret"
+                             value="<?php echo esc_attr(get_option('luna_hmac_secret', '')) ?>"
+                             class="large-text" style="font-family:monospace;font-size:12px"
+                             autocomplete="new-password">
+                      <p class="description">Copialo desde Luna Licencias → Configuración → HMAC Secret en websobreruedas.com. Nunca compartirlo.</p>
                     </td>
                   </tr>
                 </table>

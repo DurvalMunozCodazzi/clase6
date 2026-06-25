@@ -8,7 +8,6 @@ defined('ABSPATH') || exit;
  */
 class Luna_Register {
 
-    const HMAC_SECRET = 'ef1b13da2d745cd296dc66b90f950f440089b77080f3e3611f2000fdb162240d';
     const OTP_TTL     = 600; // 10 minutos
     const VENDOR_EMAIL = 'pedidos47@gmail.com';
     const MAIL_FROM    = 'no-reply@websobreruedas.com';

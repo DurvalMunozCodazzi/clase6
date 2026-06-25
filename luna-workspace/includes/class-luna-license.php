@@ -6,9 +6,6 @@ class Luna_License {
     // Endpoint REST del plugin Luna License Server instalado en websobreruedas.com
     const SERVER = 'https://websobreruedas.com/wp-json/luna-licenses/v1/verify';
 
-    // Secreto compartido con el servidor (mismo valor en license-server/config.php)
-    const HMAC_SECRET = 'ef1b13da2d745cd296dc66b90f950f440089b77080f3e3611f2000fdb162240d';
-
     const PLANS = [
         'free'         => ['label' => 'Gratis',        'max_workspaces' => 1,   'max_sites' => 1],
         'starter'      => ['label' => 'Básico',        'max_workspaces' => 1,   'max_sites' => 1],
@@ -72,7 +69,8 @@ class Luna_License {
                 $data['expires_at'] ?? '',
                 $data['issued_at'],
             ]);
-            $expected = hash_hmac('sha256', $payload, self::HMAC_SECRET);
+            $secret   = get_option('luna_hmac_secret', '');
+            $expected = hash_hmac('sha256', $payload, $secret);
             if (!hash_equals($expected, $data['hmac'])) {
                 return ['valid' => false, 'reason' => 'invalid_signature',
                         'message' => 'La firma de la respuesta del servidor es inválida.'];
