@@ -33,14 +33,26 @@ if ($method === 'GET' && $action === 'dashboard') {
     $done->execute([$wsId, $wsId]);
     $completed = (int)$done->fetchColumn();
 
-    // Overdue
-    $ov = $db->prepare("SELECT COUNT(*) FROM ".tb('cards')." WHERE workspace_id=? AND due_date < CURDATE() AND due_date IS NOT NULL");
-    $ov->execute([$wsId]);
+    // Overdue — only pending tasks (excludes completed columns)
+    $ov = $db->prepare("
+        SELECT COUNT(*) FROM ".tb('cards')." c
+        JOIN ".tb('columns_k')." k ON k.id = c.column_id
+        WHERE c.workspace_id=? AND c.due_date < CURDATE() AND c.due_date IS NOT NULL
+          AND k.title NOT LIKE '%complet%'
+          AND k.position < (SELECT MAX(position) FROM ".tb('columns_k')." WHERE workspace_id=?)
+    ");
+    $ov->execute([$wsId, $wsId]);
     $overdue = (int)$ov->fetchColumn();
 
-    // Due this week
-    $week = $db->prepare("SELECT COUNT(*) FROM ".tb('cards')." WHERE workspace_id=? AND due_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)");
-    $week->execute([$wsId]);
+    // Due this week — only pending tasks
+    $week = $db->prepare("
+        SELECT COUNT(*) FROM ".tb('cards')." c
+        JOIN ".tb('columns_k')." k ON k.id = c.column_id
+        WHERE c.workspace_id=? AND c.due_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+          AND k.title NOT LIKE '%complet%'
+          AND k.position < (SELECT MAX(position) FROM ".tb('columns_k')." WHERE workspace_id=?)
+    ");
+    $week->execute([$wsId, $wsId]);
     $dueWeek = (int)$week->fetchColumn();
 
     // By priority
