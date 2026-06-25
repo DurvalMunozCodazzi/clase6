@@ -5204,7 +5204,7 @@ async function saveEditLabel(id){
     renderGlobalLabels();
     renderCMGlobalLabels();
     renderMTags();
-    renderBoard();
+    renderKanban();
     notify('Etiqueta actualizada ✓','ok');
   }catch(e){ notify('Error: '+e.message,'er'); }
 }
@@ -5239,7 +5239,7 @@ async function deleteGlobalLabel(id, name, usageCount){
     renderMTags();
     renderGlobalLabels();
     renderCMGlobalLabels();
-    renderBoard();
+    renderKanban();
     notify('Etiqueta eliminada','ok');
   }catch(e){ notify('Error: '+e.message,'er'); }
 }
