@@ -166,8 +166,7 @@ function luna_render_shortcode($atts) {
           apiUrl:     <?php echo json_encode(LUNA_APP_URL . 'api') ?>,
           ajaxUrl:    <?php echo json_encode(admin_url('admin-ajax.php')) ?>,
           nonce:      <?php echo json_encode(wp_create_nonce('luna_nonce')) ?>,
-          showGantt:  <?php echo get_option('luna_show_gantt', 1) ? 'true' : 'false' ?>,
-          showAds:    <?php echo empty(get_option('luna_license_key', '')) ? 'true' : 'false' ?>
+          showGantt:  <?php echo get_option('luna_show_gantt', 1) ? 'true' : 'false' ?>
         };
       </script>
       <iframe src="<?php echo esc_url($app_url) ?>"
@@ -202,7 +201,6 @@ function luna_serve_app() {
         . ',ajaxUrl:'   . json_encode(admin_url('admin-ajax.php'))
         . ',nonce:'     . json_encode(wp_create_nonce('luna_nonce'))
         . ',showGantt:' . (get_option('luna_show_gantt', 1) ? 'true' : 'false')
-        . ',showAds:'   . (empty(get_option('luna_license_key', '')) ? 'true' : 'false')
         . '};</script>';
     $content = str_replace('</head>', $inject . '</head>', $content);
     // Fix relative API paths to absolute plugin paths
@@ -223,61 +221,37 @@ function luna_ensure_ad_bar() {
     // Already injected — nothing to do
     if (strpos($content, '<!-- LUNA-ADS-BAR -->') !== false) return;
 
+    // Permanent branding bar — always visible on all plans, all users.
+    // position:fixed + z-index max + solid background = immune to any user customization
+    // (background colors, images, themes). paddingBottom pushes app content up so
+    // nothing is hidden behind the bar.
     $bar = '<!-- LUNA-ADS-BAR -->'
         . '<style>'
-        . '#lads{position:fixed;bottom:0;left:0;right:0;height:62px;background:linear-gradient(135deg,#06090f 0%,#0d1128 100%);border-top:1px solid #1a2040;display:flex;align-items:center;padding:0 14px;gap:10px;z-index:2147483647;box-shadow:0 -3px 20px rgba(0,0,0,.55);font-family:"Segoe UI",system-ui,sans-serif;box-sizing:border-box}'
-        . '#lads *{box-sizing:border-box}'
-        . '#lads-pub{font-size:8px;color:#2a3260;text-transform:uppercase;letter-spacing:.6px;font-weight:800;writing-mode:vertical-rl;transform:rotate(180deg);flex-shrink:0;user-select:none}'
-        . '#lads-cnt{flex:1;display:flex;align-items:center;gap:10px;overflow:hidden;min-width:0}'
-        . '#lads-img{height:38px;width:auto;border-radius:6px;object-fit:cover;flex-shrink:0;display:none}'
-        . '#lads-txt{font-size:12px;color:#7880a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;line-height:1.3}'
-        . '#lads-lnk{font-size:11px;color:#a5b4fc;text-decoration:none;font-weight:700;white-space:nowrap;flex-shrink:0;transition:.15s}'
-        . '#lads-lnk:hover{color:#c4b5fd}'
-        . '#lads-cta{background:linear-gradient(135deg,#5b6af0,#8b5cf6);color:#fff!important;padding:9px 15px;border-radius:8px;font-size:11px;font-weight:800;text-decoration:none!important;white-space:nowrap;flex-shrink:0;box-shadow:0 2px 12px rgba(91,106,240,.35);transition:.15s}'
-        . '#lads-cta:hover{box-shadow:0 4px 18px rgba(91,106,240,.55);transform:translateY(-1px)}'
+        . '#lads{'
+        .   'position:fixed!important;bottom:0!important;left:0!important;right:0!important;'
+        .   'height:36px!important;'
+        .   'background:#050810!important;'  // solid — never transparent, never overridable
+        .   'border-top:1px solid #161d38!important;'
+        .   'display:flex!important;align-items:center!important;justify-content:center!important;'
+        .   'z-index:2147483647!important;'  // max possible z-index
+        .   'font-family:"Segoe UI",system-ui,sans-serif!important;'
+        .   'pointer-events:auto!important;'
+        . '}'
+        . '#lads a{'
+        .   'color:#2e3a6e!important;text-decoration:none!important;'
+        .   'font-size:11px!important;font-weight:600!important;letter-spacing:.4px!important;'
+        .   'display:flex!important;align-items:center!important;gap:5px!important;'
+        .   'transition:color .2s!important;'
+        . '}'
+        . '#lads a:hover{color:#5b6af0!important;}'
         . '</style>'
         . '<div id="lads">'
-        .   '<span id="lads-pub">Pub</span>'
-        .   '<div id="lads-cnt">'
-        .     '<img id="lads-img" src="" alt="">'
-        .     '<span id="lads-txt"></span>'
-        .     '<a id="lads-lnk" href="https://websobreruedas.com/luna-planes" target="_blank" rel="noopener" style="display:none"></a>'
-        .   '</div>'
-        .   '<a id="lads-cta" href="https://websobreruedas.com/luna-planes" target="_blank" rel="noopener">⚡ Quitar anuncios</a>'
+        .   '<a href="https://websobreruedas.com" target="_blank" rel="noopener">'
+        .     '🌙 Luna Workspace &nbsp;·&nbsp; websobreruedas.com'
+        .   '</a>'
         . '</div>'
         . '<script>'
-        . '(function(){'
-        .   'var W=window.LUNA_WP||(window.parent&&window.parent.LUNA_WP)||{};'
-        .   'if(W.showAds===false){document.getElementById("lads").style.display="none";return;}'
-        .   'document.documentElement.style.paddingBottom="62px";'
-        .   'var DEF=['
-        .     '{text:"Actualizá al plan Básico — equipos de hasta 5 personas desde $19/mes",link:"https://websobreruedas.com/luna-planes",cta:"Ver planes →"},'
-        .     '{text:"Luna Workspace Pro — WhatsApp, Telegram y métricas avanzadas para tu equipo",link:"https://websobreruedas.com/luna-planes",cta:"Conocer →"},'
-        .     '{text:"Gantt, recordatorios automáticos y soporte prioritario — Plan Profesional",link:"https://websobreruedas.com/luna-planes",cta:"Ver más →"}'
-        .   '];'
-        .   'var banners=DEF,cur=0,upUrl="https://websobreruedas.com/luna-planes";'
-        .   'function render(){'
-        .     'var b=banners[cur%banners.length];'
-        .     'var img=document.getElementById("lads-img");'
-        .     'var txt=document.getElementById("lads-txt");'
-        .     'var lnk=document.getElementById("lads-lnk");'
-        .     'var cta=document.getElementById("lads-cta");'
-        .     'if(b.img){img.src=b.img;img.style.display="block";}else{img.style.display="none";}'
-        .     'txt.textContent=b.text||"";'
-        .     'if(b.link&&b.cta){lnk.href=b.link;lnk.textContent=b.cta;lnk.style.display="inline";}else{lnk.style.display="none";}'
-        .     'if(upUrl)cta.href=upUrl;'
-        .   '}'
-        .   'fetch("https://websobreruedas.com/luna-ads.json",{cache:"default"})'
-        .     '.then(function(r){return r.json();})'
-        .     '.then(function(d){'
-        .       'if(d.banners&&d.banners.length)banners=d.banners;'
-        .       'if(d.upgrade_url)upUrl=d.upgrade_url;'
-        .       'if(d.upgrade_text)document.getElementById("lads-cta").textContent=d.upgrade_text;'
-        .       'render();'
-        .     '}).catch(function(){});'
-        .   'render();'
-        .   'setInterval(function(){cur++;render();},9000);'
-        . '})();'
+        . 'document.documentElement.style.setProperty("padding-bottom","36px","important");'
         . '</script>';
 
     $content = str_replace('</body>', $bar . '</body>', $content);
