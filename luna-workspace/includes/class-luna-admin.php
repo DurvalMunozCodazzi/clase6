@@ -187,7 +187,7 @@ class Luna_Admin {
             update_option('luna_entry_token', $entry_token);
         }
         $permanent_url = add_query_arg('luna_enter', $entry_token, home_url('/'));
-        $app_direct    = LUNA_APP_URL . 'index.html';
+        $app_direct    = home_url('/?luna_app=1');
 
         // ¿Regenerar token?
         if (isset($_POST['luna_regen_token']) && check_admin_referer('luna_settings')) {
