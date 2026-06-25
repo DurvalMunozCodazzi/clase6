@@ -5170,11 +5170,15 @@ function renderGlobalLabels(){
         <button onclick="deleteGlobalLabel(${lbl.id},'${esc(lbl.name)}',${lbl.usage_count||0})" title="Eliminar" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:12px;padding:2px 5px"><i class="fas fa-trash"></i></button>
       `:''}
     </div>
-    <div id="lbl-edit-${lbl.id}" style="display:none;gap:7px;align-items:center;padding:7px 10px;border-radius:var(--r);background:var(--elev);border:1px solid var(--acc)">
-      <input type="color" id="lbl-ec-${lbl.id}" value="${lbl.color}" style="width:32px;height:32px;border-radius:var(--r);border:1px solid var(--bdr);cursor:pointer;padding:2px;flex-shrink:0">
-      <input class="fi" id="lbl-en-${lbl.id}" value="${esc(lbl.name)}" maxlength="40" autocomplete="off" style="flex:1;padding:6px 9px;font-size:12px" onkeydown="if(event.key==='Enter')saveEditLabel(${lbl.id});if(event.key==='Escape')cancelEditLabel(${lbl.id})">
-      <button class="btn bp" onclick="saveEditLabel(${lbl.id})" style="padding:6px 10px;font-size:11px"><i class="fas fa-check"></i></button>
-      <button class="btn" onclick="cancelEditLabel(${lbl.id})" style="padding:6px 10px;font-size:11px"><i class="fas fa-times"></i></button>
+    <div id="lbl-edit-${lbl.id}" style="display:none;flex-direction:column;gap:8px;padding:10px;border-radius:var(--r);background:var(--elev);border:1px solid var(--acc)">
+      <div style="display:flex;gap:7px;align-items:center">
+        <input type="color" id="lbl-ec-${lbl.id}" value="${lbl.color}" style="width:32px;height:32px;border-radius:var(--r);border:1px solid var(--bdr);cursor:pointer;padding:2px;flex-shrink:0">
+        <input class="fi" id="lbl-en-${lbl.id}" value="${esc(lbl.name)}" maxlength="40" autocomplete="off" style="flex:1;padding:6px 9px;font-size:12px" onkeydown="if(event.key==='Enter')saveEditLabel(${lbl.id});if(event.key==='Escape')cancelEditLabel(${lbl.id})">
+      </div>
+      <div style="display:flex;gap:7px;justify-content:flex-end">
+        <button class="btn" onclick="cancelEditLabel(${lbl.id})" style="padding:6px 14px;font-size:12px">Cancelar</button>
+        <button class="btn bp" onclick="saveEditLabel(${lbl.id})" style="padding:6px 14px;font-size:12px">Guardar</button>
+      </div>
     </div>`).join('');
 }
 
