@@ -179,6 +179,33 @@ body{font-family:'Inter',sans-serif;background:var(--dark);color:var(--text);min
 .toast.show{transform:translateX(-50%) translateY(0)}
 .toast i{color:var(--ok)}
 
+/* ── COMPARATIVO ── */
+.compare-section{padding:80px 28px}
+.compare-wrap{max-width:1000px;margin:0 auto;overflow-x:auto}
+.compare-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.compare-table th,.compare-table td{padding:13px 16px;text-align:center;border-bottom:1px solid var(--border)}
+.compare-table td:first-child{text-align:left;font-weight:500;color:var(--text)}
+.compare-table th{font-weight:700;font-size:.75rem;letter-spacing:.5px;padding-bottom:18px;vertical-align:bottom}
+.compare-table tbody tr:hover{background:rgba(91,106,240,.04)}
+.col-luna{background:rgba(91,106,240,.06)}
+.col-luna th{background:linear-gradient(180deg,rgba(91,106,240,.18),rgba(91,106,240,.06))}
+.luna-header{background:linear-gradient(135deg,var(--luna),var(--luna2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-size:.95rem;font-weight:900;display:block;margin-bottom:4px}
+.comp-name{color:var(--muted);font-size:.78rem;font-weight:600}
+.ico-yes{color:var(--ok);font-size:1rem}
+.ico-no{color:#ef4444;opacity:.7;font-size:.85rem}
+.ico-partial{color:var(--warn);font-size:.85rem}
+.price-tag{font-weight:800;font-size:1rem}
+.price-tag.luna-price{background:linear-gradient(135deg,var(--luna),var(--ok));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.price-sub{font-size:.68rem;color:var(--muted);display:block;margin-top:2px}
+.compare-table tr.section-row td{background:var(--dark3);color:var(--muted);font-size:.7rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:8px 16px;border-top:1px solid var(--border)}
+.winner-badge{display:inline-block;background:linear-gradient(135deg,var(--luna),var(--luna2));color:#fff;font-size:.6rem;font-weight:800;padding:2px 8px;border-radius:20px;margin-left:6px;vertical-align:middle;letter-spacing:.5px}
+.saving-bar{margin-top:32px;background:linear-gradient(135deg,rgba(34,211,160,.1),rgba(91,106,240,.1));border:1px solid rgba(34,211,160,.3);border-radius:16px;padding:24px 32px;display:flex;flex-wrap:wrap;gap:24px;justify-content:center;text-align:center}
+.saving-stat{flex:0 0 auto}
+.saving-stat .num{font-size:2rem;font-weight:900;line-height:1}
+.saving-stat .num.green{color:var(--ok)}
+.saving-stat .num.blue{background:linear-gradient(135deg,var(--luna),var(--luna3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.saving-stat .lbl{font-size:.72rem;color:var(--muted);margin-top:4px}
+
 /* ── CTA FINAL ── */
 .cta-section{padding:80px 28px;text-align:center;background:linear-gradient(135deg,rgba(91,106,240,.08),rgba(6,182,212,.05))}
 .cta-section h2{font-size:2rem;font-weight:900;letter-spacing:-.8px;margin-bottom:16px}
@@ -219,6 +246,7 @@ footer p{color:var(--muted);font-size:.78rem}
   <p>Probá Luna Workspace en acción. Este es un tablero demo completamente funcional — arrastre tarjetas, abrí detalles, explorá todo.</p>
   <div class="hero-btns">
     <a href="#kanban" class="btn btn-primary"><i class="fas fa-play"></i> Probar el tablero</a>
+    <a href="#comparativo" class="btn btn-ghost"><i class="fas fa-trophy"></i> Comparativo</a>
     <a href="#planes" class="btn btn-ghost"><i class="fas fa-tag"></i> Ver planes y precios</a>
   </div>
 </section>
@@ -360,6 +388,237 @@ footer p{color:var(--muted);font-size:.78rem}
         <li><i class="fas fa-check"></i> Personalización de marca</li>
       </ul>
       <button class="plan-btn plan-btn-outline" onclick="goTo('corporativo')">Contactar</button>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARATIVO -->
+<section class="compare-section" id="comparativo">
+  <p class="section-label">Comparativo</p>
+  <h2 class="section-title">Luna vs la competencia</h2>
+  <p class="section-sub">Para un equipo de 10 personas. Precios en USD/mes.</p>
+
+  <div class="compare-wrap">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th style="text-align:left;width:240px">Característica</th>
+          <th class="col-luna">
+            <span class="luna-header">🌙 LUNA</span>
+            <span class="comp-name">Workspace</span>
+          </th>
+          <th>
+            <span style="display:block;font-size:.9rem;margin-bottom:4px">🟦 Trello</span>
+            <span class="comp-name">Premium</span>
+          </th>
+          <th>
+            <span style="display:block;font-size:.9rem;margin-bottom:4px">🟥 Asana</span>
+            <span class="comp-name">Premium</span>
+          </th>
+          <th>
+            <span style="display:block;font-size:.9rem;margin-bottom:4px">🟨 Monday</span>
+            <span class="comp-name">Standard</span>
+          </th>
+          <th>
+            <span style="display:block;font-size:.9rem;margin-bottom:4px">⬛ Notion</span>
+            <span class="comp-name">Business</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- PRECIO -->
+        <tr class="section-row"><td colspan="6">PRECIO — equipo de 10 personas/mes</td></tr>
+        <tr>
+          <td>Costo mensual (10 usuarios)</td>
+          <td class="col-luna"><span class="price-tag luna-price">$39</span><span class="price-sub">plan Profesional completo</span></td>
+          <td><span class="price-tag">$100</span><span class="price-sub">$10/usuario/mes</span></td>
+          <td><span class="price-tag">$109</span><span class="price-sub">$10.99/usuario/mes</span></td>
+          <td><span class="price-tag">$120</span><span class="price-sub">$12/usuario/mes</span></td>
+          <td><span class="price-tag">$150</span><span class="price-sub">$15/usuario/mes</span></td>
+        </tr>
+        <tr>
+          <td>Costo anual (10 usuarios)</td>
+          <td class="col-luna"><span class="price-tag luna-price">$468</span></td>
+          <td><span class="price-tag">$1.200</span></td>
+          <td><span class="price-tag">$1.308</span></td>
+          <td><span class="price-tag">$1.440</span></td>
+          <td><span class="price-tag">$1.800</span></td>
+        </tr>
+        <tr>
+          <td>Precio por usuario extra</td>
+          <td class="col-luna"><i class="fas fa-check ico-yes"></i> <span style="font-size:.75rem;color:var(--ok)">sin costo adicional</span></td>
+          <td><span style="font-size:.78rem;color:var(--warn)">+$10/usuario</span></td>
+          <td><span style="font-size:.78rem;color:var(--warn)">+$10.99/usuario</span></td>
+          <td><span style="font-size:.78rem;color:var(--warn)">+$12/usuario</span></td>
+          <td><span style="font-size:.78rem;color:var(--warn)">+$15/usuario</span></td>
+        </tr>
+
+        <!-- INFRAESTRUCTURA -->
+        <tr class="section-row"><td colspan="6">INFRAESTRUCTURA Y PRIVACIDAD</td></tr>
+        <tr>
+          <td>Datos en tu propio servidor <span class="winner-badge">LUNA</span></td>
+          <td class="col-luna"><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+        </tr>
+        <tr>
+          <td>Integración nativa WordPress <span class="winner-badge">LUNA</span></td>
+          <td class="col-luna"><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+        </tr>
+        <tr>
+          <td>Instalación en hosting propio <span class="winner-badge">LUNA</span></td>
+          <td class="col-luna"><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+        </tr>
+        <tr>
+          <td>Herramientas de mantenimiento DB <span class="winner-badge">LUNA</span></td>
+          <td class="col-luna"><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+        </tr>
+
+        <!-- FUNCIONALIDADES -->
+        <tr class="section-row"><td colspan="6">FUNCIONALIDADES</td></tr>
+        <tr>
+          <td>Tablero Kanban</td>
+          <td class="col-luna"><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+        </tr>
+        <tr>
+          <td>Vista Gantt</td>
+          <td class="col-luna"><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-times ico-no"></i> <span style="font-size:.7rem;color:var(--muted)">(plugin pago)</span></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+        </tr>
+        <tr>
+          <td>Múltiples proyectos / workspaces</td>
+          <td class="col-luna"><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+        </tr>
+        <tr>
+          <td>Checklists en tarjetas</td>
+          <td class="col-luna"><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+        </tr>
+        <tr>
+          <td>Asignación de tareas</td>
+          <td class="col-luna"><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+        </tr>
+        <tr>
+          <td>Dashboard de métricas</td>
+          <td class="col-luna"><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+        </tr>
+
+        <!-- NOTIFICACIONES -->
+        <tr class="section-row"><td colspan="6">NOTIFICACIONES</td></tr>
+        <tr>
+          <td>Email</td>
+          <td class="col-luna"><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+        </tr>
+        <tr>
+          <td>WhatsApp nativo <span class="winner-badge">LUNA</span></td>
+          <td class="col-luna"><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+        </tr>
+        <tr>
+          <td>Telegram nativo <span class="winner-badge">LUNA</span></td>
+          <td class="col-luna"><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+        </tr>
+
+        <!-- SOPORTE -->
+        <tr class="section-row"><td colspan="6">SOPORTE</td></tr>
+        <tr>
+          <td>Soporte en español <span class="winner-badge">LUNA</span></td>
+          <td class="col-luna"><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+        </tr>
+        <tr>
+          <td>Interfaz en español</td>
+          <td class="col-luna"><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+          <td><i class="fas fa-check ico-yes"></i></td>
+        </tr>
+        <tr>
+          <td>Onboarding asistido</td>
+          <td class="col-luna"><i class="fas fa-check ico-yes"></i> <span style="font-size:.7rem;color:var(--muted)">(plan Corp)</span></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+          <td><i class="fas fa-check ico-yes"></i> <span style="font-size:.7rem;color:var(--muted)">(pago)</span></td>
+          <td><i class="fas fa-times ico-no"></i></td>
+        </tr>
+
+      </tbody>
+    </table>
+
+    <!-- Ahorro -->
+    <div class="saving-bar">
+      <div class="saving-stat">
+        <div class="num green">$732</div>
+        <div class="lbl">ahorrás vs Trello/año</div>
+      </div>
+      <div class="saving-stat">
+        <div class="num green">$840</div>
+        <div class="lbl">ahorrás vs Asana/año</div>
+      </div>
+      <div class="saving-stat">
+        <div class="num green">$972</div>
+        <div class="lbl">ahorrás vs Monday/año</div>
+      </div>
+      <div class="saving-stat">
+        <div class="num green">$1.332</div>
+        <div class="lbl">ahorrás vs Notion/año</div>
+      </div>
+      <div class="saving-stat">
+        <div class="num blue">5 únicas</div>
+        <div class="lbl">funciones que solo Luna tiene</div>
+      </div>
     </div>
   </div>
 </section>
