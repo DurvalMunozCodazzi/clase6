@@ -847,7 +847,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
     </div>
     <div class="lerrb" id="lerr"><i class="fas fa-exclamation-circle"></i><span id="lerrmsg"></span></div>
     <div class="lfg"><label class="lfl">Usuario</label><div class="lfiw"><input class="lfi" id="lui" type="text" placeholder="Tu usuario o email" onkeydown="if(event.key==='Enter')doLogin()"><i class="lic fas fa-user"></i></div></div>
-    <div class="lfg"><label class="lfl">Contrasena</label><div class="lfiw"><input class="lfi" id="lpi" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"><i class="lic fas fa-lock"></i><button class="leye" onclick="togLPw()" type="button"><i class="fas fa-eye" id="leyeic"></i></button></div></div>
+    <div class="lfg"><label class="lfl">Contrasena</label><div class="lfiw"><input class="lfi" id="lpi" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"><i class="lic fas fa-lock"></i><button class="leye" onclick="togLPw()" type="button"><i class="fas fa-eye" id="leyeic"></i></button></div></div>
     <button class="lbtn" id="lbtn" onclick="doLogin()"><span id="lbltx">Ingresar a Luna</span><div class="lsp" id="lsp"></div></button>
     <div class="lfoot">Luna v2.0 &nbsp;·&nbsp; Acceso restringido</div>
   </div>
@@ -998,7 +998,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
           <div id="cm-status-bar" style="display:flex;gap:5px;flex-wrap:wrap"></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="fg" style="grid-column:1/-1"><label class="fl">Titulo</label><input class="fi" id="cmt" placeholder="Titulo de la tarea..."></div>
+          <div class="fg" style="grid-column:1/-1"><label class="fl">Titulo</label><input class="fi" id="cmt" placeholder="Titulo de la tarea..." autocomplete="off"></div>
           <div class="fg" style="grid-column:1/-1"><label class="fl">Descripcion</label><textarea class="fta" id="cmd" placeholder="Descripcion..."></textarea></div>
           <div class="fg" style="display:none"><select class="fse" id="cmcol"></select></div>
           <div class="fg"><label class="fl">Prioridad</label><select class="fse" id="cmp"><option value="">Sin prioridad</option><option value="low">🟢 Baja</option><option value="medium">🟡 Media</option><option value="high">🟠 Alta</option><option value="critical">🔴 Critica</option></select></div>
@@ -5172,7 +5172,7 @@ function renderGlobalLabels(){
     </div>
     <div id="lbl-edit-${lbl.id}" style="display:none;gap:7px;align-items:center;padding:7px 10px;border-radius:var(--r);background:var(--elev);border:1px solid var(--acc)">
       <input type="color" id="lbl-ec-${lbl.id}" value="${lbl.color}" style="width:32px;height:32px;border-radius:var(--r);border:1px solid var(--bdr);cursor:pointer;padding:2px;flex-shrink:0">
-      <input class="fi" id="lbl-en-${lbl.id}" value="${esc(lbl.name)}" maxlength="40" style="flex:1;padding:6px 9px;font-size:12px" onkeydown="if(event.key==='Enter')saveEditLabel(${lbl.id});if(event.key==='Escape')cancelEditLabel(${lbl.id})">
+      <input class="fi" id="lbl-en-${lbl.id}" value="${esc(lbl.name)}" maxlength="40" autocomplete="off" style="flex:1;padding:6px 9px;font-size:12px" onkeydown="if(event.key==='Enter')saveEditLabel(${lbl.id});if(event.key==='Escape')cancelEditLabel(${lbl.id})">
       <button class="btn bp" onclick="saveEditLabel(${lbl.id})" style="padding:6px 10px;font-size:11px"><i class="fas fa-check"></i></button>
       <button class="btn" onclick="cancelEditLabel(${lbl.id})" style="padding:6px 10px;font-size:11px"><i class="fas fa-times"></i></button>
     </div>`).join('');
