@@ -11,6 +11,7 @@ class Luna_Admin {
         add_action('wp_ajax_luna_test_notification',  [$this, 'ajax_test_notification']);
         add_action('wp_ajax_luna_save_user_contact',  [$this, 'ajax_save_user_contact']);
         add_action('wp_ajax_luna_reset_admin_pass',   [$this, 'ajax_reset_admin_pass']);
+        add_action('wp_ajax_luna_db_maintenance',     [$this, 'ajax_db_maintenance']);
     }
 
     public function show_db_diagnostic() {
@@ -122,6 +123,7 @@ class Luna_Admin {
         add_submenu_page('luna-workspace', 'Configuración', 'Configuración', 'manage_options', 'luna-workspace', [$this, 'render_main_page']);
         add_submenu_page('luna-workspace', 'Licencia',      'Licencia',      'manage_options', 'luna-license',         [$this, 'render_license_page']);
         add_submenu_page('luna-workspace', 'Notificaciones','Notificaciones','manage_options', 'luna-notifications',   [$this, 'render_notifications_page']);
+        add_submenu_page('luna-workspace', 'Base de datos', 'Base de datos', 'manage_options', 'luna-database',        [$this, 'render_database_page']);
     }
 
     public function enqueue_scripts($hook) {
@@ -944,6 +946,300 @@ class Luna_Admin {
         );
         if ($result === false) wp_send_json_error('Error al guardar: ' . $wpdb->last_error);
         wp_send_json_success();
+    }
+
+    // ── Database page ─────────────────────────────────────────────────────────
+    public function render_database_page() {
+        $appDb  = $this->get_app_db();
+        $appPfx = $this->get_app_prefix();
+        global $wpdb;
+
+        // Determine which connection and prefix to use
+        $useAppDb  = ($appDb !== null && $appPfx !== null);
+        $db        = $useAppDb ? $appDb  : null;
+        $pfx       = $useAppDb ? $appPfx : $wpdb->prefix . 'luna_';
+        $source    = $useAppDb ? 'App DB (admin_luna)' : 'WP DB (' . $wpdb->dbname . ')';
+
+        // Config file info
+        $cfg_file = plugin_dir_path(__FILE__) . '../app/luna-wp-config.php';
+        $cfg_defs = [];
+        if (file_exists($cfg_file)) {
+            preg_match_all("/define\('([^']+)',\s*'([^']*)'\)/", file_get_contents($cfg_file), $cm, PREG_SET_ORDER);
+            foreach ($cm as $row) $cfg_defs[$row[1]] = $row[2];
+        }
+
+        // Known Luna tables (without prefix)
+        $table_names = [
+            'users', 'workspaces', 'workspace_members', 'workspace_labels',
+            'columns_k', 'cards', 'card_tags', 'card_assignees', 'card_checklist',
+            'card_dependencies', 'attachments', 'chat_messages', 'sessions',
+            'notifications', 'app_settings', 'workspace_templates', 'activity_log',
+            'user_meta',
+        ];
+
+        // Collect table stats
+        $tables = [];
+        foreach ($table_names as $tname) {
+            $full = $pfx . $tname;
+            $row  = ['table' => $full, 'rows' => null, 'size_kb' => null, 'status' => '—', 'error' => ''];
+            if ($useAppDb) {
+                try {
+                    $r = $appDb->query("SELECT TABLE_ROWS, ROUND((DATA_LENGTH+INDEX_LENGTH)/1024,1) AS kb
+                                        FROM information_schema.TABLES
+                                        WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=" . $appDb->quote($full))->fetch();
+                    if ($r) { $row['rows'] = (int)$r['TABLE_ROWS']; $row['size_kb'] = $r['kb']; }
+                } catch (Exception $e) { $row['error'] = $e->getMessage(); }
+            } else {
+                $r = $wpdb->get_row($wpdb->prepare(
+                    "SELECT TABLE_ROWS, ROUND((DATA_LENGTH+INDEX_LENGTH)/1024,1) AS kb
+                     FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=%s", $full
+                ), ARRAY_A);
+                if ($r) { $row['rows'] = (int)$r['TABLE_ROWS']; $row['size_kb'] = $r['kb']; }
+            }
+            $tables[] = $row;
+        }
+        ?>
+        <div class="wrap luna-wrap">
+          <h1>🛠️ Luna Workspace — Base de datos</h1>
+
+          <?php // ── Connection summary ──────────────────────────────────── ?>
+          <div class="luna-grid" style="margin-bottom:20px">
+            <div class="luna-card">
+              <h2 style="margin-top:0">🔌 Conexión activa</h2>
+              <table style="font-size:13px;border-collapse:collapse;width:100%">
+                <tr><td style="padding:4px 12px 4px 0;color:#64748b;width:160px">Fuente</td><td><strong><?php echo esc_html($source) ?></strong></td></tr>
+                <tr><td style="color:#64748b">Host</td><td><code><?php echo esc_html($cfg_defs['DB_HOST'] ?? DB_HOST) ?></code></td></tr>
+                <tr><td style="color:#64748b">Base de datos</td><td><code><?php echo esc_html($cfg_defs['DB_NAME'] ?? DB_NAME) ?></code></td></tr>
+                <tr><td style="color:#64748b">Usuario MySQL</td><td><code><?php echo esc_html($cfg_defs['DB_USER'] ?? DB_USER) ?></code></td></tr>
+                <tr><td style="color:#64748b">Prefijo tablas</td><td><code><?php echo esc_html($pfx ?: '(sin prefijo)') ?></code></td></tr>
+                <tr><td style="color:#64748b">Config file</td>
+                  <td><?php echo file_exists($cfg_file)
+                    ? '<span style="color:#16a34a">✅ existe</span>'
+                    : '<span style="color:#dc2626">❌ NO encontrado — regenerar abajo</span>' ?></td></tr>
+              </table>
+            </div>
+
+            <div class="luna-card">
+              <h2 style="margin-top:0">⚡ Acciones rápidas</h2>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <button class="button button-primary luna-db-action" data-action="check"
+                        style="text-align:left;padding:8px 16px">
+                  🔍 Verificar integridad de tablas (CHECK TABLE)
+                </button>
+                <button class="button button-secondary luna-db-action" data-action="optimize"
+                        style="text-align:left;padding:8px 16px">
+                  ⚙️ Optimizar &amp; reconstruir índices (OPTIMIZE TABLE)
+                </button>
+                <button class="button button-secondary luna-db-action" data-action="repair"
+                        style="text-align:left;padding:8px 16px">
+                  🔧 Reparar tablas corruptas (REPAIR TABLE)
+                </button>
+                <button class="button button-secondary luna-db-action" data-action="clean_sessions"
+                        style="text-align:left;padding:8px 16px">
+                  🧹 Limpiar sesiones expiradas
+                </button>
+                <button class="button luna-db-action" data-action="regen_config"
+                        style="text-align:left;padding:8px 16px;background:#fef9c3;border-color:#d97706;color:#92400e">
+                  🔄 Regenerar luna-wp-config.php
+                </button>
+              </div>
+              <div id="luna-db-action-result" style="margin-top:14px;display:none"></div>
+            </div>
+          </div>
+
+          <?php // ── Table stats ─────────────────────────────────────────── ?>
+          <div class="luna-card">
+            <h2 style="margin-top:0">📊 Estado de tablas
+              <span style="font-size:13px;font-weight:normal;color:#64748b">
+                — <?php echo array_sum(array_filter(array_column($tables, 'rows'), fn($v) => $v !== null)) ?> filas totales
+              </span>
+            </h2>
+            <table class="widefat fixed striped" style="font-size:12px">
+              <thead>
+                <tr>
+                  <th style="width:220px">Tabla</th>
+                  <th style="width:80px">Filas</th>
+                  <th style="width:80px">Tamaño</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($tables as $t):
+                  $exists = $t['rows'] !== null;
+                ?>
+                <tr>
+                  <td><code style="font-size:11px"><?php echo esc_html($t['table']) ?></code></td>
+                  <td><?php echo $exists ? '<strong>' . number_format($t['rows']) . '</strong>' : '<span style="color:#94a3b8">—</span>' ?></td>
+                  <td><?php echo $exists ? esc_html($t['size_kb']) . ' KB' : '<span style="color:#94a3b8">—</span>' ?></td>
+                  <td>
+                    <?php if ($t['error']): ?>
+                      <span style="color:#dc2626;font-size:11px">❌ <?php echo esc_html($t['error']) ?></span>
+                    <?php elseif (!$exists): ?>
+                      <span style="color:#94a3b8;font-size:11px">No existe</span>
+                    <?php else: ?>
+                      <span style="color:#16a34a;font-size:11px">✓ OK</span>
+                    <?php endif; ?>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+            <p style="font-size:11px;color:#94a3b8;margin-top:8px">
+              * Los conteos de filas son estimaciones de InnoDB. Para conteos exactos usá CHECK TABLE.
+            </p>
+          </div>
+
+          <?php // ── Action result area ──────────────────────────────────── ?>
+          <div id="luna-db-report" style="display:none;margin-top:20px" class="luna-card">
+            <h2 style="margin-top:0" id="luna-db-report-title">Resultado</h2>
+            <div id="luna-db-report-body"></div>
+          </div>
+        </div>
+
+        <script>
+        jQuery(function($){
+          var nonce = <?php echo wp_json_encode(wp_create_nonce('luna_admin_nonce')); ?>;
+
+          $('.luna-db-action').on('click', function(){
+            var action = $(this).data('action');
+            var btn    = $(this);
+            var result = $('#luna-db-action-result');
+
+            var labels = {
+              check:          '🔍 Verificando integridad...',
+              optimize:       '⚙️ Optimizando tablas...',
+              repair:         '🔧 Reparando tablas...',
+              clean_sessions: '🧹 Limpiando sesiones...',
+              regen_config:   '🔄 Regenerando config...'
+            };
+            btn.prop('disabled', true);
+            result.html('<span style="color:#64748b">' + (labels[action] || 'Procesando...') + '</span>').show();
+
+            $.post(ajaxurl, { action: 'luna_db_maintenance', nonce: nonce, op: action }, function(res){
+              btn.prop('disabled', false);
+              if (res.success) {
+                result.html('<span style="color:#16a34a">✅ ' + (res.data.message || 'Completado') + '</span>');
+                if (res.data.rows) {
+                  var title = { check: 'Resultado CHECK TABLE', optimize: 'Resultado OPTIMIZE TABLE', repair: 'Resultado REPAIR TABLE' };
+                  var html  = '<table class="widefat striped" style="font-size:12px"><thead><tr><th>Tabla</th><th>Operación</th><th>Tipo</th><th>Mensaje</th></tr></thead><tbody>';
+                  $.each(res.data.rows, function(_, r){
+                    var ok  = (r.Msg_text === 'OK' || r.Msg_text === 'Table is already up to date');
+                    var col = ok ? '#16a34a' : '#dc2626';
+                    html += '<tr><td><code style="font-size:11px">' + r.Table + '</code></td>'
+                          + '<td>' + r.Op + '</td>'
+                          + '<td>' + r.Msg_type + '</td>'
+                          + '<td style="color:' + col + '">' + r.Msg_text + '</td></tr>';
+                  });
+                  html += '</tbody></table>';
+                  $('#luna-db-report-title').text(title[action] || 'Resultado');
+                  $('#luna-db-report-body').html(html);
+                  $('#luna-db-report').show();
+                  $('html,body').animate({scrollTop: $('#luna-db-report').offset().top - 40}, 300);
+                }
+                if (action === 'regen_config') setTimeout(function(){ location.reload(); }, 1200);
+              } else {
+                result.html('<span style="color:#dc2626">❌ ' + (res.data || 'Error desconocido') + '</span>');
+              }
+            }).fail(function(){
+              btn.prop('disabled', false);
+              result.html('<span style="color:#dc2626">❌ Error de conexión. Recargá e intentá de nuevo.</span>');
+            });
+          });
+        });
+        </script>
+        <?php
+    }
+
+    // ── AJAX: database maintenance operations ─────────────────────────────────
+    public function ajax_db_maintenance() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Sin permisos');
+
+        $op     = sanitize_key($_POST['op'] ?? '');
+        $appDb  = $this->get_app_db();
+        $appPfx = $this->get_app_prefix();
+        global $wpdb;
+
+        $useAppDb = ($appDb !== null && $appPfx !== null);
+        $pfx      = $useAppDb ? $appPfx : $wpdb->prefix . 'luna_';
+
+        $table_names = [
+            'users', 'workspaces', 'workspace_members', 'workspace_labels',
+            'columns_k', 'cards', 'card_tags', 'card_assignees', 'card_checklist',
+            'card_dependencies', 'attachments', 'chat_messages', 'sessions',
+            'notifications', 'app_settings', 'workspace_templates', 'activity_log',
+            'user_meta',
+        ];
+
+        // Build list of existing tables
+        $existing = [];
+        foreach ($table_names as $t) {
+            $full = $pfx . $t;
+            if ($useAppDb) {
+                try {
+                    $found = $appDb->query("SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=" . $appDb->quote($full))->fetchColumn();
+                    if ($found) $existing[] = "`{$full}`";
+                } catch (Exception $e) {}
+            } else {
+                $found = $wpdb->get_var($wpdb->prepare("SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=%s", $full));
+                if ($found) $existing[] = "`{$full}`";
+            }
+        }
+
+        if (empty($existing)) {
+            wp_send_json_error('No se encontraron tablas Luna en la base de datos.');
+        }
+
+        $table_list = implode(', ', $existing);
+
+        switch ($op) {
+
+            case 'check':
+            case 'optimize':
+            case 'repair':
+                $sql_op  = strtoupper($op);
+                $rows    = [];
+                if ($useAppDb) {
+                    try {
+                        $st = $appDb->query("{$sql_op} TABLE {$table_list}");
+                        $rows = $st->fetchAll();
+                    } catch (Exception $e) {
+                        wp_send_json_error("Error en {$sql_op}: " . $e->getMessage());
+                    }
+                } else {
+                    $results = $wpdb->get_results("{$sql_op} TABLE {$table_list}", ARRAY_A);
+                    if ($results === null) wp_send_json_error("Error en {$sql_op}: " . $wpdb->last_error);
+                    $rows = $results;
+                }
+                $errors = array_filter($rows, fn($r) => isset($r['Msg_type']) && $r['Msg_type'] === 'error');
+                $msg = count($errors)
+                    ? count($errors) . ' tabla(s) con errores — revisá el detalle abajo.'
+                    : 'Todas las tablas procesadas correctamente.';
+                wp_send_json_success(['message' => $msg, 'rows' => $rows]);
+
+            case 'clean_sessions':
+                $tbl = "`{$pfx}sessions`";
+                if ($useAppDb) {
+                    try {
+                        $st      = $appDb->prepare("DELETE FROM {$tbl} WHERE expires_at < NOW()");
+                        $st->execute();
+                        $deleted = $st->rowCount();
+                    } catch (Exception $e) {
+                        wp_send_json_error('Error: ' . $e->getMessage());
+                    }
+                } else {
+                    $wpdb->query("DELETE FROM {$tbl} WHERE expires_at < NOW()");
+                    $deleted = $wpdb->rows_affected;
+                }
+                wp_send_json_success(['message' => "{$deleted} sesión(es) expirada(s) eliminada(s)."]);
+
+            case 'regen_config':
+                $pfx_detected = Luna_Activator::regenerate_app_config();
+                wp_send_json_success(['message' => "luna-wp-config.php regenerado. Prefijo detectado: '{$pfx_detected}'"]);
+
+            default:
+                wp_send_json_error('Operación desconocida.');
+        }
     }
 
 }
