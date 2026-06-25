@@ -1081,7 +1081,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
         <div class="fg"><label class="fl">Color avatar</label><input type="color" class="fi" id="umcl" value="#5b6af0" oninput="updUAv()" style="height:40px;cursor:pointer;padding:3px"></div>
         <div class="fg"><label class="fl">Estado</label><select class="fse" id="umact"><option value="1">Activo</option><option value="0">Inactivo</option></select></div>
       </div>
-      <div class="fg"><label class="fl" id="pass-lbl">Contrasena *</label><div style="display:flex;gap:7px"><input class="fi" id="umpw" type="password" placeholder="Contrasena" style="flex:1"><button class="btn" onclick="togUMPw()" type="button" style="padding:8px 11px"><i class="fas fa-eye" id="umeyeic"></i></button></div><div class="pass-hint" id="pass-hint">Requerida para nuevos usuarios.</div></div>
+      <div class="fg"><label class="fl" id="pass-lbl">Contrasena *</label><div style="display:flex;gap:7px"><input class="fi" id="umpw" type="password" placeholder="Contrasena" autocomplete="new-password" style="flex:1"><button class="btn" onclick="togUMPw()" type="button" style="padding:8px 11px"><i class="fas fa-eye" id="umeyeic"></i></button></div><div class="pass-hint" id="pass-hint">Requerida para nuevos usuarios.</div></div>
       <div class="fg"><label class="fl">Notas</label><textarea class="fta" id="umnts" placeholder="Notas..." style="min-height:50px"></textarea></div>
       <div style="border-top:1px solid var(--bdr);padding-top:14px;margin-top:4px">
         <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.3px">📱 Notificaciones</div>
@@ -1124,9 +1124,9 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
       </div>
       <div style="border-top:1px solid var(--bdr);padding-top:14px;margin-top:4px">
         <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.3px">Cambiar contrasena</div>
-        <div class="fg"><input class="fi" id="pmow" type="password" placeholder="Contrasena actual"></div>
-        <div class="fg"><input class="fi" id="pmnw" type="password" placeholder="Nueva contrasena"></div>
-        <div class="fg"><input class="fi" id="pmcf" type="password" placeholder="Confirmar nueva contrasena"></div>
+        <div class="fg"><input class="fi" id="pmow" type="password" placeholder="Contrasena actual" autocomplete="current-password"></div>
+        <div class="fg"><input class="fi" id="pmnw" type="password" placeholder="Nueva contrasena" autocomplete="new-password"></div>
+        <div class="fg"><input class="fi" id="pmcf" type="password" placeholder="Confirmar nueva contrasena" autocomplete="new-password"></div>
       </div>
       <div class="mac"><button class="btn" onclick="closeMo('profMo')">Cancelar</button><button class="btn bp" onclick="savePro()"><i class="fas fa-check"></i> Guardar</button></div>
     </div>
@@ -1237,7 +1237,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
       <div class="fg"><label class="fl">Usuario (tu email Gmail)</label><input class="fi" id="smtp-user" placeholder="tucuenta@gmail.com" type="email"></div>
       <div class="fg">
         <label class="fl">Contraseña de App de Google</label>
-        <input class="fi" id="smtp-pass" placeholder="xxxx xxxx xxxx xxxx" type="password">
+        <input class="fi" id="smtp-pass" placeholder="xxxx xxxx xxxx xxxx" type="password" autocomplete="new-password">
         <div style="font-size:10px;color:var(--t3);margin-top:5px;line-height:1.6">
           <i class="fas fa-info-circle" style="color:var(--wa)"></i>
           Para Gmail necesitás una <strong>Contraseña de App</strong> (no tu contraseña normal).<br>
@@ -1300,7 +1300,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
       </div>
       <div class="fg">
         <label class="fl">Bot Token</label>
-        <input class="fi" id="tg-token" placeholder="1234567890:AAFxxxxxxxxxxxxxxx" type="password">
+        <input class="fi" id="tg-token" placeholder="1234567890:AAFxxxxxxxxxxxxxxx" type="password" autocomplete="new-password">
         <div style="font-size:10px;color:var(--t3);margin-top:5px">Obtenelo hablando con <strong>@BotFather</strong> en Telegram → /newbot</div>
       </div>
       <div class="fg">
@@ -1853,7 +1853,7 @@ function renderKanban(){
   COLS.sort((a,b)=>a.position-b.position).forEach(col=>{
     const el=document.createElement('div');el.className='kcol';el.dataset.colId=col.id;
     const colCards=filteredCards.filter(c=>c.column_id==col.id).sort((a,b)=>a.position-b.position);
-    el.innerHTML=`<div class="kch"><div class="cdot" style="background:${col.color}"></div><div class="ctit" onclick="${ro?'':`renCol(this,${col.id})`}">${esc(col.title)}</div><span class="cnt">${colCards.length}</span>${!ro?`<button class="cmb" onclick="showCM(event,${col.id})"><i class="fas fa-ellipsis-v"></i></button>`:''}</div><div class="kcards" id="kc-${col.id}" data-col-id="${col.id}"></div>${!ro?`<div class="qa-wrap"><button class="acb" id="qa-btn-${col.id}" onclick="showQA(${col.id},'qa')"><i class="fas fa-plus"></i> Agregar tarea</button><div class="qa-form" id="qa-form-${col.id}" style="display:none"><input class="qa-inp" id="qa-inp-${col.id}" placeholder="Título de la tarea..." onkeydown="qaKey(event,${col.id},'qa')"><div class="qa-btns"><button class="qa-ok" onclick="quickAddCard(${col.id},'qa')"><i class="fas fa-check"></i> Agregar</button><button class="qa-cancel" onclick="hideQA(${col.id},'qa')"><i class="fas fa-times"></i></button></div></div></div>`:''}`;
+    el.innerHTML=`<div class="kch"><div class="cdot" style="background:${col.color}"></div><div class="ctit" onclick="${ro?'':`renCol(this,${col.id})`}">${esc(col.title)}</div><span class="cnt">${colCards.length}</span>${!ro?`<button class="cmb" onclick="showCM(event,${col.id})"><i class="fas fa-ellipsis-v"></i></button>`:''}</div><div class="kcards" id="kc-${col.id}" data-col-id="${col.id}"></div>${!ro?`<div class="qa-wrap"><button class="acb" id="qa-btn-${col.id}" onclick="showQA(${col.id},'qa')"><i class="fas fa-plus"></i> Agregar tarea</button><div class="qa-form" id="qa-form-${col.id}" style="display:none"><input class="qa-inp" id="qa-inp-${col.id}" placeholder="Título de la tarea..." autocomplete="off" onkeydown="qaKey(event,${col.id},'qa')"><div class="qa-btns"><button class="qa-ok" onclick="quickAddCard(${col.id},'qa')"><i class="fas fa-check"></i> Agregar</button><button class="qa-cancel" onclick="hideQA(${col.id},'qa')"><i class="fas fa-times"></i></button></div></div></div>`:''}`;
     board.insertBefore(el,add);
     const kce=document.getElementById('kc-'+col.id);
     colCards.forEach(c=>kce.appendChild(renderCard(c,col)));
@@ -1950,7 +1950,7 @@ function renderFK(){
   COLS.sort((a,b)=>a.position-b.position).forEach(col=>{
     const el=document.createElement('div');el.className='kcol';el.dataset.colId=col.id;
     const colCards=filteredCards.filter(c=>c.column_id==col.id).sort((a,b)=>a.position-b.position);
-    el.innerHTML=`<div class="kch"><div class="cdot" style="background:${col.color}"></div><div class="ctit">${esc(col.title)}</div><span class="cnt">${colCards.length}</span>${!ro?`<button class="cmb" onclick="showCM(event,${col.id})"><i class="fas fa-ellipsis-v"></i></button>`:''}</div><div class="kcards" id="fkc-${col.id}" data-col-id="${col.id}"></div>${!ro?`<div class="qa-wrap"><button class="acb" id="fqa-btn-${col.id}" onclick="showQA(${col.id},'fqa')"><i class="fas fa-plus"></i> Agregar</button><div class="qa-form" id="fqa-form-${col.id}" style="display:none"><input class="qa-inp" id="fqa-inp-${col.id}" placeholder="Título..." onkeydown="qaKey(event,${col.id},'fqa')"><div class="qa-btns"><button class="qa-ok" onclick="quickAddCard(${col.id},'fqa')"><i class="fas fa-check"></i></button><button class="qa-cancel" onclick="hideQA(${col.id},'fqa')"><i class="fas fa-times"></i></button></div></div></div>`:''}`;
+    el.innerHTML=`<div class="kch"><div class="cdot" style="background:${col.color}"></div><div class="ctit">${esc(col.title)}</div><span class="cnt">${colCards.length}</span>${!ro?`<button class="cmb" onclick="showCM(event,${col.id})"><i class="fas fa-ellipsis-v"></i></button>`:''}</div><div class="kcards" id="fkc-${col.id}" data-col-id="${col.id}"></div>${!ro?`<div class="qa-wrap"><button class="acb" id="fqa-btn-${col.id}" onclick="showQA(${col.id},'fqa')"><i class="fas fa-plus"></i> Agregar</button><div class="qa-form" id="fqa-form-${col.id}" style="display:none"><input class="qa-inp" id="fqa-inp-${col.id}" placeholder="Título..." autocomplete="off" onkeydown="qaKey(event,${col.id},'fqa')"><div class="qa-btns"><button class="qa-ok" onclick="quickAddCard(${col.id},'fqa')"><i class="fas fa-check"></i></button><button class="qa-cancel" onclick="hideQA(${col.id},'fqa')"><i class="fas fa-times"></i></button></div></div></div>`:''}`;
     fv.appendChild(el);
     const kce=document.getElementById('fkc-'+col.id);
     colCards.forEach(c=>kce.appendChild(renderCard(c,col)));
