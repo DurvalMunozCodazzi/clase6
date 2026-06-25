@@ -209,7 +209,7 @@ function luna_serve_app() {
     echo $content;
 }
 
-// ── Branding bar — JS-driven so it survives SPA body replacement ─────────────
+// ── Branding bar — always last child of body, survives SPA renders ───────────
 function luna_branding_bar(): string {
     $css = '#lads{'
         . 'position:fixed!important;bottom:0!important;left:0!important;right:0!important;'
@@ -217,6 +217,7 @@ function luna_branding_bar(): string {
         . 'border-top:1px solid #161d38!important;'
         . 'display:flex!important;align-items:center!important;justify-content:center!important;'
         . 'z-index:2147483647!important;font-family:\"Segoe UI\",system-ui,sans-serif!important;'
+        . 'pointer-events:auto!important;visibility:visible!important;opacity:1!important;'
         . '}'
         . '#lads a{'
         . 'color:#2e3a6e!important;text-decoration:none!important;font-size:11px!important;'
@@ -227,31 +228,38 @@ function luna_branding_bar(): string {
 
     return '<script>'
         . '(function(){'
-        .   'var css=' . json_encode($css) . ';'
-        .   'function injectStyle(){'
+        .   'var CSS=' . json_encode($css) . ';'
+        .   'function ensureStyle(){'
         .     'if(document.getElementById("lads-css"))return;'
-        .     'var s=document.createElement("style");s.id="lads-css";s.textContent=css;'
+        .     'var s=document.createElement("style");s.id="lads-css";s.textContent=CSS;'
         .     '(document.head||document.documentElement).appendChild(s);'
         .   '}'
-        .   'function injectBar(){'
-        .     'injectStyle();'
-        .     'if(document.getElementById("lads"))return;'
-        .     'var d=document.createElement("div");d.id="lads";'
-        .     'd.innerHTML="<a href=\"https://websobreruedas.com\" target=\"_blank\" rel=\"noopener\">'
-        .       '🌙 Luna Workspace  ·  websobreruedas.com</a>";'
-        .     'document.body.appendChild(d);'
+        .   'function ensureBar(){'
+        .     'ensureStyle();'
         .     'document.documentElement.style.setProperty("padding-bottom","36px","important");'
+        .     'var bar=document.getElementById("lads");'
+        .     'if(!bar){'
+        .       'bar=document.createElement("div");bar.id="lads";'
+        .       'bar.innerHTML="<a href=\"https://websobreruedas.com\" target=\"_blank\" rel=\"noopener\">'
+        .         '\xf0\x9f\x8c\x99 Luna Workspace &nbsp;\xc2\xb7&nbsp; websobreruedas.com</a>";'
+        .     '}'
+        .     'document.body.appendChild(bar);'
         .   '}'
-        .   'function watch(){'
-        .     'new MutationObserver(function(){injectBar();}).observe(document.body,{childList:true});'
+        .   'function run(){'
+        .     'ensureBar();'
+        .     'new MutationObserver(function(ml){'
+        .       'for(var i=0;i<ml.length;i++){'
+        .         'if(ml[i].addedNodes.length&&ml[i].addedNodes[0].id!=="lads"){ensureBar();break;}'
+        .       '}'
+        .     '}).observe(document.body,{childList:true});'
+        .     'setInterval(ensureBar,2000);'
         .   '}'
         .   'if(document.readyState==="loading"){'
-        .     'document.addEventListener("DOMContentLoaded",function(){injectBar();watch();});'
-        .   '}else{injectBar();watch();}'
+        .     'document.addEventListener("DOMContentLoaded",run);'
+        .   '}else{run();}'
         . '})();'
         . '</script>';
 }
-
 // ── AJAX: save license key ───────────────────────────────────────────────────
 function luna_ajax_save_license() {
     check_ajax_referer('luna_admin_nonce', 'nonce');
