@@ -1,21 +1,20 @@
 <?php
-// Diagnóstico de conexión — eliminar después de resolver el problema
+// Diagnóstico de conexión — requiere autenticación de admin
 require_once '../config.php';
+$me = requireAdmin();
+
 $out = [
-    'php'        => PHP_VERSION,
-    'db_host'    => defined('DB_HOST') ? DB_HOST : 'NO DEFINIDO',
-    'db_name'    => defined('DB_NAME') ? DB_NAME : 'NO DEFINIDO',
-    'db_user'    => defined('DB_USER') ? DB_USER : 'NO DEFINIDO',
-    'db_pass'    => defined('DB_PASS') ? (DB_PASS ? '****' : '(vacío)') : 'NO DEFINIDO',
-    'tb_prefix'  => defined('LUNA_TB_PREFIX') ? LUNA_TB_PREFIX : 'NO DEFINIDO',
-    'cred_file'  => file_exists(__DIR__ . '/../luna-wp-config.php') ? 'OK' : 'FALTA',
+    'php'       => PHP_VERSION,
+    'version'   => defined('LUNA_VERSION') ? LUNA_VERSION : '?',
+    'cred_file' => file_exists(__DIR__ . '/../luna-wp-config.php') ? 'OK' : 'FALTA',
+    'db'        => 'checking...',
 ];
 try {
     $db = getDB();
-    $out['db_connection'] = 'OK';
-    $out['test_query']    = $db->query("SELECT COUNT(*) FROM " . tb('users'))->fetchColumn() . ' usuarios';
+    $userCount = (int)$db->query("SELECT COUNT(*) FROM " . tb('users'))->fetchColumn();
+    $out['db'] = 'OK — ' . $userCount . ' usuario(s)';
 } catch (Exception $e) {
-    $out['db_connection'] = 'ERROR: ' . $e->getMessage();
+    $out['db'] = 'ERROR';
 }
 header('Content-Type: application/json');
 echo json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);

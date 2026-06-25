@@ -1475,10 +1475,15 @@ class Luna_Admin {
             $app_url = plugin_dir_url(__FILE__) . '../app/';
         }
 
-        $url = rtrim($app_url, '/') . '/api/reminders.php?action=send'
-             . ($secret ? '&cron_secret=' . urlencode($secret) : '');
+        $url = rtrim($app_url, '/') . '/api/reminders.php?action=send';
 
-        $resp = wp_remote_get($url, ['timeout' => 60, 'sslverify' => false]);
+        // Enviar cron_secret en el body POST (no en la URL para evitar que quede en logs del servidor)
+        $resp = wp_remote_post($url, [
+            'timeout'   => 60,
+            'sslverify' => false,
+            'headers'   => ['Content-Type' => 'application/json'],
+            'body'      => $secret ? json_encode(['cron_secret' => $secret]) : '{}',
+        ]);
 
         if (is_wp_error($resp)) {
             // Fall back: run directly via PHP include (same process)

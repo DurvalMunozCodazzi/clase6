@@ -61,11 +61,16 @@ function luna_run_hourly_check() {
     $current_hour = (int)date('G'); // server hour
     if ($current_hour !== $hour) return;
 
-    // Fire the reminders endpoint
+    // Fire the reminders endpoint — cron_secret va en el body POST (no en la URL para evitar logs)
     $secret = get_option('luna_cron_secret', '');
     if (!$secret) return;
-    $url = LUNA_APP_URL . 'api/reminders.php?action=send&cron_secret=' . urlencode($secret);
-    wp_remote_get($url, ['timeout' => 60, 'blocking' => false]);
+    $url = LUNA_APP_URL . 'api/reminders.php?action=send';
+    wp_remote_post($url, [
+        'timeout'   => 60,
+        'blocking'  => false,
+        'headers'   => ['Content-Type' => 'application/json'],
+        'body'      => json_encode(['cron_secret' => $secret]),
+    ]);
 }
 
 // ── Admin enter con token permanente (no requiere sesión WP, no expira) ──────

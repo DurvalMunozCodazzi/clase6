@@ -9,7 +9,7 @@ if (isVisitorRole($me)) jsonErr('Sin permisos', 403);
 define('UPLOAD_DIR',  dirname(__DIR__) . '/uploads/');
 define('UPLOAD_URL',  defined('LUNA_UPLOAD_URL') ? LUNA_UPLOAD_URL : '/uploads/');
 define('MAX_SIZE',    10 * 1024 * 1024); // 10MB
-define('ALLOWED_EXT', ['jpg','jpeg','png','gif','webp','pdf','doc','docx','xls','xlsx','ppt','pptx','txt','csv','zip','rar','mp4','mp3']);
+define('ALLOWED_EXT', ['jpg','jpeg','png','gif','webp','pdf','doc','docx','xls','xlsx','ppt','pptx','txt','csv','mp4','mp3']);
 
 // Crear carpeta si no existe
 if (!is_dir(UPLOAD_DIR)) {
@@ -54,8 +54,6 @@ $allowedMimes = [
     'application/vnd.ms-powerpoint',
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     'text/plain','text/csv',
-    'application/zip','application/x-zip-compressed',
-    'application/x-rar-compressed','application/vnd.rar',
     'video/mp4','audio/mpeg','audio/mp3',
 ];
 $mime = mime_content_type($file['tmp_name']);

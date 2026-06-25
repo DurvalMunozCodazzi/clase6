@@ -12,12 +12,48 @@ if ($method === 'POST' && $action === 'login') {
     $pass  = trim($body['password'] ?? '');
     if (!$login || !$pass) jsonErr('Usuario y contraseña requeridos');
 
+    // ── Rate limiting: máx 10 intentos fallidos por IP en 15 minutos ────────
+    $ip      = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $rateKey = 'rate_login_' . substr(hash('sha256', $ip), 0, 20);
+    $maxAttempts = 10;
+    $windowSec   = 900; // 15 minutos
+    $rateData    = null;
+    try {
+        $rateSt = $db->prepare("SELECT meta_value FROM ".tb('app_settings')." WHERE meta_key=? LIMIT 1");
+        $rateSt->execute([$rateKey]);
+        $rateRow = $rateSt->fetch();
+        $rateData = $rateRow ? json_decode($rateRow['meta_value'], true) : null;
+        if (!is_array($rateData)) $rateData = ['count' => 0, 'since' => time()];
+        // Reset window if expired
+        if ((time() - ($rateData['since'] ?? 0)) >= $windowSec) {
+            $rateData = ['count' => 0, 'since' => time()];
+        }
+        if ($rateData['count'] >= $maxAttempts) {
+            $wait = $windowSec - (time() - $rateData['since']);
+            jsonErr('Demasiados intentos fallidos. Esperá ' . ceil($wait / 60) . ' minuto(s).', 429);
+        }
+    } catch (Exception $e) { $rateData = null; } // Si la tabla no existe, omitir rate limiting
+    // ────────────────────────────────────────────────────────────────────────
+
     $st = $db->prepare("SELECT * FROM ".tb('users')." WHERE (username=? OR email=?) AND active=1");
     $st->execute([$login, $login]);
     $user = $st->fetch();
 
     if (!$user || !password_verify($pass, $user['password'])) {
+        // Incrementar contador de intentos fallidos
+        if ($rateData !== null) {
+            $rateData['count']++;
+            try {
+                $db->prepare("INSERT INTO ".tb('app_settings')." (meta_key,meta_value) VALUES (?,?) ON DUPLICATE KEY UPDATE meta_value=?")
+                   ->execute([$rateKey, json_encode($rateData), json_encode($rateData)]);
+            } catch (Exception $e) {}
+        }
         jsonErr('Usuario o contraseña incorrectos', 401);
+    }
+
+    // Login exitoso — limpiar contador
+    if ($rateData !== null) {
+        try { $db->prepare("DELETE FROM ".tb('app_settings')." WHERE meta_key=?")->execute([$rateKey]); } catch (Exception $e) {}
     }
 
     $token   = bin2hex(random_bytes(32));

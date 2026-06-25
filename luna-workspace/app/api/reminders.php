@@ -9,8 +9,11 @@ require_once __DIR__ . '/email.php';
 // SITE_URL se obtiene automáticamente de config.php (LUNA_SITE_URL)
 
 // Permitir acceso via cron (CLI) o via HTTP con token admin
+// El cron_secret se acepta vía POST body {"cron_secret":"..."} o header X-Cron-Secret (nunca GET para evitar logs)
 if (php_sapi_name() !== 'cli') {
-    $cron_secret = $_GET['cron_secret'] ?? '';
+    $body_raw    = file_get_contents('php://input');
+    $body_json   = json_decode($body_raw, true);
+    $cron_secret = $body_json['cron_secret'] ?? $_SERVER['HTTP_X_CRON_SECRET'] ?? '';
     $is_cron = $cron_secret && defined('LUNA_CRON_SECRET') && LUNA_CRON_SECRET && hash_equals(LUNA_CRON_SECRET, $cron_secret);
     if (!$is_cron) {
         $me = requireAuth();

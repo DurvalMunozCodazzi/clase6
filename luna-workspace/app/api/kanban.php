@@ -134,8 +134,8 @@ if ($method === 'PUT' && ($action === 'update_card' || $action === 'save_card'))
     }
     if ($fields) {
         $sets = implode(',', array_map(function($k){ return "$k=?"; }, array_keys($fields)));
-        $vals = array_values($fields); $vals[] = $id;
-        $db->prepare("UPDATE ".tb('cards')." SET updated_at=NOW(),$sets WHERE id=?")->execute($vals);
+        $vals = array_values($fields); $vals[] = $id; $vals[] = $wsId;
+        $db->prepare("UPDATE ".tb('cards')." SET updated_at=NOW(),$sets WHERE id=? AND workspace_id=?")->execute($vals);
 
         // Notify existing assignees of relevant field changes (except the modifier)
         $notifyFields = array_intersect_key($fields, array_flip(['title','due_date','priority','column_id']));
@@ -252,6 +252,7 @@ if ($method === 'GET' && $action === 'card_detail') {
     $card->execute([$id]);
     $c = $card->fetch();
     if (!$c) jsonErr('Tarjeta no encontrada', 404);
+    if ((int)$c['workspace_id'] !== $wsId) jsonErr('Sin acceso', 403);
     $tags = $db->prepare("SELECT * FROM ".tb('card_tags')." WHERE card_id=?");
     $tags->execute([$id]);
     $asn = $db->prepare("SELECT u.id,u.name,u.color,u.cargo,u.dept,u.role FROM ".tb('card_assignees')." ca JOIN ".tb('users')." u ON u.id=ca.user_id WHERE ca.card_id=?");
@@ -299,7 +300,7 @@ if ($method === 'POST' && $action === 'move_card') {
 if ($method === 'PUT' && $action === 'reorder_columns') {
     $b = json_decode(file_get_contents('php://input'), true);
     foreach ($b['order'] as $pos => $colId) {
-        $db->prepare("UPDATE ".tb('columns_k')." SET position=? WHERE id=?")->execute([$pos, $colId]);
+        $db->prepare("UPDATE ".tb('columns_k')." SET position=? WHERE id=? AND workspace_id=?")->execute([$pos, intval($colId), $wsId]);
     }
     jsonOut(['ok'=>true]);
 }
@@ -309,6 +310,10 @@ if ($method === 'POST' && $action === 'add_chat') {
     $b  = json_decode(file_get_contents('php://input'), true);
     $msg = substr(trim($b['message'] ?? ''), 0, 5000);
     if (!$msg) jsonErr('Mensaje vacio');
+    // Verificar que la tarjeta pertenece a este workspace
+    $chatCardChk = $db->prepare("SELECT id FROM ".tb('cards')." WHERE id=? AND workspace_id=?");
+    $chatCardChk->execute([$id, $wsId]);
+    if (!$chatCardChk->fetch()) jsonErr('Tarjeta no encontrada', 404);
     $db->prepare("INSERT INTO ".tb('chat_messages')." (card_id,user_id,message) VALUES (?,?,?)")->execute([$id, $me['id'], $msg]);
     $newId = $db->lastInsertId();
     $row = $db->prepare("SELECT cm.*,u.name as user_name,u.color as user_color FROM ".tb('chat_messages')." cm JOIN ".tb('users')." u ON u.id=cm.user_id WHERE cm.id=?");
@@ -329,8 +334,12 @@ if ($method === 'POST' && $action === 'add_chat') {
 if ($method === 'PUT' && $action === 'update_workspace') {
     $b = json_decode(file_get_contents('php://input'), true);
     $sets=[]; $vals=[];
-    if (isset($b['name']))   { $sets[]='name=?';   $vals[]=$b['name']; }
-    if (isset($b['canvas'])) { $sets[]='canvas=?'; $vals[]=$b['canvas']; }
+    if (isset($b['name']))   { $sets[]='name=?';   $vals[]=substr(trim($b['name']),0,200); }
+    if (isset($b['canvas'])) {
+        $canvas = is_string($b['canvas']) ? $b['canvas'] : json_encode($b['canvas']);
+        if (strlen($canvas) > 65535) jsonErr('Canvas demasiado grande', 422);
+        $sets[]='canvas=?'; $vals[]=$canvas;
+    }
     if ($sets) { $vals[]=$wsId; $db->prepare("UPDATE ".tb('workspaces')." SET ".implode(',',$sets)." WHERE id=?")->execute($vals); }
     jsonOut(['ok'=>true]);
 }
@@ -368,8 +377,9 @@ if ($method === 'POST' && $action === 'create_label') {
     if (!$name) jsonErr('Nombre requerido');
     $color = preg_match('/^#[0-9a-fA-F]{3,6}$/', trim($b['color'] ?? '')) ? trim($b['color']) : '#5b6af0';
     // Enforce limit
-    $count = (int)$db->prepare("SELECT COUNT(*) FROM ".tb('workspace_labels')." WHERE workspace_id=?")->execute([$wsId]) && 1;
-    $cnt   = $db->query("SELECT COUNT(*) FROM ".tb('workspace_labels')." WHERE workspace_id={$wsId}")->fetchColumn();
+    $cntSt = $db->prepare("SELECT COUNT(*) FROM ".tb('workspace_labels')." WHERE workspace_id=?");
+    $cntSt->execute([$wsId]);
+    $cnt = (int)$cntSt->fetchColumn();
     if ($cnt >= 20) jsonErr('Límite de 20 etiquetas alcanzado', 422);
     // Prevent duplicates
     $dup = $db->prepare("SELECT id FROM ".tb('workspace_labels')." WHERE workspace_id=? AND LOWER(name)=LOWER(?)");
