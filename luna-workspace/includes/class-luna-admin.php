@@ -1024,28 +1024,28 @@ class Luna_Admin {
               <div style="display:flex;flex-direction:column;gap:8px">
                 <button class="button button-primary luna-db-action" data-action="check"
                         style="text-align:left;padding:10px 16px;height:auto;line-height:1.3">
-                  <strong style="display:block">🔍 VERIFICAR INTEGRIDAD</strong>
-                  <span style="font-size:11px;font-weight:normal;opacity:.85">verifica índices y detecta errores en las tablas</span>
+                  <strong style="display:block">🔍 VERIFICAR INTEGRIDAD DE TABLAS</strong>
+                  <span style="font-size:11px;font-weight:normal;opacity:.85">analiza los índices y detecta errores sin modificar ningún dato</span>
                 </button>
                 <button class="button button-secondary luna-db-action" data-action="optimize"
                         style="text-align:left;padding:10px 16px;height:auto;line-height:1.3">
-                  <strong style="display:block">⚙️ OPTIMIZAR TABLAS</strong>
-                  <span style="font-size:11px;font-weight:normal;opacity:.85">reconstruye índices y recupera espacio en disco, sin tocar datos</span>
+                  <strong style="display:block">⚙️ OPTIMIZAR Y RECONSTRUIR ÍNDICES</strong>
+                  <span style="font-size:11px;font-weight:normal;opacity:.85">reconstruye los índices y recupera espacio en disco, sin tocar los datos</span>
                 </button>
                 <button class="button button-secondary luna-db-action" data-action="repair"
                         style="text-align:left;padding:10px 16px;height:auto;line-height:1.3">
-                  <strong style="display:block">🔧 REPARAR TABLAS</strong>
-                  <span style="font-size:11px;font-weight:normal;opacity:.85">repara índices corruptos, no borra ningún dato</span>
+                  <strong style="display:block">🔧 REPARAR TABLAS CORRUPTAS</strong>
+                  <span style="font-size:11px;font-weight:normal;opacity:.85">repara índices corruptos, es la opción más agresiva pero no borra ningún dato</span>
                 </button>
                 <button class="button button-secondary luna-db-action" data-action="clean_sessions"
                         style="text-align:left;padding:10px 16px;height:auto;line-height:1.3">
-                  <strong style="display:block">🧹 LIMPIAR SESIONES</strong>
-                  <span style="font-size:11px;font-weight:normal;opacity:.85">borra solo los tokens de acceso vencidos, no los usuarios</span>
+                  <strong style="display:block">🧹 LIMPIAR SESIONES VENCIDAS</strong>
+                  <span style="font-size:11px;font-weight:normal;opacity:.85">borra solo los tokens de acceso expirados, no elimina usuarios ni datos</span>
                 </button>
                 <button class="button luna-db-action" data-action="regen_config"
                         style="text-align:left;padding:10px 16px;height:auto;line-height:1.3;background:#fef9c3;border-color:#d97706;color:#92400e">
-                  <strong style="display:block">🔄 REGENERAR CONFIGURACIÓN</strong>
-                  <span style="font-size:11px;font-weight:normal;opacity:.85">recrea luna-wp-config.php si WordPress lo borró durante una actualización</span>
+                  <strong style="display:block">🔄 REGENERAR ARCHIVO DE CONFIGURACIÓN</strong>
+                  <span style="font-size:11px;font-weight:normal;opacity:.85">recrea luna-wp-config.php si WordPress lo eliminó durante una actualización del plugin</span>
                 </button>
               </div>
               <div id="luna-db-action-result" style="margin-top:14px;display:none"></div>
