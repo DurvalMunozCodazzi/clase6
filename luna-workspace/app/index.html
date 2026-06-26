@@ -2372,7 +2372,7 @@ function openUP(){
   const titleEl=document.getElementById('upanel-title');
   if(titleEl){const ws=WORKSPACES.find(w=>w.id==ACTIVE_WS);if(ws) titleEl.textContent='Equipo — '+ws.name;}
   renderUL('all');
-  switchUPView('stats');
+  switchUPView('list');
   document.getElementById('upanel').classList.add('on');
   document.getElementById('upanel-bg').classList.add('on');
 }
@@ -3739,6 +3739,7 @@ function closeAllPanels(){
     document.getElementById(id)?.classList.remove('on');
   });
   document.getElementById('ws-overlay')?.classList.remove('on');
+  document.getElementById('upanel-bg')?.classList.remove('on');
 }
 
 
