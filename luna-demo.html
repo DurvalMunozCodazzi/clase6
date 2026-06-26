@@ -20,7 +20,7 @@ html{height:100%}body{height:100%;font-family:var(--f);background:var(--bg);colo
 .dbtn:hover{background:rgba(255,255,255,.3)}
 
 /* TOPBAR — igual al real */
-#topbar{position:fixed;top:30px;left:0;right:0;height:var(--th);background:var(--surf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:8px;padding:0 12px;z-index:100;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+#topbar{position:fixed;top:30px;left:0;right:0;height:var(--th);background:var(--surf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:8px;padding:0 12px;z-index:500;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
 #topbar::-webkit-scrollbar{display:none}
 .logo{font-size:16px;font-weight:800;letter-spacing:-.5px;display:flex;align-items:center;gap:7px;white-space:nowrap}
 .logo-ic2{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#5b6af0,#06b6d4);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff}
@@ -155,7 +155,7 @@ html{height:100%}body{height:100%;font-family:var(--f);background:var(--bg);colo
 @keyframes sli{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
 
 /* METRICS — idéntico al real */
-#metrics-panel{position:fixed;top:calc(var(--th)+30px);left:0;right:0;bottom:0;background:var(--bg);z-index:400;transform:translateY(100vh);transition:transform .35s cubic-bezier(.4,0,.2,1);overflow-y:auto;padding:20px}
+#metrics-panel{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:400;transform:translateY(100vh);transition:transform .4s cubic-bezier(.4,0,.2,1);overflow-y:auto;padding:20px;padding-top:calc(var(--th)+30px+16px);will-change:transform}
 #metrics-panel.on{transform:translateY(0)}
 .metrics-hdr{display:flex;align-items:center;gap:12px;margin-bottom:20px}
 .metrics-hdr h2{font-size:18px;font-weight:800;flex:1}
@@ -177,7 +177,7 @@ html{height:100%}body{height:100%;font-family:var(--f);background:var(--bg);colo
 @media(max-width:768px){.metrics-grid{grid-template-columns:1fr 1fr}.charts-grid{grid-template-columns:1fr}}
 
 /* CALENDAR — idéntico al real */
-#cal-panel{position:fixed;top:calc(var(--th)+30px);left:0;right:0;bottom:0;background:var(--bg);z-index:400;transform:translateY(100vh);transition:transform .35s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
+#cal-panel{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:400;transform:translateY(100vh);transition:transform .4s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;padding-top:calc(var(--th)+30px);will-change:transform}
 #cal-panel.on{transform:translateY(0)}
 .cal-nav{display:flex;align-items:center;gap:10px;padding:12px 20px;background:linear-gradient(135deg,rgba(91,106,240,.1),rgba(139,92,246,.07));border-bottom:2px solid rgba(91,106,240,.18);flex-shrink:0}
 .cal-month-label{font-size:15px;font-weight:800;letter-spacing:-.2px;flex:1;text-align:center}
@@ -257,6 +257,14 @@ html{height:100%}body{height:100%;font-family:var(--f);background:var(--bg);colo
   <div id="team-avs" style="display:flex;align-items:center"></div>
   <div class="sep"></div>
   <button class="tbtn" onclick="showTeam()" title="Equipo"><i class="fas fa-users"></i> Equipo</button>
+  <div class="sep"></div>
+  <button class="tbtn" onclick="showNotifs()" title="Notificaciones" style="position:relative">
+    <i class="fas fa-bell"></i>
+    <span style="position:absolute;top:3px;right:3px;width:7px;height:7px;border-radius:50%;background:#ef4444;border:1.5px solid var(--surf)"></span>
+  </button>
+  <button class="tbtn" onclick="showEmail()" title="Email"><i class="fas fa-envelope"></i></button>
+  <button class="tbtn" onclick="showAlarms()" title="Alarmas"><i class="fas fa-clock"></i></button>
+  <button class="tbtn" onclick="openPalette()" title="Paleta de colores"><i class="fas fa-palette"></i></button>
   <button class="tbtn" onclick="showDrive()" title="Drive"><i class="fas fa-cloud"></i> Drive</button>
   <button class="tbtn" onclick="exportData()" title="Exportar"><i class="fas fa-download"></i> Exportar</button>
   <button class="tbtn" onclick="importData()" title="Importar"><i class="fas fa-upload"></i> Importar</button>
@@ -609,16 +617,24 @@ window.addEventListener('DOMContentLoaded',()=>{
 
 /* ── VIEWS ────────────────────────────────────── */
 function showView(v){
+  // Render content FIRST so DOM is stable before transition starts
+  if(v==='analytics') renderAnalytics();
+  if(v==='calendar') renderCalendar();
+
   const isK = v==='kanban';
   document.getElementById('kpanel').style.display = isK?'flex':'none';
-  document.getElementById('metrics-panel').classList.toggle('on',v==='analytics');
-  document.getElementById('cal-panel').classList.toggle('on',v==='calendar');
+
+  // Update active tab buttons immediately
   ['kanban','analytics','calendar'].forEach(n=>{
     const b=document.getElementById('btn-'+n);
     if(b) b.classList.toggle('on',n===v);
   });
-  if(v==='analytics') renderAnalytics();
-  if(v==='calendar') renderCalendar();
+
+  // Double rAF: guarantees browser paints the content before starting CSS transition
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    document.getElementById('metrics-panel').classList.toggle('on',v==='analytics');
+    document.getElementById('cal-panel').classList.toggle('on',v==='calendar');
+  }));
 }
 
 /* ── KANBAN ────────────────────────────────────── */
@@ -1016,7 +1032,57 @@ function filterTasks(q){
 
 /* ── EQUIPO ──────────────────────────────────── */
 function showTeam(){
-  toast('Equipo: Carlos Méndez (Gerente), María Tevez (Marketing), Diego Kun (Ventas), Laura Wick (Logística)','ok');
+  toast('Equipo: Carlos Méndez (Gerente) · María Tevez (Marketing) · Diego Kun (Ventas) · Laura Wick (Logística)','ok');
+}
+
+/* ── NOTIFICACIONES ──────────────────────────── */
+function showNotifs(){
+  toast('3 notificaciones — Campaña Copa América vence en 2 días · Nueva tarea asignada a CM · Checklist completado','wa');
+}
+
+/* ── EMAIL ───────────────────────────────────── */
+function showEmail(){
+  toast('Email integrado disponible en la versión instalada — recibí y enviá emails desde Luna','wa');
+}
+
+/* ── ALARMAS ─────────────────────────────────── */
+function showAlarms(){
+  toast('Alarmas programadas: "Auditoría" hoy 09:00 · "Campaña Copa América" mañana 08:00','ok');
+}
+
+/* ── PALETA DE COLORES ───────────────────────── */
+const THEMES={
+  'Índigo (default)':{acc:'#5b6af0',accg:'rgba(91,106,240,.18)',acch:'#7080f5'},
+  'Violeta':         {acc:'#8b5cf6',accg:'rgba(139,92,246,.18)',acch:'#a78bfa'},
+  'Cyan':            {acc:'#06b6d4',accg:'rgba(6,182,212,.18)', acch:'#22d3ee'},
+  'Esmeralda':       {acc:'#10b981',accg:'rgba(16,185,129,.18)',acch:'#34d399'},
+  'Rosa':            {acc:'#ec4899',accg:'rgba(236,72,153,.18)',acch:'#f472b6'},
+  'Naranja':         {acc:'#f59e0b',accg:'rgba(245,158,11,.18)',acch:'#fbbf24'},
+};
+function openPalette(){
+  const existing=document.getElementById('palette-popup');
+  if(existing){existing.remove();return;}
+  const popup=document.createElement('div');
+  popup.id='palette-popup';
+  popup.style.cssText='position:fixed;top:calc(30px + 48px + 8px);right:16px;background:var(--surf);border:1px solid var(--bdrl);border-radius:var(--rl);padding:14px;z-index:600;box-shadow:var(--shl);min-width:200px';
+  popup.innerHTML=`<div style="font-size:11px;font-weight:800;color:var(--t2);margin-bottom:10px;letter-spacing:.3px;text-transform:uppercase"><i class="fas fa-palette" style="color:var(--acc);margin-right:5px"></i>Paleta de colores</div>`+
+    Object.entries(THEMES).map(([name,t])=>`
+      <div onclick="applyTheme(${JSON.stringify(JSON.stringify(t))},this)" style="display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:var(--r);cursor:pointer;transition:.15s" onmouseover="this.style.background='var(--hov)'" onmouseout="this.style.background='transparent'">
+        <div style="width:16px;height:16px;border-radius:50%;background:${t.acc};flex-shrink:0;box-shadow:0 2px 6px ${t.acc}66"></div>
+        <span style="font-size:12px;font-weight:600">${name}</span>
+      </div>`).join('');
+  document.body.appendChild(popup);
+  setTimeout(()=>document.addEventListener('click',function h(e){if(!popup.contains(e.target)){popup.remove();document.removeEventListener('click',h);}},100));
+}
+function applyTheme(jsonStr){
+  const t=JSON.parse(jsonStr);
+  const root=document.documentElement;
+  root.style.setProperty('--acc',t.acc);
+  root.style.setProperty('--accg',t.accg);
+  root.style.setProperty('--acch',t.acch);
+  const popup=document.getElementById('palette-popup');
+  if(popup) popup.remove();
+  toast('Tema aplicado','ok');
 }
 
 /* ── DRIVE ───────────────────────────────────── */
