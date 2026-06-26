@@ -2370,7 +2370,7 @@ function openUP(){
   const invBtn=document.getElementById('up-invite-btn');
   if(invBtn) invBtn.style.display=admin?'':'none';
   const titleEl=document.getElementById('upanel-title');
-  if(titleEl&&CWS) titleEl.textContent='Equipo — '+CWS.name;
+  if(titleEl){const ws=WORKSPACES.find(w=>w.id==ACTIVE_WS);if(ws) titleEl.textContent='Equipo — '+ws.name;}
   renderUL('all');
   switchUPView('stats');
   document.getElementById('upanel').classList.add('on');
