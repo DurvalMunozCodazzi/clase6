@@ -1185,15 +1185,15 @@ function renderTeamContent(){
       <div style="display:grid;grid-template-columns:repeat(${over?4:3},1fr);gap:7px;margin-bottom:12px">
         <div style="text-align:center;padding:8px 4px;background:var(--elev);border-radius:var(--r)">
           <div style="font-size:22px;font-weight:800;color:var(--acc)">${total}</div>
-          <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">Total</div>
-        </div>
-        <div style="text-align:center;padding:8px 4px;background:var(--elev);border-radius:var(--r)">
-          <div style="font-size:22px;font-weight:800;color:var(--ok)">${done}</div>
-          <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">Hechas</div>
+          <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">Asignadas</div>
         </div>
         <div style="text-align:center;padding:8px 4px;background:var(--elev);border-radius:var(--r)">
           <div style="font-size:22px;font-weight:800;color:var(--t2)">${active}</div>
-          <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">Activas</div>
+          <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">En Proceso</div>
+        </div>
+        <div style="text-align:center;padding:8px 4px;background:var(--elev);border-radius:var(--r)">
+          <div style="font-size:22px;font-weight:800;color:var(--ok)">${done}</div>
+          <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">Finalizadas</div>
         </div>
         ${over?`<div style="text-align:center;padding:8px 4px;background:rgba(239,68,68,.08);border-radius:var(--r);border:1px solid rgba(239,68,68,.2)">
           <div style="font-size:22px;font-weight:800;color:var(--er)">${over}</div>
@@ -1203,7 +1203,7 @@ function renderTeamContent(){
       <div style="height:6px;background:var(--elev);border-radius:99px;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:${u.color};border-radius:99px;transition:width .6s"></div>
       </div>
-      <div style="font-size:10px;color:var(--t3);margin-top:5px;text-align:right">${done} de ${total} completadas en el período</div>
+      <div style="font-size:10px;color:var(--t3);margin-top:5px;text-align:right">${done} de ${total} finalizadas en el período</div>
     </div>`;
   }).join('');
 
