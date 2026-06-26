@@ -78,15 +78,18 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 .kcard{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:8px 9px;cursor:pointer;transition:.15s;border-left:3px solid transparent}
 .kcard:hover{border-color:var(--bdrl);box-shadow:0 2px 14px rgba(0,0,0,.10);transform:translateY(-1px)}
 .kcard.sortable-ghost{opacity:.3}.kcard.sortable-drag{box-shadow:var(--shl);transform:rotate(1.5deg)}
-.kcard.overdue{background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.3)}
+.kcard.overdue{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.35);border-left-color:#ef4444 !important;animation:overdue-pulse 3s ease-in-out infinite}
+@keyframes overdue-pulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}50%{box-shadow:0 0 0 3px rgba(239,68,68,.15)}}
 .ktit{font-size:11px;font-weight:600;line-height:1.4;margin-bottom:4px}
 .kmeta{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .kdate{font-size:9px;font-family:var(--fm);color:var(--t3)}
+.kdate.ov{color:var(--er);font-weight:700}.kdate.sn{color:var(--wa);font-weight:700}.kdate.ok{color:var(--ok)}
 .kavs{display:flex;margin-left:auto}
 .kav{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:800;color:#fff;border:1.5px solid var(--surf);margin-left:-4px;flex-shrink:0}
 .kav:first-child{margin-left:0}
 .ktags{display:flex;gap:3px;flex-wrap:wrap;margin-top:4px}
 .ktag{font-size:8px;font-weight:700;padding:1px 5px;border-radius:99px}
+.kcolbdg{font-size:8px;font-weight:700;padding:1px 6px;border-radius:99px;border:1px solid;margin-right:2px}
 .kicons{display:flex;gap:4px;align-items:center;margin-top:3px}
 .kic{font-size:9px;color:var(--t3);display:flex;align-items:center;gap:2px}
 .kcard-progress{height:3px;background:var(--bdr);border-radius:99px;overflow:hidden;margin-top:5px}
@@ -152,8 +155,8 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 @keyframes sli{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
 
 /* METRICS — idéntico al real */
-#metrics-panel{position:fixed;top:calc(var(--th)+30px);left:0;right:0;bottom:0;background:var(--bg);z-index:300;transform:translateY(100%);transition:transform .35s;overflow-y:auto;padding:20px;display:none}
-#metrics-panel.on{transform:translateY(0);display:block}
+#metrics-panel{position:fixed;top:calc(var(--th)+30px);left:0;right:0;bottom:0;background:var(--bg);z-index:400;transform:translateY(110%);transition:transform .35s cubic-bezier(.4,0,.2,1);overflow-y:auto;padding:20px}
+#metrics-panel.on{transform:translateY(0)}
 .metrics-hdr{display:flex;align-items:center;gap:12px;margin-bottom:20px}
 .metrics-hdr h2{font-size:18px;font-weight:800;flex:1}
 .metrics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
@@ -174,7 +177,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 @media(max-width:768px){.metrics-grid{grid-template-columns:1fr 1fr}.charts-grid{grid-template-columns:1fr}}
 
 /* CALENDAR — idéntico al real */
-#cal-panel{position:fixed;top:calc(var(--th)+30px);left:0;right:0;bottom:0;background:var(--bg);z-index:300;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
+#cal-panel{position:fixed;top:calc(var(--th)+30px);left:0;right:0;bottom:0;background:var(--bg);z-index:400;transform:translateY(110%);transition:transform .35s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
 #cal-panel.on{transform:translateY(0)}
 .cal-nav{display:flex;align-items:center;gap:10px;padding:12px 20px;background:linear-gradient(135deg,rgba(91,106,240,.1),rgba(139,92,246,.07));border-bottom:2px solid rgba(91,106,240,.18);flex-shrink:0}
 .cal-month-label{font-size:15px;font-weight:800;letter-spacing:-.2px;flex:1;text-align:center}
@@ -257,10 +260,8 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
   </div>
 </div>
 
-<!-- INNER APP -->
+<!-- INNER APP — solo el kanban -->
 <div id="inner-app">
-
-  <!-- KANBAN PANEL -->
   <div id="kpanel">
     <div id="khdr">
       <i class="fas fa-columns" style="color:var(--acc);font-size:12px"></i>
@@ -275,58 +276,58 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
     </div>
   </div>
 
-  <!-- ANALYTICS -->
-  <div id="metrics-panel">
-    <div class="metrics-hdr">
-      <i class="fas fa-chart-bar" style="color:var(--acc);font-size:18px"></i>
-      <h2>Analítica del workspace</h2>
-      <button class="tbtn" onclick="showView('kanban')"><i class="fas fa-times"></i> Cerrar</button>
+</div><!-- /inner-app -->
+
+<!-- ANALYTICS — fuera de inner-app para evitar clipping -->
+<div id="metrics-panel">
+  <div class="metrics-hdr">
+    <i class="fas fa-chart-bar" style="color:var(--acc);font-size:18px"></i>
+    <h2>Analítica del workspace</h2>
+    <button class="tbtn" onclick="showView('kanban')"><i class="fas fa-times"></i> Cerrar</button>
+  </div>
+  <div class="metrics-grid" id="metrics-kpis"></div>
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title"><i class="fas fa-columns" style="color:var(--acc);margin-right:5px"></i>Tareas por columna</div>
+      <div class="bar-chart" id="chart-cols"></div>
     </div>
-    <div class="metrics-grid" id="metrics-kpis"></div>
-    <div class="charts-grid">
-      <div class="chart-card">
-        <div class="chart-title"><i class="fas fa-columns" style="color:var(--acc);margin-right:5px"></i>Tareas por columna</div>
-        <div class="bar-chart" id="chart-cols"></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-title"><i class="fas fa-fire" style="color:var(--wa);margin-right:5px"></i>Distribución por prioridad</div>
-        <div class="bar-chart" id="chart-prio"></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-title"><i class="fas fa-users" style="color:var(--ok);margin-right:5px"></i>Carga de trabajo por miembro</div>
-        <div id="chart-team" style="display:flex;flex-direction:column;gap:10px"></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-title"><i class="fas fa-check-square" style="color:var(--acc);margin-right:5px"></i>Progreso de checklists</div>
-        <div id="chart-check" style="display:flex;flex-direction:column;gap:10px"></div>
-      </div>
+    <div class="chart-card">
+      <div class="chart-title"><i class="fas fa-fire" style="color:var(--wa);margin-right:5px"></i>Distribución por prioridad</div>
+      <div class="bar-chart" id="chart-prio"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><i class="fas fa-users" style="color:var(--ok);margin-right:5px"></i>Carga de trabajo por miembro</div>
+      <div id="chart-team" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><i class="fas fa-check-square" style="color:var(--acc);margin-right:5px"></i>Progreso de checklists</div>
+      <div id="chart-check" style="display:flex;flex-direction:column;gap:10px"></div>
     </div>
   </div>
+</div>
 
-  <!-- CALENDAR -->
-  <div id="cal-panel">
-    <div class="cal-nav">
-      <button class="cal-nb" onclick="calPrev()"><i class="fas fa-chevron-left"></i></button>
-      <button class="cal-nb cal-nb-today" onclick="calToday()">Hoy</button>
-      <div class="cal-month-label" id="cal-label"></div>
-      <button class="cal-nb" onclick="calNext()"><i class="fas fa-chevron-right"></i></button>
-      <button class="tbtn" onclick="showView('kanban')" style="margin-left:12px"><i class="fas fa-times"></i> Cerrar</button>
+<!-- CALENDAR — fuera de inner-app para evitar clipping -->
+<div id="cal-panel">
+  <div class="cal-nav">
+    <button class="cal-nb" onclick="calPrev()"><i class="fas fa-chevron-left"></i></button>
+    <button class="cal-nb cal-nb-today" onclick="calToday()">Hoy</button>
+    <div class="cal-month-label" id="cal-label"></div>
+    <button class="cal-nb" onclick="calNext()"><i class="fas fa-chevron-right"></i></button>
+    <button class="tbtn" onclick="showView('kanban')" style="margin-left:12px"><i class="fas fa-times"></i> Cerrar</button>
+  </div>
+  <div class="cal-body">
+    <div class="cal-grid-wrap">
+      <div class="cal-dow-row">
+        <div class="cal-dow">Dom</div><div class="cal-dow">Lun</div><div class="cal-dow">Mar</div>
+        <div class="cal-dow">Mié</div><div class="cal-dow">Jue</div><div class="cal-dow">Vie</div><div class="cal-dow">Sáb</div>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
     </div>
-    <div class="cal-body">
-      <div class="cal-grid-wrap">
-        <div class="cal-dow-row">
-          <div class="cal-dow">Dom</div><div class="cal-dow">Lun</div><div class="cal-dow">Mar</div>
-          <div class="cal-dow">Mié</div><div class="cal-dow">Jue</div><div class="cal-dow">Vie</div><div class="cal-dow">Sáb</div>
-        </div>
-        <div class="cal-grid" id="cal-grid"></div>
-      </div>
-      <div class="cal-tasks-list">
-        <div class="cal-tasks-hdr" id="cal-tasks-hdr">Tareas del mes</div>
-        <div class="cal-tasks-body" id="cal-tasks-body"></div>
-      </div>
+    <div class="cal-tasks-list">
+      <div class="cal-tasks-hdr" id="cal-tasks-hdr">Tareas del mes</div>
+      <div class="cal-tasks-body" id="cal-tasks-body"></div>
     </div>
   </div>
-
 </div>
 
 <!-- TASK MODAL — idéntico al real -->
@@ -339,7 +340,13 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
     </div>
     <div class="ctabs">
       <button class="cta on" id="tab-btn-det" onclick="showTab('det',this)"><i class="fas fa-align-left"></i> Detalles</button>
+      <button class="cta" id="tab-btn-asig" onclick="showTab('asig',this)"><i class="fas fa-user-friends"></i> Asignados</button>
+      <button class="cta" id="tab-btn-adj" onclick="showTab('adj',this)"><i class="fas fa-paperclip"></i> Adjuntos</button>
       <button class="cta" id="tab-btn-chk" onclick="showTab('chk',this)"><i class="fas fa-check-square"></i> Checklist <span id="chk-badge" style="font-size:9px;background:var(--ok);color:#fff;padding:1px 5px;border-radius:99px;margin-left:3px;display:none"></span></button>
+      <button class="cta" id="tab-btn-act" onclick="showTab('act',this)"><i class="fas fa-history"></i> Actividad</button>
+      <button class="cta" id="tab-btn-tpo" onclick="showTab('tpo',this)"><i class="fas fa-clock"></i> Tiempo</button>
+      <button class="cta" id="tab-btn-dep" onclick="showTab('dep',this)"><i class="fas fa-sitemap"></i> Deps</button>
+      <button class="cta" id="tab-btn-chat" onclick="showTab('chat',this)"><i class="fas fa-comment"></i> Chat</button>
     </div>
 
     <!-- TAB DETALLES -->
@@ -368,17 +375,38 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
           </select>
         </div>
         <div class="fg">
-          <label class="fl">Fecha límite</label>
+          <label class="fl">Fecha Inicio</label>
+          <input type="date" class="fi" id="t-startdate">
+        </div>
+        <div class="fg">
+          <label class="fl">Fecha Límite</label>
           <input type="date" class="fi" id="t-date">
         </div>
-        <div class="fg" style="grid-column:1/-1">
-          <label class="fl">Responsables</label>
-          <div id="resp-picker" style="display:flex;gap:8px;flex-wrap:wrap;padding:6px 0"></div>
+        <div class="fg">
+          <label class="fl">Estimación (H)</label>
+          <input type="number" class="fi" id="t-esthours" placeholder="0" min="0" step="0.5">
         </div>
         <div class="fg" style="grid-column:1/-1">
-          <label class="fl">Etiqueta</label>
-          <div id="tag-picker" style="display:flex;gap:6px;flex-wrap:wrap;padding:4px 0"></div>
+          <label class="fl">Etiquetas <span style="font-size:9px;font-weight:400;text-transform:none;color:var(--t3)">— seleccioná una o varias</span></label>
+          <div id="tag-picker" style="display:flex;gap:5px;flex-wrap:wrap;padding:4px 0"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- TAB ASIGNADOS -->
+    <div class="tp" id="tab-asig">
+      <div class="fg">
+        <label class="fl">Responsables</label>
+        <div id="resp-picker" style="display:flex;gap:8px;flex-wrap:wrap;padding:6px 0"></div>
+      </div>
+    </div>
+
+    <!-- TAB ADJUNTOS -->
+    <div class="tp" id="tab-adj">
+      <div style="text-align:center;padding:40px 20px;color:var(--t3)">
+        <i class="fas fa-paperclip" style="font-size:32px;margin-bottom:10px;display:block;opacity:.4"></i>
+        <p style="font-size:13px;font-weight:600">Sin adjuntos</p>
+        <p style="font-size:11px;margin-top:4px">Subí archivos en la versión instalada</p>
       </div>
     </div>
 
@@ -393,6 +421,47 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
       <div class="checklist-add">
         <input id="chk-new" placeholder="Nueva verificación..." onkeydown="if(event.key==='Enter'){event.preventDefault();addCheckItem()}">
         <button class="btn bp" onclick="addCheckItem()" style="padding:7px 11px"><i class="fas fa-plus"></i></button>
+      </div>
+    </div>
+
+    <!-- TAB ACTIVIDAD -->
+    <div class="tp" id="tab-act">
+      <div style="text-align:center;padding:40px 20px;color:var(--t3)">
+        <i class="fas fa-history" style="font-size:32px;margin-bottom:10px;display:block;opacity:.4"></i>
+        <p style="font-size:13px;font-weight:600">Historial de cambios</p>
+        <p style="font-size:11px;margin-top:4px">Disponible en la versión instalada con base de datos</p>
+      </div>
+    </div>
+
+    <!-- TAB TIEMPO -->
+    <div class="tp" id="tab-tpo">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;padding:14px;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r)">
+        <i class="fas fa-clock" style="color:var(--acc);font-size:22px"></i>
+        <div>
+          <div style="font-size:22px;font-weight:800;color:var(--t1)" id="tpo-est-display">0 h</div>
+          <div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Estimación</div>
+        </div>
+      </div>
+      <div style="text-align:center;padding:20px;color:var(--t3)">
+        <p style="font-size:11px">El registro de tiempo real está disponible en la versión instalada</p>
+      </div>
+    </div>
+
+    <!-- TAB DEPS -->
+    <div class="tp" id="tab-dep">
+      <div style="text-align:center;padding:40px 20px;color:var(--t3)">
+        <i class="fas fa-sitemap" style="font-size:32px;margin-bottom:10px;display:block;opacity:.4"></i>
+        <p style="font-size:13px;font-weight:600">Sin dependencias</p>
+        <p style="font-size:11px;margin-top:4px">Vinculá tareas bloqueantes en la versión instalada</p>
+      </div>
+    </div>
+
+    <!-- TAB CHAT -->
+    <div class="tp" id="tab-chat">
+      <div style="text-align:center;padding:40px 20px;color:var(--t3)">
+        <i class="fas fa-comment" style="font-size:32px;margin-bottom:10px;display:block;opacity:.4"></i>
+        <p style="font-size:13px;font-weight:600">Chat de tarea</p>
+        <p style="font-size:11px;margin-top:4px">Comentarios y menciones disponibles en la versión instalada</p>
       </div>
     </div>
 
@@ -426,12 +495,24 @@ const COLS = [
 ];
 
 const TAGS = [
-  {label:'Campaña',   bg:'rgba(91,106,240,.15)', color:'#5b6af0'},
-  {label:'Stock',     bg:'rgba(34,211,160,.15)', color:'#22d3a0'},
-  {label:'Logística', bg:'rgba(245,158,11,.15)', color:'#f59e0b'},
-  {label:'Diseño',    bg:'rgba(139,92,246,.15)', color:'#8b5cf6'},
-  {label:'Ventas',    bg:'rgba(239,68,68,.12)',  color:'#ef4444'},
-  {label:'Promo',     bg:'rgba(6,182,212,.15)',  color:'#06b6d4'}
+  {label:'Bloqueado',      bg:'rgba(239,68,68,.15)',   color:'#ef4444'},
+  {label:'Bug',            bg:'rgba(239,68,68,.10)',   color:'#dc2626'},
+  {label:'Campaña',        bg:'rgba(91,106,240,.15)',  color:'#5b6af0'},
+  {label:'Cliente',        bg:'rgba(16,185,129,.15)',  color:'#059669'},
+  {label:'Cobranza',       bg:'rgba(245,158,11,.12)',  color:'#d97706'},
+  {label:'Desarrollo',     bg:'rgba(99,102,241,.15)',  color:'#6366f1'},
+  {label:'Diseño',         bg:'rgba(139,92,246,.15)',  color:'#8b5cf6'},
+  {label:'Documentación',  bg:'rgba(107,114,128,.12)', color:'#6b7280'},
+  {label:'En espera',      bg:'rgba(156,163,175,.12)', color:'#9ca3af'},
+  {label:'Interno',        bg:'rgba(59,130,246,.12)',  color:'#3b82f6'},
+  {label:'Logística',      bg:'rgba(245,158,11,.15)',  color:'#f59e0b'},
+  {label:'Marketing',      bg:'rgba(236,72,153,.15)',  color:'#ec4899'},
+  {label:'Mejora',         bg:'rgba(34,211,160,.15)',  color:'#22d3a0'},
+  {label:'Reuniones',      bg:'rgba(250,204,21,.15)',  color:'#ca8a04'},
+  {label:'Revisión',       bg:'rgba(6,182,212,.15)',   color:'#06b6d4'},
+  {label:'Stock',          bg:'rgba(34,211,160,.12)',  color:'#10b981'},
+  {label:'Urgente',        bg:'rgba(239,68,68,.20)',   color:'#ef4444'},
+  {label:'Ventas',         bg:'rgba(239,68,68,.12)',   color:'#ef4444'}
 ];
 
 const PRIO = {
@@ -444,34 +525,34 @@ const PRIO = {
 const DEFAULT_DATA = {
   nextId:11,
   tasks:[
-    {id:1,  title:'Lanzamiento Camiseta Argentina 2026',   col:'pendiente',  prio:'high',     resp:['CM','MT'], date:'2026-07-20', tag:'Campaña',
+    {id:1,  title:'Lanzamiento Camiseta Argentina 2026',   col:'pendiente',  prio:'high',     resp:['CM','MT'], startDate:'2026-06-15', date:'2026-07-20', estHours:24, tags:['Campaña','Diseño'],
      desc:'Coordinación del lanzamiento de la nueva camiseta oficial para Messifactory.',
      checklist:[{t:'Confirmar proveedor',d:true},{t:'Diseño final aprobado',d:false},{t:'Campaña redes sociales',d:false},{t:'Envío a sucursales',d:false}]},
-    {id:2,  title:'Campaña Copa América — Redes Sociales',  col:'proceso',    prio:'critical', resp:['MT','DK'], date:'2026-06-28', tag:'Campaña',
+    {id:2,  title:'Campaña Copa América — Redes Sociales',  col:'proceso',    prio:'critical', resp:['MT','DK'], startDate:'2026-06-01', date:'2026-06-28', estHours:16, tags:['Campaña','Urgente','Marketing'],
      desc:'Campaña digital multiplataforma para Copa América.',
      checklist:[{t:'Brief creativo',d:true},{t:'Piezas gráficas',d:true},{t:'Scheduling publicaciones',d:false}]},
-    {id:3,  title:'Reposición stock zapatillas running',     col:'pendiente',  prio:'medium',   resp:['LW'],      date:'2026-07-05', tag:'Stock',
+    {id:3,  title:'Reposición stock zapatillas running',     col:'pendiente',  prio:'medium',   resp:['LW'],      startDate:'', date:'2026-07-05', estHours:4, tags:['Stock'],
      desc:'Coordinar pedido con proveedor para reponer línea running Adidas.',
      checklist:[{t:'Verificar inventario actual',d:true},{t:'Pedido a proveedor',d:false}]},
-    {id:4,  title:'Negociación contrato Adidas 2027',        col:'proceso',    prio:'high',     resp:['CM'],      date:'2026-08-15', tag:'Ventas',
+    {id:4,  title:'Negociación contrato Adidas 2027',        col:'proceso',    prio:'high',     resp:['CM'],      startDate:'2026-06-10', date:'2026-08-15', estHours:8, tags:['Ventas','Cliente'],
      desc:'Renovación y ampliación del contrato de distribución exclusiva con Adidas.',
      checklist:[]},
-    {id:5,  title:'Catálogo temporada invierno 2026',        col:'revision',   prio:'medium',   resp:['MT'],      date:'2026-07-10', tag:'Diseño',
+    {id:5,  title:'Catálogo temporada invierno 2026',        col:'revision',   prio:'medium',   resp:['MT'],      startDate:'2026-05-20', date:'2026-07-10', estHours:32, tags:['Diseño','Marketing'],
      desc:'Diseño y armado del catálogo digital e impreso para invierno.',
      checklist:[{t:'Fotografías producto',d:true},{t:'Maquetado PDF',d:true},{t:'Revisión legal',d:false},{t:'Aprobación dirección',d:false}]},
-    {id:6,  title:'Logística entregas zona norte AMBA',      col:'proceso',    prio:'high',     resp:['LW','DK'], date:'2026-07-01', tag:'Logística',
+    {id:6,  title:'Logística entregas zona norte AMBA',      col:'proceso',    prio:'high',     resp:['LW','DK'], startDate:'2026-06-20', date:'2026-07-01', estHours:6, tags:['Logística','Urgente'],
      desc:'Optimizar rutas y tiempos de entrega para clientes zona norte.',
      checklist:[{t:'Mapa de rutas actualizado',d:true},{t:'Asignación choferes',d:false}]},
-    {id:7,  title:'Auditoría inventario almacén central',    col:'completado', prio:'low',      resp:['LW'],      date:'2026-06-20', tag:'Stock',
+    {id:7,  title:'Auditoría inventario almacén central',    col:'completado', prio:'low',      resp:['LW'],      startDate:'2026-06-10', date:'2026-06-20', estHours:12, tags:['Stock','Interno'],
      desc:'Recuento físico completo del almacén central Messifactory.',
      checklist:[{t:'Sector A',d:true},{t:'Sector B',d:true},{t:'Sector C',d:true},{t:'Informe final',d:true}]},
-    {id:8,  title:'Campaña influencers temporada invierno', col:'revision',   prio:'high',     resp:['MT','DK'], date:'2026-07-15', tag:'Promo',
+    {id:8,  title:'Campaña influencers temporada invierno', col:'revision',   prio:'high',     resp:['MT','DK'], startDate:'2026-06-05', date:'2026-07-15', estHours:10, tags:['Campaña','Marketing','Mejora'],
      desc:'Selección y briefing de influencers para la temporada de invierno.',
      checklist:[{t:'Lista de candidatos',d:true},{t:'Propuestas económicas',d:false},{t:'Contratos firmados',d:false}]},
-    {id:9,  title:'Apertura local Rosario — Inauguración',   col:'pendiente',  prio:'critical', resp:['CM','DK'], date:'2026-08-01', tag:'Ventas',
+    {id:9,  title:'Apertura local Rosario — Inauguración',   col:'pendiente',  prio:'critical', resp:['CM','DK'], startDate:'', date:'2026-08-01', estHours:40, tags:['Ventas','Urgente','Cliente'],
      desc:'Planificación integral de la apertura del nuevo local en Rosario.',
      checklist:[{t:'Habilitación comercial',d:false},{t:'Merchandising y display',d:false},{t:'Evento inaugural',d:false}]},
-    {id:10, title:'Renovación sistema POS sucursales',        col:'completado', prio:'medium',   resp:['CM'],      date:'2026-06-15', tag:'Stock',
+    {id:10, title:'Renovación sistema POS sucursales',        col:'completado', prio:'medium',   resp:['CM'],      startDate:'2026-05-15', date:'2026-06-15', estHours:20, tags:['Desarrollo','Interno','Mejora'],
      desc:'Actualización del sistema punto de venta en las 4 sucursales.',
      checklist:[{t:'Licencias adquiridas',d:true},{t:'Capacitación personal',d:true},{t:'Puesta en producción',d:true}]}
   ]
@@ -482,7 +563,7 @@ let S = loadState();
 let editId = null;
 let selCol = 'pendiente';
 let selResps = [];
-let selTag = null;
+let selTags = [];
 let tmpChk = [];
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
@@ -555,29 +636,37 @@ function renderKanban(){
     const cardsEl=colEl.querySelector('.kcards');
     tasks.forEach(t=>{
       const isOver=t.date&&t.date<today&&t.col!=='completado';
+      // "soon" = vence en los próximos 3 días
+      const diffDays=t.date?Math.ceil((new Date(t.date+'T12:00:00')-new Date())/(1000*60*60*24)):null;
+      const dateCls=isOver?'ov':diffDays!==null&&diffDays<=3?'sn':diffDays!==null&&diffDays>3?'ok':'';
       const chkDone=(t.checklist||[]).filter(c=>c.d).length;
       const chkTotal=(t.checklist||[]).length;
       const chkPct=chkTotal>0?Math.round(chkDone/chkTotal*100):0;
       const pData=t.prio?PRIO[t.prio]:null;
-      const tagData=t.tag?TAGS.find(tg=>tg.label===t.tag):null;
+      const taskTags=(t.tags||(t.tag?[t.tag]:[])).filter(Boolean);
+      const tagDatas=taskTags.map(tl=>TAGS.find(tg=>tg.label===tl)).filter(Boolean);
 
       const card=document.createElement('div');
       card.className='kcard'+(isOver?' overdue':'');
       card.dataset.id=t.id;
-      card.style.borderLeftColor=col.color;
+      card.style.borderLeftColor=isOver?'#ef4444':col.color;
       card.innerHTML=`
         <div class="ktit">${esc(t.title)}</div>
-        <div class="kmeta">
+        ${t.desc?`<div style="font-size:10px;color:var(--t3);line-height:1.4;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(t.desc)}</div>`:''}
+        ${tagDatas.length?`<div class="ktags">${tagDatas.slice(0,3).map(td=>`<span class="ktag" style="background:${td.bg};color:${td.color}">${td.label}</span>`).join('')}</div>`:''}
+        <div class="kmeta" style="margin-top:5px">
+          <span class="kcolbdg" style="background:${col.color}22;color:${col.color};border-color:${col.color}44">${col.name}</span>
           ${pData?`<span class="pbdg ${t.prio}">${pData.icon} ${pData.label}</span>`:''}
-          ${t.date?`<span class="kdate"><i class="fas fa-calendar" style="font-size:7px;margin-right:2px"></i>${fmtDate(t.date)}</span>`:''}
+        </div>
+        <div class="kmeta" style="margin-top:4px">
+          ${t.date?`<span class="kdate ${dateCls}"><i class="fas fa-${isOver?'exclamation-circle':'calendar'}" style="font-size:7px;margin-right:2px"></i>${fmtDate(t.date)}</span>`:''}
           <div class="kavs">
             ${(t.resp||[]).map(r=>`<div class="kav" style="background:${USERS[r]?.color||'#aaa'}" title="${USERS[r]?.name||r}">${r}</div>`).join('')}
           </div>
         </div>
-        ${tagData?`<div class="ktags"><span class="ktag" style="background:${tagData.bg};color:${tagData.color}">${tagData.label}</span></div>`:''}
         ${chkTotal>0?`
-          <div class="kicons"><span class="kic"><i class="fas fa-check-square"></i> ${chkDone}/${chkTotal}</span></div>
-          <div class="kcard-progress"><div class="kcard-progress-fill" style="width:${chkPct}%"></div></div>
+          <div class="kicons"><span class="kic"><i class="fas fa-check-square" style="color:${chkPct===100?'var(--ok)':'var(--t3)'}"></i> ${chkDone}/${chkTotal}</span></div>
+          <div class="kcard-progress"><div class="kcard-progress-fill" style="width:${chkPct}%;background:${chkPct===100?'var(--ok)':'var(--acc)'}"></div></div>
         `:''}
       `;
       card.onclick=()=>openEdit(t.id);
@@ -608,12 +697,14 @@ function renderKanban(){
 
 /* ── MODAL ──────────────────────────────────────── */
 function openCreate(colId){
-  editId=null; selCol=colId||'pendiente'; selResps=[]; selTag=null; tmpChk=[];
+  editId=null; selCol=colId||'pendiente'; selResps=[]; selTags=[]; tmpChk=[];
   document.getElementById('tmo-title').textContent='Nueva tarea';
   document.getElementById('t-title').value='';
   document.getElementById('t-desc').value='';
   document.getElementById('t-prio').value='';
   document.getElementById('t-date').value='';
+  document.getElementById('t-startdate').value='';
+  document.getElementById('t-esthours').value='';
   document.getElementById('btn-delete').style.display='none';
   showTab('det',document.getElementById('tab-btn-det'));
   buildStatusBar(); buildRespPicker(); buildTagPicker(); renderChkEditor();
@@ -624,14 +715,19 @@ function openCreate(colId){
 function openEdit(id){
   const t=S.tasks.find(t=>t.id===id);
   if(!t) return;
-  editId=id; selCol=t.col; selResps=[...(t.resp||[])]; selTag=t.tag||null;
+  editId=id; selCol=t.col; selResps=[...(t.resp||[])];
+  selTags=[...(t.tags||(t.tag?[t.tag]:[])).filter(Boolean)];
   tmpChk=JSON.parse(JSON.stringify(t.checklist||[]));
   document.getElementById('tmo-title').textContent='Editar tarea';
   document.getElementById('t-title').value=t.title;
   document.getElementById('t-desc').value=t.desc||'';
   document.getElementById('t-prio').value=t.prio||'';
   document.getElementById('t-date').value=t.date||'';
+  document.getElementById('t-startdate').value=t.startDate||'';
+  document.getElementById('t-esthours').value=t.estHours||'';
   document.getElementById('btn-delete').style.display='inline-flex';
+  const estEl=document.getElementById('tpo-est-display');
+  if(estEl) estEl.textContent=(t.estHours||0)+' h';
   showTab('det',document.getElementById('tab-btn-det'));
   buildStatusBar(); buildRespPicker(); buildTagPicker(); renderChkEditor();
   document.getElementById('taskMo').classList.add('on');
@@ -665,9 +761,14 @@ function toggleResp(k){ const i=selResps.indexOf(k); if(i>=0)selResps.splice(i,1
 
 function buildTagPicker(){
   document.getElementById('tag-picker').innerHTML=TAGS.map(t=>{
-    const on=selTag===t.label;
-    return `<span onclick="selTag=selTag==='${t.label}'?null:'${t.label}';buildTagPicker()" style="padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;cursor:pointer;background:${on?t.bg:'transparent'};color:${t.color};border:1.5px solid ${on?t.color:'var(--bdr)'};transition:.15s">${t.label}</span>`;
+    const on=selTags.includes(t.label);
+    return `<span onclick="toggleTag('${t.label}')" style="padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;cursor:pointer;background:${on?t.bg:'transparent'};color:${t.color};border:1.5px solid ${on?t.color:'var(--bdr)'};transition:.15s;display:inline-flex;align-items:center;gap:4px">${on?'<i class="fas fa-check" style="font-size:8px"></i>':''} ${t.label}</span>`;
   }).join('');
+}
+function toggleTag(label){
+  const i=selTags.indexOf(label);
+  if(i>=0) selTags.splice(i,1); else selTags.push(label);
+  buildTagPicker();
 }
 
 function renderChkEditor(){
@@ -708,9 +809,13 @@ function showTab(id,btn){
 function saveTask(){
   const title=document.getElementById('t-title').value.trim();
   if(!title){ toast('El título es requerido','er'); return; }
+  const estH=parseFloat(document.getElementById('t-esthours').value)||0;
   const data={title,col:selCol,prio:document.getElementById('t-prio').value,
-    date:document.getElementById('t-date').value,desc:document.getElementById('t-desc').value.trim(),
-    resp:[...selResps],tag:selTag,checklist:JSON.parse(JSON.stringify(tmpChk))};
+    startDate:document.getElementById('t-startdate').value,
+    date:document.getElementById('t-date').value,
+    estHours:estH||undefined,
+    desc:document.getElementById('t-desc').value.trim(),
+    resp:[...selResps],tags:[...selTags],checklist:JSON.parse(JSON.stringify(tmpChk))};
   if(editId){
     const i=S.tasks.findIndex(t=>t.id===editId);
     if(i>=0) S.tasks[i]={...S.tasks[i],...data};
@@ -872,7 +977,8 @@ function calToday(){calYear=new Date().getFullYear();calMonth=new Date().getMont
 /* ── UTILS ──────────────────────────────────────── */
 function ce(tag,cls){const e=document.createElement(tag);e.className=cls;return e;}
 function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
-function fmtDate(d){if(!d)return'';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`;}
+const MNAMES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function fmtDate(d){if(!d)return'';const[y,m,day]=d.split('-');return`${parseInt(day)} ${MNAMES[parseInt(m)-1]} · ${y}`;}
 function toast(msg,type='ok'){
   const ic={ok:'fa-check-circle',wa:'fa-exclamation-triangle',er:'fa-times-circle'};
   const el=document.createElement('div');
