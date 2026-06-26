@@ -158,16 +158,6 @@ class Luna_Activator {
                 FOREIGN KEY (card_id) REFERENCES {$wpdb->prefix}luna_cards(id) ON DELETE CASCADE
             ) $c",
 
-            "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}luna_chat_messages (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                card_id INT NOT NULL,
-                user_id INT NOT NULL,
-                message TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (card_id) REFERENCES {$wpdb->prefix}luna_cards(id) ON DELETE CASCADE,
-                FOREIGN KEY (user_id) REFERENCES {$wpdb->prefix}luna_users(id) ON DELETE CASCADE
-            ) $c",
-
             "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}luna_sessions (
                 token VARCHAR(64) PRIMARY KEY,
                 user_id INT NOT NULL,

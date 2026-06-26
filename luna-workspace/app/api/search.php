@@ -21,7 +21,6 @@ if ($me['role'] === 'admin') {
                c.workspace_id, c.column_id,
                k.title as column_title, k.color as column_color,
                w.name as workspace_name,
-               (SELECT COUNT(*) FROM ".tb('chat_messages')." cm WHERE cm.card_id=c.id) as chat_count,
                (SELECT COUNT(*) FROM ".tb('card_checklist')." cc WHERE cc.card_id=c.id) as checklist_count,
                (SELECT COUNT(*) FROM ".tb('card_checklist')." cc WHERE cc.card_id=c.id AND cc.is_done=1) as checklist_done
         FROM ".tb('cards')." c
@@ -43,7 +42,6 @@ if ($me['role'] === 'admin') {
                c.workspace_id, c.column_id,
                k.title as column_title, k.color as column_color,
                w.name as workspace_name,
-               (SELECT COUNT(*) FROM ".tb('chat_messages')." cm WHERE cm.card_id=c.id) as chat_count,
                (SELECT COUNT(*) FROM ".tb('card_checklist')." cc WHERE cc.card_id=c.id) as checklist_count,
                (SELECT COUNT(*) FROM ".tb('card_checklist')." cc WHERE cc.card_id=c.id AND cc.is_done=1) as checklist_done
         FROM ".tb('cards')." c

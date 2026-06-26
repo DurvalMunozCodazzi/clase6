@@ -708,8 +708,6 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 .mention-av{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0}
 .mention-name{font-size:12px;font-weight:600}
 .mention-role{font-size:10px;color:var(--t3)}
-.chat-mention{color:var(--acc);font-weight:700;background:var(--accg);border-radius:3px;padding:0 3px}
-
 /* ── FILTERS ── */
 #filter-bar{display:none;align-items:center;gap:8px;padding:6px 14px;background:var(--surf);border-bottom:1px solid var(--bdr);flex-wrap:wrap}
 #filter-bar.on{display:flex}
@@ -1056,7 +1054,6 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
         <!-- List of all tasks to select from -->
         <div id="dep-all-list" style="display:flex;flex-direction:column;gap:4px;max-height:340px;overflow-y:auto"></div>
       </div>
-      <div class="tp" id="tp-cha"><div class="cha"><div class="chm" id="cmchat"></div><div class="chin"><input class="chi" id="cmchi" placeholder="Escribe un mensaje..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"><button class="chs" onclick="sendMsg()"><i class="fas fa-paper-plane"></i></button></div></div></div>
       <div class="mac"><button class="btn bd" id="cm-delbtn" onclick="delCard()"><i class="fas fa-trash"></i> Eliminar</button><button class="btn" onclick="closeCardM()">Cancelar</button><button class="btn bp" onclick="saveCard()"><i class="fas fa-check"></i> Guardar</button></div>
     </div>
   </div>
@@ -1910,7 +1907,6 @@ function renderCard(card,col){
   const dueH=card.due_date?`<span class="${dueCls(card.due_date)}" style="font-size:9px;font-family:var(--fm)"><i class="fas fa-clock"></i> ${card.due_date}</span>`:'';
   const icsH=[
     card.attachment_count>0?`<span class="kic"><i class="fas fa-paperclip"></i>${card.attachment_count}</span>`:'',
-    card.chat_count>0?`<span class="kic"><i class="fas fa-comment"></i>${card.chat_count}</span>`:'',
     card.estimated?`<span class="kic"><i class="fas fa-hourglass-half"></i>${card.estimated}h</span>`:''
   ].filter(Boolean).join('');
   // Priority badge
@@ -2136,7 +2132,6 @@ async function openCardM(cardId){
     renderCMGlobalLabels();
     renderMAtts();
     renderAsn(d.assignees);
-    renderChat(d.chat||[]);
     renderChecklist();
     renderActivity(d.activity||[]);
     renderDeps();
@@ -2336,18 +2331,6 @@ function renderAsn(currentAsn){
   grid.innerHTML=members.map(u=>`<div class="arow ${mAsn.includes(u.id)?'on':''}" onclick="${ro?'':` togAsn(${u.id},this)`}" style="${ro?'pointer-events:none':''}"><div class="av av32" style="background:${u.color}">${ini(u.name)}</div><div class="ainf"><div class="anm">${esc(u.name)}</div><div class="acg">${esc(u.cargo||'Sin cargo')}${u.dept?' · '+esc(u.dept):''}</div></div><span class="arb" style="background:${RCOL[u.role]}22;color:${RCOL[u.role]}">${ROLES[u.role]}</span>${mAsn.includes(u.id)?'<i class="fas fa-check-circle" style="color:var(--acc)"></i>':''}</div>`).join('')
 }
 function togAsn(uid,el){const i=mAsn.indexOf(uid);if(i===-1)mAsn.push(uid);else mAsn.splice(i,1);renderAsn()}
-async function sendMsg(){
-  const inp=document.getElementById('cmchi'),text=inp.value.trim();if(!text||!editCardId)return;
-  try{
-    const d=await _wsApi(`kanban.php?action=add_chat&id=${editCardId}`,'POST',{message:text});
-    inp.value='';
-    const current=editCardData?.chat||[];
-    current.push(d.message);
-    renderChat(current);
-    const card=CARDS.find(c=>c.id==editCardId);if(card)card.chat_count=(card.chat_count||0)+1;
-  }catch(e){notify('Error enviando mensaje','er')}
-}
-
 // ══════════════════════════════════════════════
 //  USER MANAGEMENT
 // ══════════════════════════════════════════════
@@ -4013,135 +3996,6 @@ async function testTelegram(){
   }catch(e){
     if(res){ res.className='test-result er'; res.innerHTML='<i class="fas fa-times-circle"></i> '+esc(e.message); }
   }
-}
-
-// ══════════════════════════════════════════════
-//  FEATURE 1: @MENCIONES EN CHAT
-// ══════════════════════════════════════════════
-let mentionActive = false;
-let mentionQuery  = '';
-let mentionStart  = 0;
-let mentionIdx    = 0;
-
-function onChatKey(e){
-  const popup = document.getElementById('mention-popup');
-  if(mentionActive && popup?.classList.contains('on')){
-    const items = popup.querySelectorAll('.mention-item');
-    if(e.key==='ArrowDown'){e.preventDefault();mentionIdx=Math.min(mentionIdx+1,items.length-1);hlMention(items);return;}
-    if(e.key==='ArrowUp'){e.preventDefault();mentionIdx=Math.max(mentionIdx-1,0);hlMention(items);return;}
-    if(e.key==='Enter'||e.key==='Tab'){
-      e.preventDefault();
-      if(items[mentionIdx]) items[mentionIdx].click();
-      return;
-    }
-    if(e.key==='Escape'){closeMentionPopup();return;}
-  }
-  if(e.key==='Enter'&&!e.shiftKey&&!mentionActive){e.preventDefault();sendChat();}
-}
-
-function onChatInput(inp){
-  const val = inp.value;
-  const pos = inp.selectionStart;
-  // Find @ before cursor
-  const before = val.substring(0,pos);
-  const atIdx  = before.lastIndexOf('@');
-  if(atIdx >= 0 && (atIdx===0 || /\s/.test(before[atIdx-1]))){
-    const query = before.substring(atIdx+1).toLowerCase();
-    if(!query.includes(' ')){
-      mentionActive = true;
-      mentionQuery  = query;
-      mentionStart  = atIdx;
-      mentionIdx    = 0;
-      showMentionPopup(query, inp);
-      return;
-    }
-  }
-  closeMentionPopup();
-}
-
-function showMentionPopup(query, inp){
-  const popup = document.getElementById('mention-popup');
-  if(!popup) return;
-  const filtered = USERS.filter(u=>
-    u.name.toLowerCase().includes(query) || u.username?.toLowerCase().includes(query)
-  ).slice(0,8);
-  if(!filtered.length){closeMentionPopup();return;}
-  popup.innerHTML = filtered.map((u,i)=>`
-    <div class="mention-item ${i===0?'active':''}" onclick="insertMention('${esc(u.name)}',${u.id})">
-      <div class="mention-av" style="background:${u.color||'#5b6af0'}">${u.photo?`<img src="${u.photo}" style="width:24px;height:24px;border-radius:50%;object-fit:cover">`:ini(u.name)}</div>
-      <div><div class="mention-name">${esc(u.name)}</div><div class="mention-role">${ROLES[u.role]||u.role}</div></div>
-    </div>`).join('');
-  popup.classList.add('on');
-}
-
-function hlMention(items){
-  items.forEach((el,i)=>el.classList.toggle('active',i===mentionIdx));
-}
-
-function insertMention(name, userId){
-  const inp = document.getElementById('chatmsg');
-  if(!inp) return;
-  const val = inp.value;
-  const before = val.substring(0, mentionStart);
-  const after  = val.substring(inp.selectionStart);
-  inp.value = before + '@' + name + ' ' + after;
-  inp.focus();
-  const pos = (before + '@' + name + ' ').length;
-  inp.setSelectionRange(pos, pos);
-  closeMentionPopup();
-  // Track mention for notification
-  if(!window._pendingMentions) window._pendingMentions = [];
-  window._pendingMentions.push(userId);
-}
-
-function closeMentionPopup(){
-  mentionActive = false;
-  document.getElementById('mention-popup')?.classList.remove('on');
-}
-
-// Render chat messages with @mention highlighting
-function renderChatMentions(text){
-  return esc(text).replace(/@(\w[\w\s]*?)(?=\s|$|[,.])/g, (match, name)=>{
-    const user = USERS.find(u=>u.name.toLowerCase()===name.toLowerCase().trim());
-    if(user) return `<span class="chat-mention">@${esc(name)}</span>`;
-    return match;
-  });
-}
-
-// sendChat overridden below for @mentions
-async function sendChat(){
-  const inp = document.getElementById('chatmsg');
-  const msg = inp?.value.trim(); if(!msg||!editCardId) return;
-  inp.value = ''; closeMentionPopup();
-  const pendingMentions = window._pendingMentions || [];
-  window._pendingMentions = [];
-  try{
-    const d = await _wsApi(`kanban.php?action=add_chat&id=${editCardId}`,'POST',{
-      message:msg, mentions:pendingMentions
-    });
-    if(editCardData) editCardData.chat = [...(editCardData.chat||[]), d.message];
-    renderChat(editCardData?.chat||[]);
-  }catch(e){ notify('Error enviando: '+e.message,'er'); inp.value=msg; }
-}
-
-// Override renderChat to show @mentions highlighted
-const _origRenderChat = renderChat;
-function renderChat(msgs){
-  const el = document.getElementById('cmchat'); if(!el) return;
-  if(!msgs?.length){
-    el.innerHTML='<div style="font-size:11px;color:var(--t3);padding:16px;text-align:center"><i class="fas fa-comment" style="font-size:24px;opacity:.3;display:block;margin-bottom:8px"></i>Sin mensajes aún</div>';
-    return;
-  }
-  el.innerHTML = msgs.map(m=>`
-    <div class="cmsg" style="margin-bottom:10px">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-        <div class="av av24" style="background:${m.user_color||'#5b6af0'}">${ini(m.user_name||'?')}</div>
-        <span style="font-size:11px;font-weight:700">${esc(m.user_name)}</span>
-        <span style="font-size:9px;color:var(--t3);font-family:var(--fm)">${timeAgo(m.created_at)}</span>
-      </div>
-      <div style="font-size:12px;line-height:1.6;padding-left:30px">${renderChatMentions(m.message)}</div>
-    </div>`).join('');
-  el.scrollTop = el.scrollHeight;
 }
 
 // ══════════════════════════════════════════════

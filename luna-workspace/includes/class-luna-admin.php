@@ -1157,7 +1157,7 @@ class Luna_Admin {
         $table_names = [
             'users', 'workspaces', 'workspace_members', 'workspace_labels',
             'columns_k', 'cards', 'card_tags', 'card_assignees', 'card_checklist',
-            'card_dependencies', 'attachments', 'chat_messages', 'sessions',
+            'card_dependencies', 'attachments', 'sessions',
             'notifications', 'app_settings', 'workspace_templates', 'activity_log',
             'user_meta',
         ];
@@ -1356,7 +1356,7 @@ class Luna_Admin {
         $table_names = [
             'users', 'workspaces', 'workspace_members', 'workspace_labels',
             'columns_k', 'cards', 'card_tags', 'card_assignees', 'card_checklist',
-            'card_dependencies', 'attachments', 'chat_messages', 'sessions',
+            'card_dependencies', 'attachments', 'sessions',
             'notifications', 'app_settings', 'workspace_templates', 'activity_log',
             'user_meta',
         ];
@@ -1895,7 +1895,7 @@ class Luna_Admin {
             // Relaciones de tarjetas
             'card_tags', 'card_assignees', 'card_checklist', 'card_dependencies',
             // Contenido
-            'attachments', 'chat_messages', 'notifications',
+            'attachments', 'notifications',
             // Extras
             'workspace_labels', 'activity_log',
         ];

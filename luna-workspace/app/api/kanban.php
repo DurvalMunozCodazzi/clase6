@@ -36,8 +36,7 @@ if ($method === 'GET' && $action === 'board') {
                (SELECT COUNT(*) FROM ".tb('attachments')." at WHERE at.card_id=c.id) AS attachment_count,
                (SELECT COUNT(*) FROM ".tb('card_checklist')." cc WHERE cc.card_id=c.id) AS checklist_total,
                (SELECT COUNT(*) FROM ".tb('card_checklist')." cc WHERE cc.card_id=c.id AND cc.is_done=1) AS checklist_done,
-               (SELECT GROUP_CONCAT(depends_on_id) FROM ".tb('card_dependencies')." WHERE card_id=c.id) AS dep_ids,
-               (SELECT COUNT(*) FROM ".tb('chat_messages')." ch WHERE ch.card_id=c.id) AS chat_count
+               (SELECT GROUP_CONCAT(depends_on_id) FROM ".tb('card_dependencies')." WHERE card_id=c.id) AS dep_ids
         FROM ".tb('cards')." c WHERE c.workspace_id=? ORDER BY c.column_id, c.position, c.id");
     $cards->execute([$wsId]);
     $allCards = $cards->fetchAll();
@@ -259,8 +258,6 @@ if ($method === 'GET' && $action === 'card_detail') {
     $asn->execute([$id]);
     $atts = $db->prepare("SELECT * FROM ".tb('attachments')." WHERE card_id=? ORDER BY id");
     $atts->execute([$id]);
-    $chat = $db->prepare("SELECT cm.*,u.name as user_name,u.color as user_color FROM ".tb('chat_messages')." cm JOIN ".tb('users')." u ON u.id=cm.user_id WHERE cm.card_id=? ORDER BY cm.created_at");
-    $chat->execute([$id]);
     $checklist=$db->prepare("SELECT * FROM ".tb('card_checklist')." WHERE card_id=? ORDER BY position");
     $checklist->execute([$id]);
     $activity=$db->prepare("SELECT al.*,u.name as user_name,u.color as user_color FROM ".tb('activity_log')." al JOIN ".tb('users')." u ON u.id=al.user_id WHERE al.card_id=? ORDER BY al.created_at DESC LIMIT 20");
@@ -277,7 +274,6 @@ if ($method === 'GET' && $action === 'card_detail') {
         'tags'=>$tags->fetchAll(),
         'assignees'=>$asn->fetchAll(),
         'attachments'=>$atts->fetchAll(),
-        'chat'=>$chat->fetchAll(),
         'checklist'=>$checklist->fetchAll(),
         'activity'=>$activity->fetchAll(),
         'dependencies'=>$deps,
@@ -303,31 +299,6 @@ if ($method === 'PUT' && $action === 'reorder_columns') {
         $db->prepare("UPDATE ".tb('columns_k')." SET position=? WHERE id=? AND workspace_id=?")->execute([$pos, intval($colId), $wsId]);
     }
     jsonOut(['ok'=>true]);
-}
-
-// ── POST add chat message ─────────────────────────────────────────
-if ($method === 'POST' && $action === 'add_chat') {
-    $b  = json_decode(file_get_contents('php://input'), true);
-    $msg = substr(trim($b['message'] ?? ''), 0, 5000);
-    if (!$msg) jsonErr('Mensaje vacio');
-    // Verificar que la tarjeta pertenece a este workspace
-    $chatCardChk = $db->prepare("SELECT id FROM ".tb('cards')." WHERE id=? AND workspace_id=?");
-    $chatCardChk->execute([$id, $wsId]);
-    if (!$chatCardChk->fetch()) jsonErr('Tarjeta no encontrada', 404);
-    $db->prepare("INSERT INTO ".tb('chat_messages')." (card_id,user_id,message) VALUES (?,?,?)")->execute([$id, $me['id'], $msg]);
-    $newId = $db->lastInsertId();
-    $row = $db->prepare("SELECT cm.*,u.name as user_name,u.color as user_color FROM ".tb('chat_messages')." cm JOIN ".tb('users')." u ON u.id=cm.user_id WHERE cm.id=?");
-    $row->execute([$newId]);
-
-    // Notify all assignees of this card (except the commenter)
-    $asnSt = $db->prepare("SELECT user_id FROM ".tb('card_assignees')." WHERE card_id=?");
-    $asnSt->execute([$id]);
-    foreach ($asnSt->fetchAll() as $asnRow) {
-        if ((int)$asnRow['user_id'] === (int)$me['id']) continue;
-        createNotification($db, (int)$asnRow['user_id'], $me['id'], 'comment', $id, $wsId, substr($msg, 0, 200));
-    }
-
-    jsonOut(['message' => $row->fetch()], 201);
 }
 
 // ── PUT update workspace name / canvas ───────────────────────────
