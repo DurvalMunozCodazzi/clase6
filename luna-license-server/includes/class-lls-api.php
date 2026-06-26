@@ -13,6 +13,18 @@ class LLS_Api {
                 'domain'      => ['required' => true, 'sanitize_callback' => 'sanitize_text_field'],
             ],
         ]);
+
+        register_rest_route('luna-licenses/v1', '/solicitar', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'solicitar'],
+            'permission_callback' => '__return_true',
+            'args'                => [
+                'nombre'   => ['required' => true, 'sanitize_callback' => 'sanitize_text_field'],
+                'email'    => ['required' => true, 'sanitize_callback' => 'sanitize_email'],
+                'telefono' => ['required' => true, 'sanitize_callback' => 'sanitize_text_field'],
+                'dominio'  => ['required' => true, 'sanitize_callback' => 'sanitize_text_field'],
+            ],
+        ]);
     }
 
     public function verify(WP_REST_Request $request): WP_REST_Response {
@@ -37,5 +49,43 @@ class LLS_Api {
         // Returning 4xx causes security layers (Wordfence, mod_security) to intercept
         // the response and replace our JSON with their own error page.
         return new WP_REST_Response($result, 200);
+    }
+
+    public function solicitar(WP_REST_Request $request): WP_REST_Response {
+        global $wpdb;
+
+        $nombre   = $request->get_param('nombre');
+        $email    = $request->get_param('email');
+        $telefono = $request->get_param('telefono');
+        $dominio  = LLS_License::normalize_domain($request->get_param('dominio'));
+
+        if (!$nombre || !is_email($email) || !$telefono || !$dominio) {
+            return new WP_REST_Response(['ok' => false, 'message' => 'Datos incompletos o inválidos.'], 200);
+        }
+
+        // Rate limit: 3 solicitudes por IP por hora
+        $ip       = sanitize_text_field($_SERVER['REMOTE_ADDR'] ?? '');
+        $rate_key = 'lls_sol_rate_' . md5($ip);
+        $hits     = (int) get_transient($rate_key);
+        if ($hits >= 3) {
+            return new WP_REST_Response(['ok' => false, 'message' => 'Demasiadas solicitudes. Intentá en una hora.'], 200);
+        }
+        set_transient($rate_key, $hits + 1, HOUR_IN_SECONDS);
+
+        // Guardar en tabla
+        $t = $wpdb->prefix . 'lls_requests';
+        $wpdb->insert($t, compact('nombre', 'email', 'telefono', 'dominio'));
+
+        // Notificar a Durval por WhatsApp (CallMeBot)
+        $apikey  = get_option('lls_callmebot_apikey', '6291539');
+        $phone   = get_option('lls_callmebot_phone',  '5491153283558');
+        $texto   = "🌙 Nueva solicitud Luna:\n👤 {$nombre}\n📧 {$email}\n📱 {$telefono}\n🌐 {$dominio}";
+        wp_remote_get(add_query_arg([
+            'phone'   => $phone,
+            'text'    => urlencode($texto),
+            'apikey'  => $apikey,
+        ], 'https://api.callmebot.com/whatsapp.php'), ['timeout' => 10, 'blocking' => false]);
+
+        return new WP_REST_Response(['ok' => true], 200);
     }
 }

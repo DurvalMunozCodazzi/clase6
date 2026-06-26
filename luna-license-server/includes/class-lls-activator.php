@@ -32,6 +32,20 @@ class LLS_Activator {
             KEY          idx_status (status)
         ) {$charset};");
 
+        $t_req = $wpdb->prefix . 'lls_requests';
+        dbDelta("CREATE TABLE {$t_req} (
+            id             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            nombre         VARCHAR(120) NOT NULL DEFAULT '',
+            email          VARCHAR(120) NOT NULL DEFAULT '',
+            telefono       VARCHAR(30)  NOT NULL DEFAULT '',
+            dominio        VARCHAR(255) NOT NULL DEFAULT '',
+            status         ENUM('pending','sent','rejected') NOT NULL DEFAULT 'pending',
+            created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_email (email),
+            KEY idx_status (status)
+        ) {$charset};");
+
         dbDelta("CREATE TABLE {$t_log} (
             id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             license_key VARCHAR(64)  NOT NULL,

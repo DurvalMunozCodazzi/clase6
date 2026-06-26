@@ -362,6 +362,115 @@
   .privacy-item h4 { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
   .privacy-item p { font-size: 12.5px; color: var(--text3); margin: 0; }
 
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(5,8,16,.85);
+    backdrop-filter: blur(6px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--dark2);
+    border: 1px solid rgba(91,106,240,.3);
+    border-radius: 16px;
+    padding: 40px;
+    width: 100%;
+    max-width: 480px;
+    position: relative;
+    box-shadow: 0 24px 80px rgba(0,0,0,.6);
+    animation: modal-in .25s ease;
+  }
+  @keyframes modal-in {
+    from { opacity:0; transform:translateY(20px) scale(.97); }
+    to   { opacity:1; transform:translateY(0)  scale(1); }
+  }
+  .modal-close {
+    position: absolute;
+    top: 16px; right: 20px;
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-size: 22px;
+    cursor: pointer;
+    line-height: 1;
+    transition: color .2s;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal h3 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .modal-sub {
+    color: var(--text2);
+    font-size: 0.88rem;
+    margin-bottom: 28px;
+  }
+  .form-group {
+    margin-bottom: 16px;
+  }
+  .form-group label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text2);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    background: var(--dark3);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.95rem;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .form-group input:focus,
+  .form-group select:focus { border-color: var(--acc); }
+  .form-group input::placeholder { color: var(--text3); }
+  .phone-row {
+    display: flex;
+    gap: 8px;
+  }
+  .phone-row select { width: 160px; flex-shrink: 0; }
+  .phone-row input  { flex: 1; }
+  .form-group select option { background: #1a2040; }
+  .modal-submit {
+    width: 100%;
+    margin-top: 8px;
+    background: var(--acc);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 13px;
+    cursor: pointer;
+    transition: background .2s, transform .2s;
+    box-shadow: 0 4px 20px rgba(91,106,240,.4);
+  }
+  .modal-submit:hover:not(:disabled) { background: var(--acc2); transform: translateY(-1px); }
+  .modal-submit:disabled { opacity: .6; cursor: default; }
+  .modal-msg {
+    margin-top: 14px;
+    font-size: 0.88rem;
+    text-align: center;
+    min-height: 20px;
+  }
+  .modal-msg.ok  { color: var(--green); }
+  .modal-msg.err { color: var(--red); }
+
   /* ── CTA FINAL ── */
   .cta-section {
     text-align: center;
@@ -889,9 +998,192 @@
   </div>
 </div>
 
+<!-- ══════════════════════ MODAL SOLICITUD ══════════════════════ -->
+<div class="modal-overlay" id="modalSolicitud" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <button class="modal-close" id="modalClose" aria-label="Cerrar">×</button>
+    <h3 id="modalTitle">🌙 Descargá Luna gratis</h3>
+    <p class="modal-sub">Completá el formulario y te enviamos el plugin por email y tu clave de activación por WhatsApp.</p>
+
+    <form id="solicitudForm" novalidate>
+      <div class="form-group">
+        <label for="f-nombre">Nombre completo</label>
+        <input type="text" id="f-nombre" name="nombre" placeholder="Tu nombre y apellido" required autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label for="f-email">Email</label>
+        <input type="email" id="f-email" name="email" placeholder="tu@email.com" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Teléfono WhatsApp</label>
+        <div class="phone-row">
+          <select id="f-pais" name="pais" aria-label="Prefijo de país">
+            <optgroup label="— América Latina —">
+              <option value="+54">🇦🇷 Argentina +54</option>
+              <option value="+591">🇧🇴 Bolivia +591</option>
+              <option value="+55">🇧🇷 Brasil +55</option>
+              <option value="+56">🇨🇱 Chile +56</option>
+              <option value="+57">🇨🇴 Colombia +57</option>
+              <option value="+506">🇨🇷 Costa Rica +506</option>
+              <option value="+53">🇨🇺 Cuba +53</option>
+              <option value="+593">🇪🇨 Ecuador +593</option>
+              <option value="+503">🇸🇻 El Salvador +503</option>
+              <option value="+502">🇬🇹 Guatemala +502</option>
+              <option value="+509">🇭🇹 Haití +509</option>
+              <option value="+504">🇭🇳 Honduras +504</option>
+              <option value="+52">🇲🇽 México +52</option>
+              <option value="+505">🇳🇮 Nicaragua +505</option>
+              <option value="+507">🇵🇦 Panamá +507</option>
+              <option value="+595">🇵🇾 Paraguay +595</option>
+              <option value="+51">🇵🇪 Perú +51</option>
+              <option value="+1-787">🇵🇷 Puerto Rico +1-787</option>
+              <option value="+1-809">🇩🇴 Rep. Dominicana +1-809</option>
+              <option value="+598">🇺🇾 Uruguay +598</option>
+              <option value="+58">🇻🇪 Venezuela +58</option>
+            </optgroup>
+            <optgroup label="— España —">
+              <option value="+34">🇪🇸 España +34</option>
+            </optgroup>
+            <optgroup label="— Resto del mundo —">
+              <option value="+1">🇺🇸 EE.UU. / Canadá +1</option>
+              <option value="+44">🇬🇧 Reino Unido +44</option>
+              <option value="+49">🇩🇪 Alemania +49</option>
+              <option value="+33">🇫🇷 Francia +33</option>
+              <option value="+39">🇮🇹 Italia +39</option>
+              <option value="+351">🇵🇹 Portugal +351</option>
+              <option value="+31">🇳🇱 Países Bajos +31</option>
+              <option value="+32">🇧🇪 Bélgica +32</option>
+              <option value="+41">🇨🇭 Suiza +41</option>
+              <option value="+43">🇦🇹 Austria +43</option>
+              <option value="+48">🇵🇱 Polonia +48</option>
+              <option value="+7">🇷🇺 Rusia +7</option>
+              <option value="+86">🇨🇳 China +86</option>
+              <option value="+81">🇯🇵 Japón +81</option>
+              <option value="+82">🇰🇷 Corea del Sur +82</option>
+              <option value="+91">🇮🇳 India +91</option>
+              <option value="+61">🇦🇺 Australia +61</option>
+              <option value="+27">🇿🇦 Sudáfrica +27</option>
+              <option value="+20">🇪🇬 Egipto +20</option>
+              <option value="+971">🇦🇪 Emiratos Árabes +971</option>
+              <option value="+972">🇮🇱 Israel +972</option>
+              <option value="+90">🇹🇷 Turquía +90</option>
+              <option value="+62">🇮🇩 Indonesia +62</option>
+              <option value="+60">🇲🇾 Malasia +60</option>
+              <option value="+63">🇵🇭 Filipinas +63</option>
+              <option value="+66">🇹🇭 Tailandia +66</option>
+              <option value="+84">🇻🇳 Vietnam +84</option>
+            </optgroup>
+          </select>
+          <input type="tel" id="f-telefono" name="telefono" placeholder="11 2345 6789" required autocomplete="tel-national">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="f-dominio">Dominio WordPress</label>
+        <input type="text" id="f-dominio" name="dominio" placeholder="miempresa.com" required autocomplete="url">
+      </div>
+      <button type="submit" class="modal-submit" id="modalBtn">Solicitar plugin y clave →</button>
+      <p class="modal-msg" id="modalMsg"></p>
+    </form>
+  </div>
+</div>
+
 <footer>
   <p>© 2026 <a href="https://websobreruedas.com">Web Sobre Ruedas</a> &nbsp;·&nbsp; Luna Workspace v11.1.3 &nbsp;·&nbsp; <a href="https://misioneslahermosa.com">misioneslahermosa.com</a></p>
 </footer>
+
+<script>
+(function () {
+  const ENDPOINT = 'https://websobreruedas.com/wp-json/luna-licenses/v1/solicitar';
+
+  const overlay  = document.getElementById('modalSolicitud');
+  const form     = document.getElementById('solicitudForm');
+  const btn      = document.getElementById('modalBtn');
+  const msg      = document.getElementById('modalMsg');
+
+  function openModal() {
+    overlay.classList.add('open');
+    document.getElementById('f-nombre').focus();
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal() {
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+    form.reset();
+    msg.textContent = '';
+    msg.className = 'modal-msg';
+    btn.disabled = false;
+    btn.textContent = 'Solicitar plugin y clave →';
+  }
+
+  // Disparadores — hero CTA y botón CTA final
+  document.querySelectorAll('.hero-cta, .btn-primary').forEach(el => {
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      openModal();
+    });
+  });
+
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) closeModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    msg.textContent = '';
+    msg.className = 'modal-msg';
+
+    const nombre   = document.getElementById('f-nombre').value.trim();
+    const email    = document.getElementById('f-email').value.trim();
+    const pais     = document.getElementById('f-pais').value;
+    const telefono = document.getElementById('f-telefono').value.trim().replace(/\D/g, '');
+    const dominio  = document.getElementById('f-dominio').value.trim().replace(/^https?:\/\//i,'').replace(/\/.*$/,'');
+
+    if (!nombre || !email || !telefono || !dominio) {
+      msg.textContent = 'Por favor completá todos los campos.';
+      msg.className = 'modal-msg err';
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      msg.textContent = 'El email no parece válido.';
+      msg.className = 'modal-msg err';
+      return;
+    }
+    if (telefono.length < 6) {
+      msg.textContent = 'El número de teléfono es muy corto.';
+      msg.className = 'modal-msg err';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Enviando…';
+
+    try {
+      const res = await fetch(ENDPOINT, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, email, pais, telefono: pais + telefono, dominio }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        msg.textContent = '✓ ¡Solicitud enviada! Revisá tu email y WhatsApp en las próximas horas.';
+        msg.className = 'modal-msg ok';
+        btn.textContent = '¡Listo!';
+      } else {
+        throw new Error(data.message || 'Error del servidor');
+      }
+    } catch (err) {
+      msg.textContent = 'Error al enviar: ' + err.message + '. Escribinos a hola@websobreruedas.com';
+      msg.className = 'modal-msg err';
+      btn.disabled = false;
+      btn.textContent = 'Solicitar plugin y clave →';
+    }
+  });
+})();
+</script>
 
 </body>
 </html>
