@@ -64,7 +64,7 @@ class LLS_Api {
 
         $plan_labels = [
             'free'         => 'Gratis ($0/mes)',
-            'starter'      => 'Básico ($19/mes)',
+            'starter'      => 'Emprendedor ($19/mes)',
             'professional' => 'Profesional ($59/mes)',
             'unlimited'    => 'Corporativo ($129/mes)',
         ];
