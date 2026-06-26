@@ -39,6 +39,7 @@ class LLS_Activator {
             email          VARCHAR(120) NOT NULL DEFAULT '',
             telefono       VARCHAR(30)  NOT NULL DEFAULT '',
             dominio        VARCHAR(255) NOT NULL DEFAULT '',
+            plan           VARCHAR(32)  NOT NULL DEFAULT 'free',
             status         ENUM('pending','sent','rejected') NOT NULL DEFAULT 'pending',
             created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),

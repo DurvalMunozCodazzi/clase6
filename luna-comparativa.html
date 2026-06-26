@@ -471,6 +471,36 @@
   .modal-msg.ok  { color: var(--green); }
   .modal-msg.err { color: var(--red); }
 
+  /* plan selector */
+  .plan-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .plan-btn {
+    background: var(--dark3);
+    border: 1.5px solid rgba(255,255,255,.1);
+    border-radius: 10px;
+    color: var(--text2);
+    cursor: pointer;
+    padding: 10px 8px;
+    text-align: center;
+    transition: border-color .2s, background .2s, color .2s;
+    font-size: 0.82rem;
+    font-family: inherit;
+  }
+  .plan-btn strong { display: block; font-size: 0.95rem; color: var(--text); margin-bottom: 2px; }
+  .plan-btn .plan-price { font-size: 0.78rem; color: var(--text3); }
+  .plan-btn:hover { border-color: var(--acc); }
+  .plan-btn.selected {
+    border-color: var(--acc);
+    background: rgba(91,106,240,.15);
+    color: var(--text);
+  }
+  .plan-btn.selected .plan-price { color: var(--acc2); }
+  .phone-hint { font-size: 0.75rem; color: var(--text3); margin-top: 4px; }
+
   /* ── CTA FINAL ── */
   .cta-section {
     text-align: center;
@@ -1006,6 +1036,30 @@
     <p class="modal-sub">Completá el formulario y te enviamos el plugin por email y tu clave de activación por WhatsApp.</p>
 
     <form id="solicitudForm" novalidate>
+
+      <div class="form-group">
+        <label>Plan que te interesa</label>
+        <div class="plan-selector">
+          <button type="button" class="plan-btn selected" data-plan="free">
+            <strong>🆓 Gratis</strong>
+            <span class="plan-price">$0 / mes</span>
+          </button>
+          <button type="button" class="plan-btn" data-plan="starter">
+            <strong>⚡ Básico</strong>
+            <span class="plan-price">$19 / mes</span>
+          </button>
+          <button type="button" class="plan-btn" data-plan="professional">
+            <strong>🚀 Profesional</strong>
+            <span class="plan-price">$59 / mes</span>
+          </button>
+          <button type="button" class="plan-btn" data-plan="unlimited">
+            <strong>🏢 Corporativo</strong>
+            <span class="plan-price">$129 / mes</span>
+          </button>
+        </div>
+        <input type="hidden" id="f-plan" name="plan" value="free">
+      </div>
+
       <div class="form-group">
         <label for="f-nombre">Nombre completo</label>
         <input type="text" id="f-nombre" name="nombre" placeholder="Tu nombre y apellido" required autocomplete="name">
@@ -1076,6 +1130,7 @@
           </select>
           <input type="tel" id="f-telefono" name="telefono" placeholder="11 2345 6789" required autocomplete="tel-national">
         </div>
+        <p class="phone-hint">Solo el número local, sin el código de país. Ej: 11 5555 0000</p>
       </div>
       <div class="form-group">
         <label for="f-dominio">Dominio WordPress</label>
@@ -1115,6 +1170,15 @@
     btn.textContent = 'Solicitar plugin y clave →';
   }
 
+  // Selector de plan
+  document.querySelectorAll('.plan-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.plan-btn').forEach(b => b.classList.remove('selected'));
+      this.classList.add('selected');
+      document.getElementById('f-plan').value = this.dataset.plan;
+    });
+  });
+
   // Disparadores — hero CTA y botón CTA final
   document.querySelectorAll('.hero-cta, .btn-primary').forEach(el => {
     el.addEventListener('click', function (e) {
@@ -1141,6 +1205,7 @@
     const pais     = document.getElementById('f-pais').value;
     const telefono = document.getElementById('f-telefono').value.trim().replace(/\D/g, '');
     const dominio  = document.getElementById('f-dominio').value.trim().replace(/^https?:\/\//i,'').replace(/\/.*$/,'');
+    const plan     = document.getElementById('f-plan').value;
 
     if (!nombre || !email || !telefono || !dominio) {
       msg.textContent = 'Por favor completá todos los campos.';
@@ -1165,7 +1230,7 @@
       const res = await fetch(ENDPOINT, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, email, pais, telefono: pais + telefono, dominio }),
+        body: JSON.stringify({ nombre, email, pais, telefono: pais + telefono, dominio, plan }),
       });
       const data = await res.json();
       if (data.ok) {

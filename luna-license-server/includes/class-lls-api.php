@@ -23,6 +23,7 @@ class LLS_Api {
                 'email'    => ['required' => true, 'sanitize_callback' => 'sanitize_email'],
                 'telefono' => ['required' => true, 'sanitize_callback' => 'sanitize_text_field'],
                 'dominio'  => ['required' => true, 'sanitize_callback' => 'sanitize_text_field'],
+                'plan'     => ['required' => false, 'sanitize_callback' => 'sanitize_text_field', 'default' => 'free'],
             ],
         ]);
     }
@@ -58,6 +59,16 @@ class LLS_Api {
         $email    = $request->get_param('email');
         $telefono = $request->get_param('telefono');
         $dominio  = LLS_License::normalize_domain($request->get_param('dominio'));
+        $plan_raw = $request->get_param('plan') ?: 'free';
+        $plan     = in_array($plan_raw, ['free','starter','professional','unlimited'], true) ? $plan_raw : 'free';
+
+        $plan_labels = [
+            'free'         => 'Gratis ($0/mes)',
+            'starter'      => 'Básico ($19/mes)',
+            'professional' => 'Profesional ($59/mes)',
+            'unlimited'    => 'Corporativo ($129/mes)',
+        ];
+        $plan_label = $plan_labels[$plan];
 
         if (!$nombre || !is_email($email) || !$telefono || !$dominio) {
             return new WP_REST_Response(['ok' => false, 'message' => 'Datos incompletos o inválidos.'], 200);
@@ -74,17 +85,36 @@ class LLS_Api {
 
         // Guardar en tabla
         $t = $wpdb->prefix . 'lls_requests';
-        $wpdb->insert($t, compact('nombre', 'email', 'telefono', 'dominio'));
+        $wpdb->insert($t, compact('nombre', 'email', 'telefono', 'dominio', 'plan'));
 
         // Notificar a Durval por WhatsApp (CallMeBot)
-        $apikey  = get_option('lls_callmebot_apikey', '6291539');
-        $phone   = get_option('lls_callmebot_phone',  '5491153283558');
-        $texto   = "🌙 Nueva solicitud Luna:\n👤 {$nombre}\n📧 {$email}\n📱 {$telefono}\n🌐 {$dominio}";
+        $apikey = get_option('lls_callmebot_apikey', '6291539');
+        $phone  = get_option('lls_callmebot_phone',  '5491153283558');
+        $texto  = "🌙 Nueva solicitud Luna:\n👤 {$nombre}\n📧 {$email}\n📱 {$telefono}\n🌐 {$dominio}\n💼 Plan: {$plan_label}";
         wp_remote_get(add_query_arg([
-            'phone'   => $phone,
-            'text'    => urlencode($texto),
-            'apikey'  => $apikey,
+            'phone'  => $phone,
+            'text'   => urlencode($texto),
+            'apikey' => $apikey,
         ], 'https://api.callmebot.com/whatsapp.php'), ['timeout' => 10, 'blocking' => false]);
+
+        // Email de confirmación al cliente
+        $asunto  = '🌙 Recibimos tu solicitud — Luna Workspace';
+        $cuerpo  = "Hola {$nombre},\n\n"
+            . "Recibimos tu solicitud del plan {$plan_label} para el dominio {$dominio}.\n\n"
+            . "En las próximas horas te enviamos:\n"
+            . "  • El plugin Luna Workspace por este email\n"
+            . "  • Tu clave de activación por WhatsApp al {$telefono}\n\n"
+            . "Si tenés alguna duda podés escribirnos directamente:\n"
+            . "  WhatsApp: +54 9 11 5328-3558\n"
+            . "  Web: https://websobreruedas.com\n\n"
+            . "¡Gracias por elegir Luna Workspace!\n"
+            . "— Equipo Web Sobre Ruedas";
+        wp_mail(
+            $email,
+            $asunto,
+            $cuerpo,
+            ['From: Luna Workspace <noreply@websobreruedas.com>', 'Content-Type: text/plain; charset=UTF-8']
+        );
 
         return new WP_REST_Response(['ok' => true], 200);
     }
