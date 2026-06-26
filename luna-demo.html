@@ -11,7 +11,7 @@
 /* CSS IDENTICO AL APP REAL — Luna Workspace */
 :root{--bg:#f0f2f8;--surf:#ffffff;--elev:#f8f9fc;--hov:#e8eaf2;--act:#dde0ee;--bdr:#d0d4e8;--bdrl:#b0b8d8;--acc:#5b6af0;--accg:rgba(91,106,240,.18);--acch:#7080f5;--ok:#22d3a0;--wa:#f59e0b;--er:#ef4444;--t1:#1a1a2e;--t2:#4a4a6a;--t3:#8888aa;--th:48px;--r:8px;--rl:12px;--rxl:16px;--sh:0 2px 10px rgba(0,0,0,.12);--shl:0 4px 20px rgba(0,0,0,.18);--f:'Syne',sans-serif;--fm:'JetBrains Mono',monospace}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);-webkit-font-smoothing:antialiased;overflow:hidden}
+html{height:100%}body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);-webkit-font-smoothing:antialiased;overflow:hidden}
 ::-webkit-scrollbar{width:7px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:99px}::-webkit-scrollbar-thumb:hover{background:var(--acc)}
 
 /* DEMO BANNER */
@@ -155,7 +155,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 @keyframes sli{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
 
 /* METRICS — idéntico al real */
-#metrics-panel{position:fixed;top:calc(var(--th)+30px);left:0;right:0;bottom:0;background:var(--bg);z-index:400;transform:translateY(110%);transition:transform .35s cubic-bezier(.4,0,.2,1);overflow-y:auto;padding:20px}
+#metrics-panel{position:fixed;top:calc(var(--th)+30px);left:0;right:0;bottom:0;background:var(--bg);z-index:400;transform:translateY(100vh);transition:transform .35s cubic-bezier(.4,0,.2,1);overflow-y:auto;padding:20px}
 #metrics-panel.on{transform:translateY(0)}
 .metrics-hdr{display:flex;align-items:center;gap:12px;margin-bottom:20px}
 .metrics-hdr h2{font-size:18px;font-weight:800;flex:1}
@@ -177,7 +177,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 @media(max-width:768px){.metrics-grid{grid-template-columns:1fr 1fr}.charts-grid{grid-template-columns:1fr}}
 
 /* CALENDAR — idéntico al real */
-#cal-panel{position:fixed;top:calc(var(--th)+30px);left:0;right:0;bottom:0;background:var(--bg);z-index:400;transform:translateY(110%);transition:transform .35s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
+#cal-panel{position:fixed;top:calc(var(--th)+30px);left:0;right:0;bottom:0;background:var(--bg);z-index:400;transform:translateY(100vh);transition:transform .35s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
 #cal-panel.on{transform:translateY(0)}
 .cal-nav{display:flex;align-items:center;gap:10px;padding:12px 20px;background:linear-gradient(135deg,rgba(91,106,240,.1),rgba(139,92,246,.07));border-bottom:2px solid rgba(91,106,240,.18);flex-shrink:0}
 .cal-month-label{font-size:15px;font-weight:800;letter-spacing:-.2px;flex:1;text-align:center}
@@ -241,16 +241,25 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
     <button class="vtab" id="btn-analytics" onclick="showView('analytics')"><i class="fas fa-chart-bar"></i> Analítica</button>
     <button class="vtab" id="btn-calendar" onclick="showView('calendar')"><i class="fas fa-calendar-alt"></i> Calendario</button>
   </div>
+  <div class="sep"></div>
+  <div style="position:relative;display:flex;align-items:center">
+    <i class="fas fa-search" style="position:absolute;left:9px;font-size:10px;color:var(--t3);pointer-events:none"></i>
+    <input id="search-input" placeholder="Buscar tareas..." oninput="filterTasks(this.value)"
+      style="height:28px;padding:0 10px 0 28px;border-radius:var(--r);border:1px solid var(--bdr);background:var(--elev);color:var(--t1);font-family:var(--f);font-size:11px;outline:none;width:180px;transition:.15s"
+      onfocus="this.style.borderColor='var(--acc)';this.style.width='220px'"
+      onblur="this.style.borderColor='var(--bdr)';this.style.width='180px'">
+  </div>
   <div class="spc"></div>
   <div class="sync-badge"><div class="live-dot"></div>LOCAL</div>
   <div class="sep"></div>
   <div class="asav"><div class="asdot"></div><span id="save-status">Guardado</span></div>
   <div class="sep"></div>
   <div id="team-avs" style="display:flex;align-items:center"></div>
-  <button class="tbtn" onclick="openCreate()" style="margin-left:4px" title="Equipo"><i class="fas fa-users"></i> Equipo</button>
   <div class="sep"></div>
-  <button class="tbtn" onclick="showView('calendar')" title="Calendario"><i class="fas fa-calendar-alt"></i></button>
-  <button class="tbtn" onclick="showView('analytics')" title="Analítica"><i class="fas fa-chart-bar"></i></button>
+  <button class="tbtn" onclick="showTeam()" title="Equipo"><i class="fas fa-users"></i> Equipo</button>
+  <button class="tbtn" onclick="showDrive()" title="Drive"><i class="fas fa-cloud"></i> Drive</button>
+  <button class="tbtn" onclick="exportData()" title="Exportar"><i class="fas fa-download"></i> Exportar</button>
+  <button class="tbtn" onclick="importData()" title="Importar"><i class="fas fa-upload"></i> Importar</button>
   <div class="sep"></div>
   <button class="tbtn p" onclick="openCreate()"><i class="fas fa-plus"></i> Nueva tarea</button>
   <div class="sep"></div>
@@ -387,7 +396,10 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
           <input type="number" class="fi" id="t-esthours" placeholder="0" min="0" step="0.5">
         </div>
         <div class="fg" style="grid-column:1/-1">
-          <label class="fl">Etiquetas <span style="font-size:9px;font-weight:400;text-transform:none;color:var(--t3)">— seleccioná una o varias</span></label>
+          <div style="display:flex;align-items:center;margin-bottom:5px">
+            <label class="fl" style="margin-bottom:0;flex:1">Etiquetas</label>
+            <button onclick="adminTags()" style="font-size:10px;font-weight:700;color:var(--acc);background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:4px;padding:2px 0;font-family:var(--f)"><i class="fas fa-tag"></i> Administrar</button>
+          </div>
           <div id="tag-picker" style="display:flex;gap:5px;flex-wrap:wrap;padding:4px 0"></div>
         </div>
       </div>
@@ -617,8 +629,15 @@ function renderKanban(){
   let nDone=0,nOver=0;
 
   COLS.forEach(col=>{
-    const tasks=S.tasks.filter(t=>t.col===col.id);
-    tasks.forEach(t=>{ if(t.col==='completado') nDone++; else if(t.date&&t.date<today) nOver++; });
+    const tasks=S.tasks.filter(t=>{
+      if(t.col!==col.id) return false;
+      if(!searchQuery) return true;
+      return (t.title||'').toLowerCase().includes(searchQuery)||
+             (t.desc||'').toLowerCase().includes(searchQuery)||
+             (t.tags||[]).some(tg=>tg.toLowerCase().includes(searchQuery))||
+             (t.resp||[]).some(r=>(USERS[r]?.name||'').toLowerCase().includes(searchQuery));
+    });
+    S.tasks.filter(t=>t.col===col.id).forEach(t=>{ if(t.col==='completado') nDone++; else if(t.date&&t.date<today) nOver++; });
 
     const colEl=document.createElement('div');
     colEl.className='kcol';
@@ -986,6 +1005,56 @@ function toast(msg,type='ok'){
   el.innerHTML=`<i class="fas ${ic[type]||ic.ok}"></i>${esc(msg)}`;
   document.getElementById('nots').appendChild(el);
   setTimeout(()=>el.remove(),3200);
+}
+
+/* ── BÚSQUEDA ────────────────────────────────── */
+let searchQuery='';
+function filterTasks(q){
+  searchQuery=q.trim().toLowerCase();
+  renderKanban();
+}
+
+/* ── EQUIPO ──────────────────────────────────── */
+function showTeam(){
+  toast('Equipo: Carlos Méndez (Gerente), María Tevez (Marketing), Diego Kun (Ventas), Laura Wick (Logística)','ok');
+}
+
+/* ── DRIVE ───────────────────────────────────── */
+function showDrive(){
+  toast('Drive — Gestión de archivos disponible en la versión instalada','wa');
+}
+
+/* ── EXPORTAR / IMPORTAR ─────────────────────── */
+function exportData(){
+  const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='messifactory-backup.json';
+  a.click();
+  toast('Exportado como messifactory-backup.json','ok');
+}
+function importData(){
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='.json';
+  inp.onchange=e=>{
+    const file=e.target.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const data=JSON.parse(ev.target.result);
+        if(!data.tasks) throw new Error('Formato inválido');
+        S=data; save(); renderKanban();
+        toast(`Importado: ${data.tasks.length} tareas`,'ok');
+      }catch(err){ toast('Archivo inválido','er'); }
+    };
+    reader.readAsText(file);
+  };
+  inp.click();
+}
+
+/* ── ADMINISTRAR ETIQUETAS ───────────────────── */
+function adminTags(){
+  toast('Administrador de etiquetas disponible en la versión instalada — permite crear, editar y colorear etiquetas propias','wa');
 }
 
 document.getElementById('taskMo').addEventListener('click',e=>{
