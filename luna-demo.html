@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Luna Workspace — Messifactory</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#050810;--surf:#0d1224;--surf2:#161d38;--surf3:#1e2748;
+  --acc:#5b6af0;--acc2:#7c8af7;--accg:rgba(91,106,240,.12);
+  --t1:#e2e8f0;--t2:#94a3b8;--t3:#64748b;
+  --green:#22c55e;--red:#ef4444;--yellow:#f59e0b;--purple:#a855f7;--orange:#f97316;
+  --bdr:rgba(255,255,255,.07);--bdr2:rgba(255,255,255,.12);
+  --sh:0 4px 24px rgba(0,0,0,.4);
+  --rl:10px;
+}
+html,body{height:100%;font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--t1);overflow:hidden}
+
+/* ── LAYOUT ── */
+#app{display:flex;height:100vh}
+
+/* ── SIDEBAR ── */
+#sidebar{width:220px;flex-shrink:0;background:var(--surf);border-right:1px solid var(--bdr);display:flex;flex-direction:column;padding:0;overflow:hidden}
+.sb-logo{padding:20px 18px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--bdr)}
+.sb-logo .moon{font-size:22px}
+.sb-logo-text{font-size:14px;font-weight:800;color:var(--t1);line-height:1.2}
+.sb-logo-text span{display:block;font-size:10px;font-weight:400;color:var(--t3)}
+.sb-ws{padding:12px 14px 8px;font-size:10px;font-weight:700;color:var(--t3);letter-spacing:1px;text-transform:uppercase}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 14px;margin:1px 8px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--t2);transition:.15s;user-select:none}
+.sb-item i{width:16px;text-align:center;font-size:13px}
+.sb-item:hover{background:var(--surf2);color:var(--t1)}
+.sb-item.active{background:var(--accg);color:var(--acc2);font-weight:600}
+.sb-item .badge{margin-left:auto;background:var(--acc);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px}
+.sb-divider{height:1px;background:var(--bdr);margin:10px 14px}
+.sb-users{padding:10px 14px;margin-top:auto;border-top:1px solid var(--bdr)}
+.sb-users-title{font-size:10px;color:var(--t3);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+.sb-user{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;color:var(--t2)}
+.av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0}
+.av.lg{width:32px;height:32px;font-size:11px}
+.av-cm{background:#5b6af0}.av-mt{background:#a855f7}.av-dk{background:#22c55e}.av-lw{background:#f97316}
+.sb-user-info{line-height:1.3}
+.sb-user-info b{display:block;font-size:11px;color:var(--t1)}
+.sb-user-info small{font-size:10px;color:var(--t3)}
+.sb-bottom{padding:10px 14px 14px;border-top:1px solid var(--bdr)}
+.sb-me{display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 8px;border-radius:8px;transition:.15s}
+.sb-me:hover{background:var(--surf2)}
+.sb-me-info{flex:1;line-height:1.3}
+.sb-me-info b{display:block;font-size:12px}
+.sb-me-info small{font-size:10px;color:var(--t3)}
+
+/* ── MAIN ── */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:52px;background:var(--surf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
+.topbar-ws{font-size:14px;font-weight:700}
+.topbar-sep{color:var(--t3);font-size:12px}
+.topbar-board{font-size:14px;color:var(--t2)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.topbar-btn{background:var(--surf2);border:1px solid var(--bdr2);color:var(--t2);font-size:12px;padding:6px 12px;border-radius:7px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:.15s;font-family:inherit}
+.topbar-btn:hover{background:var(--surf3);color:var(--t1)}
+.topbar-btn.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+.topbar-btn.primary:hover{background:var(--acc2)}
+
+/* ── VIEWS ── */
+#view-kanban,#view-analytics,#view-calendar{display:none;flex:1;overflow:hidden}
+#view-kanban.on,#view-analytics.on,#view-calendar.on{display:flex}
+
+/* ── KANBAN ── */
+#view-kanban{gap:0;padding:20px;overflow-x:auto;align-items:flex-start}
+.kol{width:270px;flex-shrink:0;background:var(--surf);border-radius:12px;display:flex;flex-direction:column;max-height:calc(100vh - 120px)}
+.kol+.kol{margin-left:14px}
+.kol-head{padding:14px 14px 10px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.kol-dot{width:8px;height:8px;border-radius:50%}
+.kol-name{font-size:13px;font-weight:700;flex:1}
+.kol-count{font-size:11px;color:var(--t3);background:var(--surf2);padding:2px 7px;border-radius:999px}
+.kol-body{padding:0 10px 10px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px}
+.kol-add{margin:0 10px 10px;padding:8px;border-radius:8px;border:1.5px dashed var(--bdr2);color:var(--t3);font-size:12px;text-align:center;cursor:pointer;transition:.15s;flex-shrink:0}
+.kol-add:hover{border-color:var(--acc);color:var(--acc2)}
+.kol-body.drag-over{background:rgba(91,106,240,.06);border-radius:8px}
+
+/* ── CARD ── */
+.card-k{background:var(--surf2);border:1px solid var(--bdr);border-radius:10px;padding:12px;cursor:grab;transition:.2s;user-select:none;position:relative}
+.card-k:hover{border-color:var(--bdr2);transform:translateY(-1px);box-shadow:var(--sh)}
+.card-k.dragging{opacity:.4;transform:rotate(2deg)}
+.card-k.drag-placeholder{background:var(--accg);border:2px dashed var(--acc);border-radius:10px;height:80px}
+.card-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
+.tag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.3px}
+.tag-alta{background:rgba(239,68,68,.15);color:#f87171}
+.tag-media{background:rgba(245,158,11,.15);color:#fbbf24}
+.tag-baja{background:rgba(34,197,94,.15);color:#4ade80}
+.tag-cat{background:rgba(91,106,240,.15);color:var(--acc2)}
+.card-title{font-size:13px;font-weight:600;margin-bottom:10px;line-height:1.4}
+.card-foot{display:flex;align-items:center;gap:6px}
+.card-av-sm{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0}
+.card-date{font-size:11px;color:var(--t3);margin-left:auto;display:flex;align-items:center;gap:4px}
+.card-date.vence{color:#f87171}
+.card-meta{display:flex;align-items:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid var(--bdr)}
+.card-meta span{font-size:11px;color:var(--t3);display:flex;align-items:center;gap:4px}
+
+/* ── MODAL ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(5,8,16,.8);backdrop-filter:blur(4px);z-index:100;align-items:center;justify-content:center;padding:20px}
+.overlay.on{display:flex}
+.modal{background:var(--surf);border:1px solid var(--bdr2);border-radius:14px;padding:28px;width:100%;position:relative;box-shadow:0 32px 80px rgba(0,0,0,.6);animation:min .22s ease}
+@keyframes min{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+.modal-sm{max-width:480px}
+.modal-lg{max-width:640px}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;transition:.15s}
+.modal-close:hover{color:var(--t1)}
+.modal h3{font-size:1.1rem;font-weight:800;margin-bottom:4px}
+.modal-sub{color:var(--t3);font-size:12px;margin-bottom:20px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;background:var(--surf2);border:1px solid var(--bdr2);border-radius:8px;color:var(--t1);font-size:13px;padding:9px 12px;outline:none;transition:.15s;font-family:inherit}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--acc)}
+.field textarea{resize:vertical;min-height:70px}
+.field input::placeholder,.field textarea::placeholder{color:var(--t3)}
+.field select option{background:#1a2040}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+.btn{padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:.15s}
+.btn-ghost{background:var(--surf2);color:var(--t2);border:1px solid var(--bdr2)}
+.btn-ghost:hover{background:var(--surf3);color:var(--t1)}
+.btn-primary{background:var(--acc);color:#fff}
+.btn-primary:hover{background:var(--acc2)}
+
+/* ── DETAIL MODAL ── */
+.detail-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:18px}
+.detail-body{display:grid;grid-template-columns:1fr 220px;gap:20px}
+.detail-desc{font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--bdr)}
+.detail-section{margin-bottom:16px}
+.detail-section h4{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.checklist-item{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px;color:var(--t2);border-bottom:1px solid var(--bdr)}
+.checklist-item:last-child{border:none}
+.checklist-item input[type=checkbox]{accent-color:var(--acc);width:15px;height:15px;cursor:pointer}
+.checklist-item.done{text-decoration:line-through;color:var(--t3)}
+.sidebar-field{margin-bottom:14px}
+.sidebar-field label{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px}
+.sidebar-field .val{font-size:13px;color:var(--t1);display:flex;align-items:center;gap:6px}
+.activity-item{display:flex;gap:10px;font-size:12px;color:var(--t2);padding:6px 0;border-bottom:1px solid var(--bdr)}
+.activity-item:last-child{border:none}
+.activity-item .av{flex-shrink:0}
+.activity-item time{color:var(--t3);font-size:11px;margin-left:auto}
+
+/* ── ANALYTICS ── */
+#view-analytics{flex-direction:column;padding:24px;overflow-y:auto;background:var(--bg)}
+.analytics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.kpi{background:var(--surf);border:1px solid var(--bdr);border-radius:12px;padding:18px}
+.kpi-label{font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi-val{font-size:2rem;font-weight:900}
+.kpi-sub{font-size:11px;color:var(--green);margin-top:4px}
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chart-card{background:var(--surf);border:1px solid var(--bdr);border-radius:12px;padding:20px}
+.chart-title{font-size:13px;font-weight:700;margin-bottom:16px}
+.bar-chart{display:flex;align-items:flex-end;gap:8px;height:120px}
+.bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+.bar{width:100%;border-radius:4px 4px 0 0;background:var(--acc);transition:.4s;min-height:4px}
+.bar-label{font-size:10px;color:var(--t3)}
+.bar-val{font-size:11px;font-weight:700;color:var(--t1)}
+.donut-wrap{display:flex;gap:20px;align-items:center}
+.donut{width:100px;height:100px;position:relative;flex-shrink:0}
+.donut svg{transform:rotate(-90deg)}
+.donut-legend{flex:1}
+.donut-item{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px}
+.donut-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.team-table{width:100%;border-collapse:collapse}
+.team-table th{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;text-align:left;padding:0 0 8px}
+.team-table td{padding:8px 0;font-size:12px;border-bottom:1px solid var(--bdr);vertical-align:middle}
+.progress-bar{height:6px;background:var(--surf2);border-radius:999px;overflow:hidden;width:80px}
+.progress-fill{height:100%;background:var(--acc);border-radius:999px}
+
+/* ── CALENDAR ── */
+#view-calendar{flex-direction:column;padding:24px;overflow-y:auto;background:var(--bg)}
+.cal-header{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+.cal-header h2{font-size:1.2rem;font-weight:800}
+.cal-nav{background:var(--surf);border:1px solid var(--bdr);border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--t2);font-size:13px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--bdr);border-radius:10px;overflow:hidden}
+.cal-day-name{background:var(--surf);text-align:center;padding:8px;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase}
+.cal-day{background:var(--surf);padding:8px;min-height:90px;position:relative;transition:.15s;cursor:pointer}
+.cal-day:hover{background:var(--surf2)}
+.cal-day.today{background:var(--accg)}
+.cal-day.other-month{opacity:.4}
+.cal-day-num{font-size:12px;font-weight:700;margin-bottom:4px;color:var(--t2)}
+.cal-day.today .cal-day-num{color:var(--acc2)}
+.cal-task-dot{font-size:10px;background:var(--surf3);border-radius:4px;padding:2px 5px;margin-bottom:2px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border-left:2px solid var(--acc);transition:.15s}
+.cal-task-dot:hover{background:var(--accg);border-color:var(--acc2)}
+.cal-task-dot.alta{border-color:#f87171}
+.cal-task-dot.media{border-color:#fbbf24}
+
+/* ── NOTIFICATION ── */
+#notif{position:fixed;bottom:24px;right:24px;background:var(--surf);border:1px solid var(--green);border-radius:10px;padding:12px 18px;font-size:13px;color:var(--t1);box-shadow:var(--sh);display:flex;align-items:center;gap:10px;z-index:200;transform:translateY(80px);opacity:0;transition:.3s}
+#notif.on{transform:none;opacity:1}
+#notif i{color:var(--green)}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surf3);border-radius:999px}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ══ SIDEBAR ══ -->
+<aside id="sidebar">
+  <div class="sb-logo">
+    <span class="moon">🌙</span>
+    <div class="sb-logo-text">Luna Workspace<span>Messifactory</span></div>
+  </div>
+
+  <div class="sb-ws">Navegación</div>
+
+  <div class="sb-item active" onclick="showView('kanban',this)">
+    <i class="fas fa-th-large"></i> Tablero Kanban <span class="badge">8</span>
+  </div>
+  <div class="sb-item" onclick="showView('analytics',this)">
+    <i class="fas fa-chart-bar"></i> Analítica
+  </div>
+  <div class="sb-item" onclick="showView('calendar',this)">
+    <i class="fas fa-calendar-alt"></i> Calendario
+  </div>
+
+  <div class="sb-divider"></div>
+  <div class="sb-ws">Workspaces</div>
+  <div class="sb-item active">
+    <i class="fas fa-running"></i> Indumentaria
+  </div>
+  <div class="sb-item">
+    <i class="fas fa-store"></i> Ventas Web
+  </div>
+  <div class="sb-item">
+    <i class="fas fa-truck"></i> Logística
+  </div>
+
+  <div class="sb-users">
+    <div class="sb-users-title">Equipo activo</div>
+    <div class="sb-user"><div class="av av-cm">CM</div><div class="sb-user-info"><b>Carlos Messi</b><small>Gerente</small></div></div>
+    <div class="sb-user"><div class="av av-mt">MT</div><div class="sb-user-info"><b>María Tevez</b><small>Marketing</small></div></div>
+    <div class="sb-user"><div class="av av-dk">DK</div><div class="sb-user-info"><b>Diego Kun</b><small>Ventas</small></div></div>
+    <div class="sb-user"><div class="av av-lw">LW</div><div class="sb-user-info"><b>Laura Wick</b><small>Logística</small></div></div>
+  </div>
+
+  <div class="sb-bottom">
+    <div class="sb-me">
+      <div class="av lg av-cm">CM</div>
+      <div class="sb-me-info"><b>Carlos Messi</b><small>Administrador</small></div>
+      <i class="fas fa-cog" style="color:var(--t3);font-size:12px"></i>
+    </div>
+  </div>
+</aside>
+
+<!-- ══ MAIN ══ -->
+<div id="main">
+  <div class="topbar">
+    <span class="topbar-ws">Messifactory</span>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-board" id="topbar-view-name">Indumentaria — Kanban</span>
+    <div class="topbar-right">
+      <button class="topbar-btn" onclick="openFilter()"><i class="fas fa-filter"></i> Filtrar</button>
+      <button class="topbar-btn" onclick="openCreate()"><i class="fas fa-plus"></i> Nueva tarea</button>
+    </div>
+  </div>
+
+  <!-- ── KANBAN ── -->
+  <div id="view-kanban" class="on">
+
+    <!-- Pendiente -->
+    <div class="kol" id="col-pendiente" ondragover="dragOver(event)" ondrop="drop(event,'pendiente')">
+      <div class="kol-head">
+        <div class="kol-dot" style="background:#64748b"></div>
+        <div class="kol-name">Pendiente</div>
+        <span class="kol-count" id="cnt-pendiente">3</span>
+      </div>
+      <div class="kol-body" id="body-pendiente">
+        <div class="card-k" draggable="true" data-id="1" data-col="pendiente" ondragstart="dragStart(event)" onclick="openDetail(1)">
+          <div class="card-tags"><span class="tag tag-alta">Alta</span><span class="tag tag-cat">Indumentaria</span></div>
+          <div class="card-title">Lanzamiento Camiseta Argentina 2026</div>
+          <div class="card-foot">
+            <div class="card-av-sm av-cm">CM</div>
+            <div class="card-date vence"><i class="fas fa-clock"></i> 30 Jun</div>
+          </div>
+          <div class="card-meta">
+            <span><i class="fas fa-check-square"></i> 2/5</span>
+            <span><i class="fas fa-paperclip"></i> 3</span>
+          </div>
+        </div>
+        <div class="card-k" draggable="true" data-id="2" data-col="pendiente" ondragstart="dragStart(event)" onclick="openDetail(2)">
+          <div class="card-tags"><span class="tag tag-media">Media</span><span class="tag tag-cat">Catálogo</span></div>
+          <div class="card-title">Catálogo Invierno 2026 — Diseño y producción</div>
+          <div class="card-foot">
+            <div class="card-av-sm av-mt">MT</div>
+            <div class="card-date"><i class="fas fa-clock"></i> 15 Jul</div>
+          </div>
+        </div>
+        <div class="card-k" draggable="true" data-id="3" data-col="pendiente" ondragstart="dragStart(event)" onclick="openDetail(3)">
+          <div class="card-tags"><span class="tag tag-alta">Alta</span><span class="tag tag-cat">Proveedores</span></div>
+          <div class="card-title">Negociación contrato proveedor Nike temporada 26/27</div>
+          <div class="card-foot">
+            <div class="card-av-sm av-dk">DK</div>
+            <div class="card-date vence"><i class="fas fa-clock"></i> 25 Jun</div>
+          </div>
+        </div>
+      </div>
+      <div class="kol-add" onclick="openCreate()"><i class="fas fa-plus"></i> Agregar tarea</div>
+    </div>
+
+    <!-- En proceso -->
+    <div class="kol" id="col-proceso" ondragover="dragOver(event)" ondrop="drop(event,'proceso')">
+      <div class="kol-head">
+        <div class="kol-dot" style="background:#5b6af0"></div>
+        <div class="kol-name">En proceso</div>
+        <span class="kol-count" id="cnt-proceso">3</span>
+      </div>
+      <div class="kol-body" id="body-proceso">
+        <div class="card-k" draggable="true" data-id="4" data-col="proceso" ondragstart="dragStart(event)" onclick="openDetail(4)">
+          <div class="card-tags"><span class="tag tag-alta">Alta</span><span class="tag tag-cat">Marketing</span></div>
+          <div class="card-title">Campaña Copa América — Redes sociales y mailing</div>
+          <div class="card-foot">
+            <div class="card-av-sm av-mt">MT</div>
+            <div class="card-date vence"><i class="fas fa-clock"></i> 28 Jun</div>
+          </div>
+          <div class="card-meta">
+            <span><i class="fas fa-check-square"></i> 4/6</span>
+          </div>
+        </div>
+        <div class="card-k" draggable="true" data-id="5" data-col="proceso" ondragstart="dragStart(event)" onclick="openDetail(5)">
+          <div class="card-tags"><span class="tag tag-media">Media</span><span class="tag tag-cat">Ventas</span></div>
+          <div class="card-title">Actualizar precios botines temporada invierno</div>
+          <div class="card-foot">
+            <div class="card-av-sm av-dk">DK</div>
+            <div class="card-date"><i class="fas fa-clock"></i> 30 Jun</div>
+          </div>
+        </div>
+        <div class="card-k" draggable="true" data-id="6" data-col="proceso" ondragstart="dragStart(event)" onclick="openDetail(6)">
+          <div class="card-tags"><span class="tag tag-baja">Baja</span><span class="tag tag-cat">Diseño</span></div>
+          <div class="card-title">Diseño nueva línea bolsos y mochilas deportivas</div>
+          <div class="card-foot">
+            <div class="card-av-sm av-lw">LW</div>
+            <div class="card-date"><i class="fas fa-clock"></i> 10 Jul</div>
+          </div>
+        </div>
+      </div>
+      <div class="kol-add" onclick="openCreate()"><i class="fas fa-plus"></i> Agregar tarea</div>
+    </div>
+
+    <!-- Revisión -->
+    <div class="kol" id="col-revision" ondragover="dragOver(event)" ondrop="drop(event,'revision')">
+      <div class="kol-head">
+        <div class="kol-dot" style="background:#f59e0b"></div>
+        <div class="kol-name">Revisión</div>
+        <span class="kol-count" id="cnt-revision">2</span>
+      </div>
+      <div class="kol-body" id="body-revision">
+        <div class="card-k" draggable="true" data-id="7" data-col="revision" ondragstart="dragStart(event)" onclick="openDetail(7)">
+          <div class="card-tags"><span class="tag tag-alta">Alta</span><span class="tag tag-cat">Web</span></div>
+          <div class="card-title">Web actualizada con nuevos productos de temporada</div>
+          <div class="card-foot">
+            <div class="card-av-sm av-cm">CM</div>
+            <div class="card-date"><i class="fas fa-clock"></i> 24 Jun</div>
+          </div>
+          <div class="card-meta">
+            <span><i class="fas fa-check-square"></i> 5/5</span>
+            <span><i class="fas fa-paperclip"></i> 2</span>
+          </div>
+        </div>
+        <div class="card-k" draggable="true" data-id="8" data-col="revision" ondragstart="dragStart(event)" onclick="openDetail(8)">
+          <div class="card-tags"><span class="tag tag-media">Media</span><span class="tag tag-cat">Logística</span></div>
+          <div class="card-title">Verificación de stock para temporada invierno</div>
+          <div class="card-foot">
+            <div class="card-av-sm av-lw">LW</div>
+            <div class="card-date"><i class="fas fa-clock"></i> 22 Jun</div>
+          </div>
+        </div>
+      </div>
+      <div class="kol-add" onclick="openCreate()"><i class="fas fa-plus"></i> Agregar tarea</div>
+    </div>
+
+    <!-- Completado -->
+    <div class="kol" id="col-completado" ondragover="dragOver(event)" ondrop="drop(event,'completado')">
+      <div class="kol-head">
+        <div class="kol-dot" style="background:#22c55e"></div>
+        <div class="kol-name">Completado</div>
+        <span class="kol-count" id="cnt-completado">2</span>
+      </div>
+      <div class="kol-body" id="body-completado">
+        <div class="card-k" draggable="true" data-id="9" data-col="completado" ondragstart="dragStart(event)" onclick="openDetail(9)" style="opacity:.7">
+          <div class="card-tags"><span class="tag tag-alta">Alta</span><span class="tag tag-cat">Proveedores</span></div>
+          <div class="card-title">Contrato proveedor Adidas firmado y archivado</div>
+          <div class="card-foot">
+            <div class="card-av-sm av-dk">DK</div>
+            <div class="card-date"><i class="fas fa-check" style="color:var(--green)"></i> 20 Jun</div>
+          </div>
+        </div>
+        <div class="card-k" draggable="true" data-id="10" data-col="completado" ondragstart="dragStart(event)" onclick="openDetail(10)" style="opacity:.7">
+          <div class="card-tags"><span class="tag tag-media">Media</span><span class="tag tag-cat">Marketing</span></div>
+          <div class="card-title">Fotografías de productos nuevos para catálogo digital</div>
+          <div class="card-foot">
+            <div class="card-av-sm av-mt">MT</div>
+            <div class="card-date"><i class="fas fa-check" style="color:var(--green)"></i> 18 Jun</div>
+          </div>
+        </div>
+      </div>
+      <div class="kol-add" onclick="openCreate()"><i class="fas fa-plus"></i> Agregar tarea</div>
+    </div>
+
+  </div><!-- /view-kanban -->
+
+  <!-- ── ANALYTICS ── -->
+  <div id="view-analytics">
+    <div style="flex:1;overflow-y:auto;padding:24px">
+      <h2 style="font-size:1.3rem;font-weight:800;margin-bottom:20px">Analítica — Junio 2026</h2>
+
+      <div class="analytics-grid">
+        <div class="kpi"><div class="kpi-label">Tareas completadas</div><div class="kpi-val" style="color:var(--green)">24</div><div class="kpi-sub">↑ 20% vs mayo</div></div>
+        <div class="kpi"><div class="kpi-label">En proceso</div><div class="kpi-val" style="color:var(--acc2)">8</div><div class="kpi-sub" style="color:var(--t3)">3 con vencimiento hoy</div></div>
+        <div class="kpi"><div class="kpi-label">Tiempo promedio cierre</div><div class="kpi-val" style="color:var(--yellow)">3.2d</div><div class="kpi-sub">↓ 0.8d vs mayo</div></div>
+        <div class="kpi"><div class="kpi-label">Miembro más activo</div><div class="kpi-val" style="font-size:1.2rem;margin-top:4px">María T.</div><div class="kpi-sub">9 tareas cerradas</div></div>
+      </div>
+
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="chart-title">Tareas completadas por semana</div>
+          <div class="bar-chart">
+            <div class="bar-wrap"><div class="bar-val">4</div><div class="bar" style="height:40%"></div><div class="bar-label">S1</div></div>
+            <div class="bar-wrap"><div class="bar-val">6</div><div class="bar" style="height:60%"></div><div class="bar-label">S2</div></div>
+            <div class="bar-wrap"><div class="bar-val">8</div><div class="bar" style="height:80%"></div><div class="bar-label">S3</div></div>
+            <div class="bar-wrap"><div class="bar-val">6</div><div class="bar" style="height:60%"></div><div class="bar-label">S4</div></div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Distribución por prioridad</div>
+          <div class="donut-wrap">
+            <div class="donut">
+              <svg width="100" height="100" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--surf2)" stroke-width="3.8"/>
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f87171" stroke-width="3.8" stroke-dasharray="45 55" stroke-dashoffset="0"/>
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#fbbf24" stroke-width="3.8" stroke-dasharray="35 65" stroke-dashoffset="-45"/>
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#4ade80" stroke-width="3.8" stroke-dasharray="20 80" stroke-dashoffset="-80"/>
+              </svg>
+            </div>
+            <div class="donut-legend">
+              <div class="donut-item"><div class="donut-dot" style="background:#f87171"></div> Alta — 45%</div>
+              <div class="donut-item"><div class="donut-dot" style="background:#fbbf24"></div> Media — 35%</div>
+              <div class="donut-item"><div class="donut-dot" style="background:#4ade80"></div> Baja — 20%</div>
+            </div>
+          </div>
+        </div>
+        <div class="chart-card" style="grid-column:span 2">
+          <div class="chart-title">Rendimiento del equipo</div>
+          <table class="team-table">
+            <thead><tr><th>Miembro</th><th>Asignadas</th><th>Completadas</th><th>Promedio cierre</th><th>Progreso</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:8px"><div class="av av-cm" style="width:26px;height:26px;font-size:9px">CM</div>Carlos Messi</div></td>
+                <td>8</td><td>6</td><td>2.8d</td>
+                <td><div class="progress-bar"><div class="progress-fill" style="width:75%"></div></div></td>
+              </tr>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:8px"><div class="av av-mt" style="width:26px;height:26px;font-size:9px">MT</div>María Tevez</div></td>
+                <td>10</td><td>9</td><td>2.1d</td>
+                <td><div class="progress-bar"><div class="progress-fill" style="width:90%"></div></div></td>
+              </tr>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:8px"><div class="av av-dk" style="width:26px;height:26px;font-size:9px">DK</div>Diego Kun</div></td>
+                <td>7</td><td>5</td><td>4.2d</td>
+                <td><div class="progress-bar"><div class="progress-fill" style="width:71%"></div></div></td>
+              </tr>
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:8px"><div class="av av-lw" style="width:26px;height:26px;font-size:9px">LW</div>Laura Wick</div></td>
+                <td>6</td><td>4</td><td>3.5d</td>
+                <td><div class="progress-bar"><div class="progress-fill" style="width:66%"></div></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CALENDAR ── -->
+  <div id="view-calendar">
+    <div style="flex:1;overflow-y:auto;padding:24px">
+      <div class="cal-header">
+        <button class="cal-nav"><i class="fas fa-chevron-left"></i></button>
+        <h2>Junio 2026</h2>
+        <button class="cal-nav"><i class="fas fa-chevron-right"></i></button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ══ MODAL: CREAR TAREA ══ -->
+<div class="overlay" id="ov-create">
+  <div class="modal modal-sm">
+    <button class="modal-close" onclick="closeCreate()">×</button>
+    <h3>Nueva tarea</h3>
+    <p class="modal-sub">Indumentaria — Messifactory</p>
+    <div class="field">
+      <label>Título de la tarea</label>
+      <input type="text" id="new-title" placeholder="¿Qué hay que hacer?">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Responsable</label>
+        <select id="new-resp">
+          <option value="CM">Carlos Messi</option>
+          <option value="MT">María Tevez</option>
+          <option value="DK">Diego Kun</option>
+          <option value="LW">Laura Wick</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Prioridad</label>
+        <select id="new-prio">
+          <option value="alta">Alta</option>
+          <option value="media" selected>Media</option>
+          <option value="baja">Baja</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Columna</label>
+        <select id="new-col">
+          <option value="pendiente">Pendiente</option>
+          <option value="proceso">En proceso</option>
+          <option value="revision">Revisión</option>
+          <option value="completado">Completado</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Fecha límite</label>
+        <input type="date" id="new-date" value="2026-07-15">
+      </div>
+    </div>
+    <div class="field">
+      <label>Descripción (opcional)</label>
+      <textarea id="new-desc" placeholder="Detalles adicionales..."></textarea>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeCreate()">Cancelar</button>
+      <button class="btn btn-primary" onclick="createTask()">Crear tarea</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: DETALLE TAREA ══ -->
+<div class="overlay" id="ov-detail">
+  <div class="modal modal-lg">
+    <button class="modal-close" onclick="closeDetail()">×</button>
+    <div class="detail-head">
+      <div>
+        <div id="det-tags" class="card-tags" style="margin-bottom:8px"></div>
+        <h3 id="det-title" style="font-size:1.1rem"></h3>
+        <p id="det-sub" class="modal-sub"></p>
+      </div>
+    </div>
+    <div class="detail-body">
+      <div>
+        <div class="detail-section">
+          <h4>Descripción</h4>
+          <p class="detail-desc" id="det-desc"></p>
+        </div>
+        <div class="detail-section">
+          <h4>Checklist</h4>
+          <div id="det-checklist"></div>
+        </div>
+        <div class="detail-section" style="margin-top:20px">
+          <h4>Actividad reciente</h4>
+          <div id="det-activity"></div>
+        </div>
+      </div>
+      <div>
+        <div class="sidebar-field">
+          <label>Responsable</label>
+          <div class="val" id="det-resp"></div>
+        </div>
+        <div class="sidebar-field">
+          <label>Prioridad</label>
+          <div class="val" id="det-prio"></div>
+        </div>
+        <div class="sidebar-field">
+          <label>Fecha límite</label>
+          <div class="val" id="det-date"></div>
+        </div>
+        <div class="sidebar-field">
+          <label>Estado</label>
+          <div class="val" id="det-estado"></div>
+        </div>
+        <div class="sidebar-field">
+          <label>Notificación WhatsApp</label>
+          <div class="val" style="color:var(--green)"><i class="fab fa-whatsapp"></i> Activada</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ NOTIFICACIÓN ══ -->
+<div id="notif"><i class="fas fa-check-circle"></i> <span id="notif-msg">Tarea creada</span></div>
+
+<script>
+// ── DATA ──
+const TASKS = {
+  1:{title:'Lanzamiento Camiseta Argentina 2026',col:'pendiente',prio:'alta',resp:'CM',date:'30 Jun',desc:'Coordinación completa del lanzamiento de la nueva línea de camisetas de la selección. Incluye diseño, producción, fotografía y estrategia de ventas.',checks:['Confirmar diseño final con proveedor','Aprobar muestra de producción','Sesión fotográfica producto','Armar plan de lanzamiento','Coordinar con marketing'],activity:[{av:'av-cm',name:'Carlos Messi',action:'cambió prioridad a Alta',time:'hace 2h'},{av:'av-mt',name:'María Tevez',action:'adjuntó boceto de diseño',time:'hace 5h'}]},
+  2:{title:'Catálogo Invierno 2026',col:'pendiente',prio:'media',resp:'MT',date:'15 Jul',desc:'Diseño y producción del catálogo digital e impreso para la temporada de invierno.',checks:['Seleccionar productos a incluir','Coordinar sesión de fotos','Diseño de maqueta','Revisión de precios','Enviar a imprenta'],activity:[{av:'av-mt',name:'María Tevez',action:'creó esta tarea',time:'hace 1d'}]},
+  3:{title:'Negociación contrato Nike 26/27',col:'pendiente',prio:'alta',resp:'DK',date:'25 Jun',desc:'Renovación del contrato de distribución con Nike para la temporada 2026/2027. Incluye negociación de precios, volúmenes y condiciones.',checks:['Revisar contrato vigente','Preparar propuesta','Reunión inicial con Nike','Negociar condiciones','Firma del contrato'],activity:[{av:'av-dk',name:'Diego Kun',action:'agendó reunión con Nike',time:'hace 3h'}]},
+  4:{title:'Campaña Copa América',col:'proceso',prio:'alta',resp:'MT',date:'28 Jun',desc:'Campaña de marketing digital para aprovechar la Copa América. Incluye redes sociales, email marketing y publicidad pagada.',checks:['Diseñar piezas gráficas','Redactar copies','Programar publicaciones','Lanzar campaña de email','Monitorear métricas','Ajustar según resultados'],activity:[{av:'av-mt',name:'María Tevez',action:'completó piezas gráficas',time:'hace 1h'},{av:'av-cm',name:'Carlos Messi',action:'aprobó presupuesto',time:'hace 4h'}]},
+  5:{title:'Actualizar precios botines',col:'proceso',prio:'media',resp:'DK',date:'30 Jun',desc:'Actualización de la lista de precios de botines para la nueva temporada.',checks:['Obtener costos actualizados','Calcular márgenes','Actualizar sistema','Comunicar a vendedores'],activity:[{av:'av-dk',name:'Diego Kun',action:'inició actualización',time:'hace 2h'}]},
+  6:{title:'Diseño bolsos y mochilas deportivas',col:'proceso',prio:'baja',resp:'LW',date:'10 Jul',desc:'Nueva línea de bolsos y mochilas deportivas para incorporar al catálogo.',checks:['Research de mercado','Bocetos iniciales','Selección de materiales','Prototipo'],activity:[{av:'av-lw',name:'Laura Wick',action:'presentó bocetos iniciales',time:'hace 1d'}]},
+  7:{title:'Web actualizada con nuevos productos',col:'revision',prio:'alta',resp:'CM',date:'24 Jun',desc:'Actualización completa del catálogo online con los nuevos productos de temporada.',checks:['Subir fotos nuevas','Actualizar descripciones','Revisar precios','Probar en mobile','Publicar'],activity:[{av:'av-cm',name:'Carlos Messi',action:'envió a revisión',time:'hace 3h'}]},
+  8:{title:'Verificación de stock invierno',col:'revision',prio:'media',resp:'LW',date:'22 Jun',desc:'Control de inventario completo para la temporada de invierno.',checks:['Contar unidades por categoría','Detectar faltantes','Generar informe'],activity:[{av:'av-lw',name:'Laura Wick',action:'completó conteo de botines',time:'hace 5h'}]},
+  9:{title:'Contrato proveedor Adidas firmado',col:'completado',prio:'alta',resp:'DK',date:'20 Jun',desc:'Contrato de distribución Adidas para la temporada 2026 firmado y archivado.',checks:['Revisar términos','Firma gerencia','Escanear y archivar'],activity:[{av:'av-dk',name:'Diego Kun',action:'marcó como completado',time:'hace 1d'}]},
+  10:{title:'Fotografías productos nuevos',col:'completado',prio:'media',resp:'MT',date:'18 Jun',desc:'Sesión fotográfica de los nuevos productos para uso en catálogo y web.',checks:['Coordinar estudio','Preparar productos','Sesión fotográfica','Selección de fotos'],activity:[{av:'av-mt',name:'María Tevez',action:'entregó fotos editadas',time:'hace 2d'}]},
+};
+const RESP_NAMES = {CM:'Carlos Messi',MT:'María Tevez',DK:'Diego Kun',LW:'Laura Wick'};
+const RESP_CLASS = {CM:'av-cm',MT:'av-mt',DK:'av-dk',LW:'av-lw'};
+const ESTADO_COL = {pendiente:'Pendiente',proceso:'En proceso',revision:'En revisión',completado:'Completado'};
+
+let nextId = 11;
+let dragging = null;
+
+// ── VIEWS ──
+function showView(v, el) {
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  if(el) el.classList.add('active');
+  ['kanban','analytics','calendar'].forEach(name=>{
+    document.getElementById('view-'+name).classList.toggle('on', name===v);
+  });
+  const labels = {kanban:'Indumentaria — Kanban',analytics:'Analítica del equipo',calendar:'Calendario de tareas'};
+  document.getElementById('topbar-view-name').textContent = labels[v];
+  if(v==='calendar') buildCalendar();
+}
+
+// ── DRAG & DROP ──
+function dragStart(e) {
+  dragging = e.currentTarget;
+  dragging.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+document.addEventListener('dragend', ()=>{
+  if(dragging){ dragging.classList.remove('dragging'); dragging=null; }
+  document.querySelectorAll('.kol-body').forEach(b=>b.classList.remove('drag-over'));
+});
+function dragOver(e) {
+  e.preventDefault();
+  const body = e.currentTarget.querySelector('.kol-body');
+  document.querySelectorAll('.kol-body').forEach(b=>b.classList.remove('drag-over'));
+  if(body) body.classList.add('drag-over');
+}
+function drop(e, colName) {
+  e.preventDefault();
+  if(!dragging) return;
+  const body = document.getElementById('body-'+colName);
+  body.classList.remove('drag-over');
+  const id = parseInt(dragging.dataset.id);
+  body.insertBefore(dragging, body.querySelector('.kol-add'));
+  dragging.dataset.col = colName;
+  if(TASKS[id]) TASKS[id].col = colName;
+  updateCounts();
+  showNotif('Tarea movida a '+ESTADO_COL[colName]);
+}
+function updateCounts() {
+  ['pendiente','proceso','revision','completado'].forEach(col=>{
+    const n = document.getElementById('body-'+col).querySelectorAll('.card-k').length;
+    document.getElementById('cnt-'+col).textContent = n;
+  });
+}
+
+// ── CREATE ──
+function openCreate() { document.getElementById('ov-create').classList.add('on'); document.getElementById('new-title').focus(); }
+function closeCreate() { document.getElementById('ov-create').classList.remove('on'); }
+function createTask() {
+  const title = document.getElementById('new-title').value.trim();
+  if(!title) { document.getElementById('new-title').style.borderColor='var(--red)'; return; }
+  const resp = document.getElementById('new-resp').value;
+  const prio = document.getElementById('new-prio').value;
+  const col  = document.getElementById('new-col').value;
+  const date = document.getElementById('new-date').value;
+  const dateStr = date ? new Date(date).toLocaleDateString('es',{day:'numeric',month:'short'}) : '';
+
+  TASKS[nextId] = {title,col,prio,resp,date:dateStr,desc:'',checks:[],activity:[]};
+  const card = document.createElement('div');
+  card.className = 'card-k';
+  card.draggable = true;
+  card.dataset.id = nextId;
+  card.dataset.col = col;
+  card.setAttribute('ondragstart','dragStart(event)');
+  card.setAttribute('onclick','openDetail('+nextId+')');
+  card.innerHTML = `<div class="card-tags"><span class="tag tag-${prio}">${prio.charAt(0).toUpperCase()+prio.slice(1)}</span></div>
+    <div class="card-title">${title}</div>
+    <div class="card-foot">
+      <div class="card-av-sm ${RESP_CLASS[resp]}" style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff">${resp}</div>
+      ${dateStr?`<div class="card-date"><i class="fas fa-clock"></i> ${dateStr}</div>`:''}
+    </div>`;
+  const body = document.getElementById('body-'+col);
+  body.insertBefore(card, body.lastElementChild);
+  updateCounts();
+  closeCreate();
+  document.getElementById('new-title').value='';
+  document.getElementById('new-title').style.borderColor='';
+  nextId++;
+  showNotif('✓ Tarea creada y WhatsApp enviado al equipo');
+}
+
+// ── DETAIL ──
+function openDetail(id) {
+  const t = TASKS[id]; if(!t) return;
+  document.getElementById('det-title').textContent = t.title;
+  document.getElementById('det-sub').textContent = 'Messifactory — ' + ESTADO_COL[t.col];
+  document.getElementById('det-desc').textContent = t.desc || 'Sin descripción.';
+  document.getElementById('det-tags').innerHTML = `<span class="tag tag-${t.prio}">${t.prio.charAt(0).toUpperCase()+t.prio.slice(1)}</span>`;
+  document.getElementById('det-resp').innerHTML = `<div class="av ${RESP_CLASS[t.resp]}" style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff">${t.resp}</div> ${RESP_NAMES[t.resp]}`;
+  document.getElementById('det-prio').innerHTML = `<span class="tag tag-${t.prio}">${t.prio.charAt(0).toUpperCase()+t.prio.slice(1)}</span>`;
+  document.getElementById('det-date').innerHTML = `<i class="fas fa-clock" style="color:var(--t3)"></i> ${t.date||'Sin fecha'}`;
+  document.getElementById('det-estado').textContent = ESTADO_COL[t.col];
+  const cl = document.getElementById('det-checklist');
+  cl.innerHTML = t.checks.map((c,i)=>`<div class="checklist-item"><input type="checkbox" ${i<(t.done||0)?'checked':''}><span>${c}</span></div>`).join('');
+  const ac = document.getElementById('det-activity');
+  ac.innerHTML = (t.activity||[]).map(a=>`<div class="activity-item"><div class="av ${a.av}" style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0">${a.av.toUpperCase().slice(3)}</div><span><b>${a.name}</b> ${a.action}</span><time>${a.time}</time></div>`).join('') || '<p style="color:var(--t3);font-size:12px">Sin actividad registrada.</p>';
+  document.getElementById('ov-detail').classList.add('on');
+}
+function closeDetail() { document.getElementById('ov-detail').classList.remove('on'); }
+
+// ── CALENDAR ──
+function buildCalendar() {
+  const grid = document.getElementById('cal-grid');
+  const days = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const tasksByDay = {};
+  Object.values(TASKS).forEach(t => {
+    const m = t.date && t.date.match(/(\d+)\s+(\w+)/);
+    if(m) {
+      const d = parseInt(m[1]);
+      if(!tasksByDay[d]) tasksByDay[d]=[];
+      tasksByDay[d].push(t);
+    }
+  });
+  let html = days.map(d=>`<div class="cal-day-name">${d}</div>`).join('');
+  // June 2026 starts on Monday (offset=0)
+  const totalDays = 30;
+  for(let i=1;i<=totalDays;i++){
+    const isToday = i===26;
+    const tasks = tasksByDay[i]||[];
+    html += `<div class="cal-day ${isToday?'today':''}">
+      <div class="cal-day-num">${i}</div>
+      ${tasks.slice(0,2).map(t=>`<div class="cal-task-dot ${t.prio}">${t.title.substring(0,22)}…</div>`).join('')}
+      ${tasks.length>2?`<div style="font-size:9px;color:var(--t3)">+${tasks.length-2} más</div>`:''}
+    </div>`;
+  }
+  // fill remaining cells
+  const remaining = (7 - (totalDays % 7)) % 7;
+  for(let i=1;i<=remaining;i++) html += `<div class="cal-day other-month"><div class="cal-day-num">${i}</div></div>`;
+  grid.innerHTML = html;
+}
+
+// ── NOTIFICATION ──
+let notifTimer;
+function showNotif(msg) {
+  const n = document.getElementById('notif');
+  document.getElementById('notif-msg').textContent = msg;
+  n.classList.add('on');
+  clearTimeout(notifTimer);
+  notifTimer = setTimeout(()=>n.classList.remove('on'), 3000);
+}
+
+// Close overlays on backdrop click
+document.querySelectorAll('.overlay').forEach(ov=>{
+  ov.addEventListener('click', e=>{ if(e.target===ov) ov.classList.remove('on'); });
+});
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('on')); });
+</script>
+</body>
+</html>
