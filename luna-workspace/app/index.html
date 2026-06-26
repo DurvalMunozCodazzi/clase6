@@ -979,7 +979,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
         </div>
         <button onclick="setStatsThisMonth()" style="font-size:9px;font-weight:700;padding:3px 8px;border-radius:99px;border:1px solid rgba(91,106,240,.3);background:var(--accg);color:var(--acc);cursor:pointer;font-family:var(--f);white-space:nowrap"><i class="fas fa-calendar-day"></i> Este mes</button>
       </div>
-      <div id="up-stats-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div id="up-stats-cards" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
       <div style="border-top:1px solid var(--bdr);margin:14px 0 10px;padding-top:12px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.4px"><i class="fas fa-tasks" style="color:var(--acc);margin-right:5px"></i>Tareas del período</div>
       <div id="up-stats-tasks"></div>
     </div>
@@ -2415,39 +2415,38 @@ function renderTeamStats(){
     const over=myCards.filter(c=>!doneColIds.includes(c.column_id)&&c.due_date&&c.due_date<today).length;
     const pct=total?Math.round(done/total*100):0;
     const avatarHtml=u.photo
-      ?`<img src="${u.photo}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0">`
-      :`<div class="av av38" style="background:${u.color};flex-shrink:0">${ini(u.name)}</div>`;
-    return `<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:14px;border-top:3px solid ${u.color}${!total?';opacity:.6':''}">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      ?`<img src="${u.photo}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">`
+      :`<div class="av av32" style="background:${u.color};flex-shrink:0">${ini(u.name)}</div>`;
+    return `<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:10px;border-top:3px solid ${u.color}${!total?';opacity:.55':''}">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">
         ${avatarHtml}
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u.name)}</div>
-          <div style="font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.3px">${esc(u.cargo||ROLES[u.role]||u.role)}</div>
+          <div style="font-size:11px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u.name)}</div>
+          <div style="font-size:9px;color:var(--t3);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u.cargo||ROLES[u.role]||u.role)}</div>
         </div>
-        <div style="font-size:20px;font-weight:800;color:${u.color}">${pct}%</div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(${over?4:3},1fr);gap:5px;margin-bottom:10px">
-        <div style="text-align:center;padding:7px 2px;background:var(--elev);border-radius:6px">
-          <div style="font-size:20px;font-weight:800;color:var(--acc)">${total}</div>
-          <div style="font-size:8px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">Asignadas</div>
+      <div style="font-size:22px;font-weight:900;color:${u.color};line-height:1;margin-bottom:6px">${pct}<span style="font-size:11px;font-weight:700">%</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:7px">
+        <div style="text-align:center;padding:5px 2px;background:var(--elev);border-radius:6px">
+          <div style="font-size:16px;font-weight:800;color:var(--acc)">${total}</div>
+          <div style="font-size:7px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">Total</div>
         </div>
-        <div style="text-align:center;padding:7px 2px;background:var(--elev);border-radius:6px">
-          <div style="font-size:20px;font-weight:800;color:var(--t2)">${active}</div>
-          <div style="font-size:8px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">En Proceso</div>
+        <div style="text-align:center;padding:5px 2px;background:var(--elev);border-radius:6px">
+          <div style="font-size:16px;font-weight:800;color:var(--ok)">${done}</div>
+          <div style="font-size:7px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">Hechas</div>
         </div>
-        <div style="text-align:center;padding:7px 2px;background:var(--elev);border-radius:6px">
-          <div style="font-size:20px;font-weight:800;color:var(--ok)">${done}</div>
-          <div style="font-size:8px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">Finalizadas</div>
+        <div style="text-align:center;padding:5px 2px;background:var(--elev);border-radius:6px">
+          <div style="font-size:16px;font-weight:800;color:var(--t2)">${active}</div>
+          <div style="font-size:7px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">Activas</div>
         </div>
-        ${over?`<div style="text-align:center;padding:7px 2px;background:rgba(239,68,68,.08);border-radius:6px;border:1px solid rgba(239,68,68,.2)">
-          <div style="font-size:20px;font-weight:800;color:var(--er)">${over}</div>
-          <div style="font-size:8px;font-weight:700;color:var(--er);text-transform:uppercase;letter-spacing:.3px">Vencidas</div>
-        </div>`:''}
+        <div style="text-align:center;padding:5px 2px;background:${over?'rgba(239,68,68,.08)':'var(--elev)'};border-radius:6px${over?';border:1px solid rgba(239,68,68,.2)':''}">
+          <div style="font-size:16px;font-weight:800;color:${over?'var(--er)':'var(--t3)'}">${over}</div>
+          <div style="font-size:7px;font-weight:700;color:${over?'var(--er)':'var(--t3)'};text-transform:uppercase;letter-spacing:.3px">Vencidas</div>
+        </div>
       </div>
-      <div style="height:5px;background:var(--elev);border-radius:99px;overflow:hidden">
+      <div style="height:4px;background:var(--elev);border-radius:99px;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:${u.color};border-radius:99px;transition:width .6s"></div>
       </div>
-      <div style="font-size:9px;color:var(--t3);margin-top:5px;text-align:right">${done} de ${total} finalizadas en el período</div>
     </div>`;
   }).join('')||'<p style="font-size:12px;color:var(--t3);text-align:center;padding:20px">Sin miembros activos</p>';
 
