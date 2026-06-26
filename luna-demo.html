@@ -503,12 +503,28 @@ html{height:100%}body{height:100%;font-family:var(--f);background:var(--bg);colo
       <button class="mx" onclick="closeTeamMo()"><i class="fas fa-times"></i></button>
     </div>
 
+    <!-- Date range filter -->
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--elev);border-radius:var(--r);border:1px solid var(--bdr);margin-bottom:16px;flex-wrap:wrap">
+      <i class="fas fa-filter" style="font-size:11px;color:var(--acc)"></i>
+      <span style="font-size:11px;font-weight:700;color:var(--t2)">Período:</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <label style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">Desde</label>
+        <input type="date" id="team-from" class="fi" style="height:26px;padding:0 8px;font-size:11px;width:140px" onchange="renderTeamContent()">
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <label style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">Hasta</label>
+        <input type="date" id="team-to" class="fi" style="height:26px;padding:0 8px;font-size:11px;width:140px" onchange="renderTeamContent()">
+      </div>
+      <button onclick="setTeamThisMonth()" class="tbtn" style="font-size:10px;height:26px;padding:0 10px;background:var(--accg);color:var(--acc);border-color:rgba(91,106,240,.3)"><i class="fas fa-calendar-day"></i> Este mes</button>
+      <span id="team-range-label" style="font-size:10px;color:var(--t3);margin-left:auto;font-family:var(--fm)"></span>
+    </div>
+
     <!-- Member cards grid -->
     <div id="team-cards" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px"></div>
 
     <!-- Active tasks per member -->
     <div style="border-top:1px solid var(--bdr);padding-top:16px">
-      <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:12px"><i class="fas fa-tasks" style="color:var(--acc);margin-right:6px"></i>Tareas activas por miembro</div>
+      <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:12px"><i class="fas fa-tasks" style="color:var(--acc);margin-right:6px"></i>Tareas del período por miembro</div>
       <div id="team-tasks-list"></div>
     </div>
 
@@ -1113,68 +1129,110 @@ function filterTasks(q){
 }
 
 /* ── EQUIPO ──────────────────────────────────── */
+function setTeamThisMonth(){
+  const now=new Date();
+  const y=now.getFullYear(), m=String(now.getMonth()+1).padStart(2,'0');
+  const last=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  document.getElementById('team-from').value=`${y}-${m}-01`;
+  document.getElementById('team-to').value=`${y}-${m}-${String(last).padStart(2,'0')}`;
+  renderTeamContent();
+}
+
 function showTeam(){
+  setTeamThisMonth();
+  document.getElementById('teamMo').classList.add('on');
+}
+
+function renderTeamContent(){
+  const from=document.getElementById('team-from').value;
+  const to=document.getElementById('team-to').value;
   const today=new Date().toISOString().split('T')[0];
+
+  // Label del rango
+  const lbl=document.getElementById('team-range-label');
+  if(from&&to){
+    const [fy,fm,fd]=from.split('-'); const [ty,tm,td]=to.split('-');
+    lbl.textContent=`${parseInt(fd)} ${MNAMES[parseInt(fm)-1]} ${fy} → ${parseInt(td)} ${MNAMES[parseInt(tm)-1]} ${ty}`;
+  } else lbl.textContent='';
+
+  // Filtra tareas al rango (por fecha límite)
+  function inRange(t){
+    if(!t.date) return !from&&!to; // sin fecha: incluir solo si no hay filtro
+    if(from&&t.date<from) return false;
+    if(to&&t.date>to) return false;
+    return true;
+  }
+
   const cards=document.getElementById('team-cards');
   const taskList=document.getElementById('team-tasks-list');
 
-  // Render member cards
   cards.innerHTML=Object.entries(USERS).map(([k,u])=>{
-    const myTasks=S.tasks.filter(t=>(t.resp||[]).includes(k));
+    const myTasks=S.tasks.filter(t=>(t.resp||[]).includes(k)&&inRange(t));
     const done=myTasks.filter(t=>t.col==='completado').length;
     const active=myTasks.filter(t=>t.col!=='completado').length;
     const over=myTasks.filter(t=>t.date&&t.date<today&&t.col!=='completado').length;
     const pct=myTasks.length?Math.round(done/myTasks.length*100):0;
+    const total=myTasks.length;
     return `<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--rl);padding:16px;border-top:3px solid ${u.color}">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
         <div class="av" style="width:44px;height:44px;font-size:15px;font-weight:800;background:${u.color};flex-shrink:0">${k}</div>
-        <div>
+        <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:800;color:var(--t1)">${u.name}</div>
           <div style="font-size:11px;font-weight:600;color:var(--t3);letter-spacing:.3px;text-transform:uppercase">${u.role}</div>
         </div>
-        <div style="margin-left:auto;font-size:18px;font-weight:800;color:${u.color}">${pct}%</div>
+        <div style="font-size:22px;font-weight:800;color:${u.color}">${pct}%</div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
-        <div style="text-align:center;padding:8px;background:var(--elev);border-radius:var(--r)">
-          <div style="font-size:20px;font-weight:800;color:var(--acc)">${myTasks.length}</div>
+      <div style="display:grid;grid-template-columns:repeat(${over?4:3},1fr);gap:7px;margin-bottom:12px">
+        <div style="text-align:center;padding:8px 4px;background:var(--elev);border-radius:var(--r)">
+          <div style="font-size:22px;font-weight:800;color:var(--acc)">${total}</div>
           <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">Total</div>
         </div>
-        <div style="text-align:center;padding:8px;background:var(--elev);border-radius:var(--r)">
-          <div style="font-size:20px;font-weight:800;color:var(--ok)">${done}</div>
+        <div style="text-align:center;padding:8px 4px;background:var(--elev);border-radius:var(--r)">
+          <div style="font-size:22px;font-weight:800;color:var(--ok)">${done}</div>
           <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">Hechas</div>
         </div>
-        <div style="text-align:center;padding:8px;background:var(--elev);border-radius:var(--r)">
-          <div style="font-size:20px;font-weight:800;color:${over?'var(--er)':'var(--t2)'}">${over||active}</div>
-          <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">${over?'Vencidas':'Activas'}</div>
+        <div style="text-align:center;padding:8px 4px;background:var(--elev);border-radius:var(--r)">
+          <div style="font-size:22px;font-weight:800;color:var(--t2)">${active}</div>
+          <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">Activas</div>
         </div>
+        ${over?`<div style="text-align:center;padding:8px 4px;background:rgba(239,68,68,.08);border-radius:var(--r);border:1px solid rgba(239,68,68,.2)">
+          <div style="font-size:22px;font-weight:800;color:var(--er)">${over}</div>
+          <div style="font-size:9px;font-weight:700;color:var(--er);text-transform:uppercase;letter-spacing:.3px">Vencidas</div>
+        </div>`:''}
       </div>
       <div style="height:6px;background:var(--elev);border-radius:99px;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:${u.color};border-radius:99px;transition:width .6s"></div>
       </div>
-      <div style="font-size:10px;color:var(--t3);margin-top:5px;text-align:right">${done} de ${myTasks.length} completadas</div>
+      <div style="font-size:10px;color:var(--t3);margin-top:5px;text-align:right">${done} de ${total} completadas en el período</div>
     </div>`;
   }).join('');
 
-  // Render tasks grouped by member
   taskList.innerHTML=Object.entries(USERS).map(([k,u])=>{
-    const active=S.tasks.filter(t=>(t.resp||[]).includes(k)&&t.col!=='completado');
-    if(!active.length) return '';
-    return `<div style="margin-bottom:14px">
+    const periodTasks=S.tasks.filter(t=>(t.resp||[]).includes(k)&&inRange(t));
+    if(!periodTasks.length) return `<div style="margin-bottom:12px;opacity:.5">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="av av24" style="background:${u.color}">${k}</div>
+        <span style="font-size:12px;font-weight:700">${u.name}</span>
+        <span style="font-size:10px;color:var(--t3)">sin tareas en el período</span>
+      </div></div>`;
+    return `<div style="margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
         <div class="av av24" style="background:${u.color}">${k}</div>
         <span style="font-size:12px;font-weight:700">${u.name}</span>
-        <span style="font-size:10px;color:var(--t3)">${active.length} tarea${active.length!==1?'s':''} activa${active.length!==1?'s':''}</span>
+        <span style="font-size:10px;color:var(--t3)">${periodTasks.length} tarea${periodTasks.length!==1?'s':''} en el período</span>
       </div>
-      <div style="display:flex;flex-direction:column;gap:5px;padding-left:32px">
-        ${active.map(t=>{
+      <div style="display:flex;flex-direction:column;gap:4px;padding-left:32px">
+        ${periodTasks.map(t=>{
           const col=COLS.find(c=>c.id===t.col);
-          const isOver=t.date&&t.date<today;
+          const isOver=t.date&&t.date<today&&t.col!=='completado';
+          const isDone=t.col==='completado';
           const pData=t.prio?PRIO[t.prio]:null;
-          return `<div onclick="closeTeamMo();openEdit(${t.id})" style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--r);border:1px solid var(--bdr);background:var(--surf);cursor:pointer;transition:.15s;border-left:3px solid ${col?.color||'var(--acc)'}" onmouseover="this.style.background='var(--hov)'" onmouseout="this.style.background='var(--surf)'">
+          return `<div onclick="closeTeamMo();openEdit(${t.id})" style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--r);border:1px solid var(--bdr);background:var(--surf);cursor:pointer;transition:.15s;border-left:3px solid ${col?.color||'var(--acc)'}${isDone?';opacity:.65':''}" onmouseover="this.style.background='var(--hov)'" onmouseout="this.style.background='var(--surf)'">
+            ${isDone?`<i class="fas fa-check-circle" style="color:var(--ok);font-size:12px;flex-shrink:0"></i>`:`<i class="fas fa-circle" style="color:${col?.color};font-size:8px;flex-shrink:0"></i>`}
             <div style="flex:1;min-width:0">
-              <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.title)}</div>
-              <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
-                <span style="font-size:9px;font-weight:700;color:${col?.color};background:${col?.color}22;padding:1px 6px;border-radius:99px">${col?.name}</span>
+              <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${isDone?'text-decoration:line-through;color:var(--t3)':''}">${esc(t.title)}</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+                <span style="font-size:9px;font-weight:700;color:${col?.color};background:${col?.color}22;padding:1px 5px;border-radius:99px">${col?.name}</span>
                 ${pData?`<span style="font-size:9px;font-weight:700">${pData.icon} ${pData.label}</span>`:''}
                 ${t.date?`<span style="font-size:9px;font-family:var(--fm);color:${isOver?'var(--er)':'var(--t3)'};font-weight:${isOver?700:400}"><i class="fas fa-calendar" style="font-size:7px;margin-right:2px"></i>${fmtDate(t.date)}</span>`:''}
               </div>
@@ -1185,9 +1243,8 @@ function showTeam(){
       </div>
     </div>`;
   }).join('');
-
-  document.getElementById('teamMo').classList.add('on');
 }
+
 function closeTeamMo(){ document.getElementById('teamMo').classList.remove('on'); }
 document.getElementById('teamMo').addEventListener('click',e=>{
   if(e.target===document.getElementById('teamMo')) closeTeamMo();
