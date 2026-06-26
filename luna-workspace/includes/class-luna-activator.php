@@ -404,8 +404,55 @@ class Luna_Activator {
     }
 
     // ── Write app/luna-wp-config.php with WP DB credentials ─────────────────
+    // Solo escribe el config si NO existe o si está vacío/sin credenciales.
+    // Si ya existe con DB_NAME configurado, lo deja intacto para no pisar
+    // las credenciales de producción en cada desactivación/reactivación.
     public static function write_app_config() {
+        $cfg_path = LUNA_APP_DIR . 'luna-wp-config.php';
+        if ( file_exists( $cfg_path ) ) {
+            $content = file_get_contents( $cfg_path );
+            // Si ya tiene una DB_NAME real (no vacía), no tocar
+            if ( preg_match( "/define\('DB_NAME',\s*'[^']+'\)/", $content ) ) {
+                // Solo actualizar valores no sensibles: licencia, URL, cron secret
+                self::patch_app_config();
+                return;
+            }
+        }
         self::regenerate_app_config();
+    }
+
+    // Actualiza solo los valores no-credenciales del config existente
+    private static function patch_app_config() {
+        $cfg_path = LUNA_APP_DIR . 'luna-wp-config.php';
+        if ( ! file_exists( $cfg_path ) ) return;
+
+        $content      = file_get_contents( $cfg_path );
+        $license_key  = get_option( 'luna_license_key', '' );
+        $license_srv  = get_option( 'luna_license_server_url', 'https://websobreruedas.com/wp-json/luna-licenses/v1/verify' );
+        $site_url     = get_site_url();
+        $upload_url   = LUNA_PLUGIN_URL . 'app/uploads/';
+        $cron_secret  = get_option( 'luna_cron_secret', '' );
+        $version      = LUNA_VERSION;
+
+        $replacements = [
+            "/define\('LUNA_VERSION',\s*[^)]+\);/"      => "define('LUNA_VERSION',   " . var_export($version,     true) . ");",
+            "/define\('LUNA_LICENSE_KEY',\s*[^)]+\);/"  => "define('LUNA_LICENSE_KEY',    " . var_export($license_key,  true) . ");",
+            "/define\('LUNA_LICENSE_SERVER',\s*[^)]+\);/" => "define('LUNA_LICENSE_SERVER', " . var_export($license_srv,  true) . ");",
+            "/define\('LUNA_SITE_URL',\s*[^)]+\);/"     => "define('LUNA_SITE_URL',       " . var_export($site_url,    true) . ");",
+            "/define\('LUNA_UPLOAD_URL',\s*[^)]+\);/"   => "define('LUNA_UPLOAD_URL',     " . var_export($upload_url,  true) . ");",
+            "/define\('LUNA_CRON_SECRET',\s*[^)]+\);/"  => "define('LUNA_CRON_SECRET',  " . var_export($cron_secret,  true) . ");",
+        ];
+
+        foreach ( $replacements as $pattern => $replacement ) {
+            if ( preg_match( $pattern, $content ) ) {
+                $content = preg_replace( $pattern, $replacement, $content );
+            } else {
+                // La línea no existe en el archivo, agregarla al final
+                $content = rtrim( $content ) . "\n" . $replacement . "\n";
+            }
+        }
+
+        file_put_contents( $cfg_path, $content );
     }
 
     public static function regenerate_app_config() {
