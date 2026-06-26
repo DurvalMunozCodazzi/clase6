@@ -334,6 +334,25 @@
     gap: 8px;
   }
   .plan-features li::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; }
+  .plan-cta {
+    display: block;
+    width: 100%;
+    margin-top: 20px;
+    padding: 11px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-align: center;
+    cursor: pointer;
+    border: 1.5px solid var(--acc);
+    background: transparent;
+    color: var(--acc2);
+    font-family: inherit;
+    transition: background .2s, color .2s, transform .15s;
+  }
+  .plan-cta:hover { background: var(--acc); color: #fff; transform: translateY(-1px); }
+  .plan-card.popular .plan-cta { background: var(--acc); color: #fff; }
+  .plan-card.popular .plan-cta:hover { background: var(--acc2); }
 
   /* ── DATA PRIVACY ── */
   .privacy-block {
@@ -975,6 +994,7 @@
           <li>Gestión de tareas</li>
           <li>Checklists y etiquetas</li>
         </ul>
+        <button class="plan-cta" data-plan="free">Empezar gratis</button>
       </div>
       <div class="plan-card">
         <div class="plan-name">BÁSICO</div>
@@ -987,6 +1007,7 @@
           <li>Chat del equipo</li>
           <li>Log de actividad</li>
         </ul>
+        <button class="plan-cta" data-plan="starter">Quiero este plan</button>
       </div>
       <div class="plan-card popular">
         <div class="plan-badge">Popular</div>
@@ -999,6 +1020,7 @@
           <li>Analítica avanzada</li>
           <li>Soporte prioritario</li>
         </ul>
+        <button class="plan-cta" data-plan="professional">Quiero este plan</button>
       </div>
       <div class="plan-card">
         <div class="plan-name">CORPORATIVO</div>
@@ -1011,6 +1033,7 @@
           <li>API access</li>
           <li>SLA garantizado</li>
         </ul>
+        <button class="plan-cta" data-plan="unlimited">Contactar</button>
       </div>
     </div>
   </div>
@@ -1170,7 +1193,7 @@
     btn.textContent = 'Solicitar plugin y clave →';
   }
 
-  // Selector de plan
+  // Selector de plan dentro del modal
   document.querySelectorAll('.plan-btn').forEach(btn => {
     btn.addEventListener('click', function () {
       document.querySelectorAll('.plan-btn').forEach(b => b.classList.remove('selected'));
@@ -1179,10 +1202,26 @@
     });
   });
 
-  // Disparadores — hero CTA y botón CTA final
+  function selectPlan(planKey) {
+    document.querySelectorAll('.plan-btn').forEach(b => {
+      b.classList.toggle('selected', b.dataset.plan === planKey);
+    });
+    document.getElementById('f-plan').value = planKey;
+  }
+
+  // Disparadores — hero CTA y botón CTA final (plan: free por defecto)
   document.querySelectorAll('.hero-cta, .btn-primary').forEach(el => {
     el.addEventListener('click', function (e) {
       e.preventDefault();
+      selectPlan('free');
+      openModal();
+    });
+  });
+
+  // Botones de plan en la sección de precios (preseleccionan el plan)
+  document.querySelectorAll('.plan-cta').forEach(el => {
+    el.addEventListener('click', function () {
+      selectPlan(this.dataset.plan);
       openModal();
     });
   });
