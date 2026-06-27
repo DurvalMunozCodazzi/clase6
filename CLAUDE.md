@@ -69,3 +69,9 @@ Verificar siempre con: `unzip -l luna-workspace-11.1.3.zip | grep -E "setup|wp-c
 - El nombre del ZIP debe reflejar la versión nueva (ej: `laboratorio-workspace-1.0.14.zip`).
 - Borrar el ZIP anterior antes de generar el nuevo (`rm -f nombre-anterior.zip`).
 - Verificar siempre que los archivos sensibles no estén incluidos en el ZIP.
+
+## Validación PHP obligatoria antes de cada ZIP — regla permanente
+- ANTES de generar cualquier ZIP, correr `php -l` en TODOS los archivos PHP modificados en esa sesión.
+- Si hay cualquier error de sintaxis: corregirlo y volver a validar. NUNCA empaquetar con errores.
+- Un error de sintaxis PHP en un plugin de WordPress tira abajo el sitio completo — es inadmisible.
+- Comando mínimo antes de zip: `php -l includes/class-lab-admin.php && php -l laboratorio.php`
