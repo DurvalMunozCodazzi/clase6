@@ -62,3 +62,10 @@ Verificar siempre con: `unzip -l luna-workspace-11.1.3.zip | grep -E "setup|wp-c
 ## Licencias
 - Las licencias gratuitas requieren registro manual: OTP → verificado → Durval revisa y envía la clave por email. NUNCA generación automática.
 - WhatsApp de soporte: 5491153283558 (CallMeBot, apikey 6291539)
+
+## Versionado y entrega de ZIPs — regla permanente
+- Cada vez que se genera un ZIP para entregar al usuario, se debe incrementar la versión menor del plugin (ej: 1.0.13 → 1.0.14 → 1.0.15).
+- Actualizar SIEMPRE tanto el header del plugin (`* Version:`) como la constante `define('LAB_VERSION', ...)` o equivalente.
+- El nombre del ZIP debe reflejar la versión nueva (ej: `laboratorio-workspace-1.0.14.zip`).
+- Borrar el ZIP anterior antes de generar el nuevo (`rm -f nombre-anterior.zip`).
+- Verificar siempre que los archivos sensibles no estén incluidos en el ZIP.
