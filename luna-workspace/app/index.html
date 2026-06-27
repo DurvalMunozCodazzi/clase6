@@ -246,6 +246,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 #acol:hover{border-color:var(--acc);color:var(--acc)}
 .mo{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(5px);z-index:1000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
 .mo.on{opacity:1;pointer-events:all}
+#userMo{z-index:1100}
 .md{background:var(--elev);border:1px solid var(--bdrl);border-radius:var(--rxl);padding:24px;width:520px;max-width:93vw;max-height:86vh;overflow-y:auto;overflow-x:hidden;box-shadow:var(--shl);transform:translateY(14px) scale(.97);transition:transform .2s}
 .mo.on .md{transform:translateY(0) scale(1)}
 .md.sm{width:380px}.md.lg{width:680px}
@@ -433,7 +434,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 .ws-act-btn{width:22px;height:22px;border-radius:5px;border:1px solid var(--bdr);background:transparent;color:var(--t3);font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s}
 .ws-act-btn:hover{background:var(--hov);color:var(--t1)}
 .ws-act-btn.del:hover{background:rgba(239,68,68,.15);color:var(--er);border-color:var(--er)}
-.ws-add-btn{width:100%;padding:10px;border-radius:var(--rl);border:1px dashed var(--bdr);background:transparent;color:var(--t3);font-size:11px;font-weight:600;font-family:var(--f);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s;margin-top:4px}
+.ws-add-btn{width:100%;padding:10px;border-radius:var(--rl);border:1px solid var(--acc);background:var(--accg);color:var(--acc);font-size:11px;font-weight:600;font-family:var(--f);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s;margin-top:4px}
 .ws-add-btn:hover{border-color:var(--acc);color:var(--acc);background:var(--accg)}
 /* Overlay when ws panel is open on mobile */
 #ws-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:199;display:none}
@@ -858,6 +859,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
       <span class="ws-badge-name" id="ws-badge-name">Workspace</span>
       <i class="fas fa-chevron-down ws-badge-arrow"></i>
     </div>
+    <button id="ws-new-topbar-btn" onclick="openNewWSModal()" title="Nueva pizarra" style="display:none;width:28px;height:28px;border-radius:8px;border:1.5px solid var(--acc);background:var(--acc);color:#fff;font-size:13px;cursor:pointer;align-items:center;justify-content:center;flex-shrink:0;margin-left:4px"><i class="fas fa-plus"></i></button>
     <div class="sep"></div>
     <div class="vtabs">
       <button class="vtab on" id="tv-kn" onclick="sw('kn')" title="Tablero Kanban — gestión de tareas"><i class="fas fa-columns"></i> Tareas</button>
@@ -4965,6 +4967,8 @@ function applyRole(){
       const el=document.getElementById(id); if(el) el.style.display='flex';
     });
   }
+  const wsNewTopBtn=document.getElementById('ws-new-topbar-btn');
+  if(wsNewTopBtn) wsNewTopBtn.style.display=isAdmin()?'flex':'none';
   if(isVisitor()){ const vb=document.getElementById('vis-bar'); if(vb) vb.style.display='flex'; }
 }
 
