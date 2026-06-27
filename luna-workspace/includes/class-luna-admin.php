@@ -103,6 +103,13 @@ class Luna_Admin {
         return $m[1] ?? null; // null = define not found; '' = explicitly empty (valid)
     }
 
+    private function get_app_cron_secret(): string {
+        $cfg = plugin_dir_path(__FILE__) . '../app/luna-wp-config.php';
+        if (!file_exists($cfg)) return get_option('luna_cron_secret', '');
+        preg_match("/define\('LUNA_CRON_SECRET',\s*'([^']*)'\)/", file_get_contents($cfg), $m);
+        return $m[1] ?? get_option('luna_cron_secret', '');
+    }
+
     public function maybe_migrate(): void {
         // Run at most once per day — prevents SHOW COLUMNS on every AJAX request
         if (get_transient('luna_migration_done_' . LUNA_VERSION)) return;
@@ -856,11 +863,205 @@ class Luna_Admin {
           </div>
 
           <div id="luna-notif-result" style="display:none;margin-top:16px"></div>
+
+          <?php
+          // ── Recordatorios: cargar datos ───────────────────────────────────────
+          $rem2      = [];
+          $rem2_cols = [];
+          $rem2_cfg  = [];
+          $rem2_last = '';
+          if ($appDb && $appPfx !== null) {
+              $tbl2 = $appPfx !== '' ? "{$appPfx}app_settings" : 'app_settings';
+              try {
+                  $r = $appDb->query("SELECT meta_value FROM `{$tbl2}` WHERE meta_key='reminder_schedule' LIMIT 1")->fetch();
+                  $rem2 = $r ? (json_decode($r['meta_value'], true) ?: []) : [];
+              } catch (Exception $e) {}
+              try {
+                  $r = $appDb->query("SELECT meta_value FROM `{$tbl2}` WHERE meta_key='reminder_config' LIMIT 1")->fetch();
+                  $rem2_cfg = $r ? (json_decode($r['meta_value'], true) ?: []) : [];
+              } catch (Exception $e) {}
+              try {
+                  $r = $appDb->query("SELECT meta_value FROM `{$tbl2}` WHERE meta_key='reminders_last_sent' LIMIT 1")->fetch();
+                  $rem2_last = $r ? $r['meta_value'] : '';
+              } catch (Exception $e) {}
+              try {
+                  $ws1 = $appDb->query("SELECT id FROM `{$appPfx}workspaces` ORDER BY id LIMIT 1")->fetchColumn();
+                  if ($ws1) {
+                      $st2 = $appDb->prepare("SELECT id, title, color FROM `{$appPfx}columns_k` WHERE workspace_id=? ORDER BY position, id");
+                      $st2->execute([(int)$ws1]);
+                      $rem2_cols = $st2->fetchAll(PDO::FETCH_ASSOC);
+                  }
+              } catch (Exception $e) {}
+          }
+          $rem2_enabled = !empty($rem2['enabled']);
+          $rem2_hour    = (int)($rem2['hour'] ?? 8);
+          $rem2_matrix  = isset($rem2_cfg['matrix']) ? $rem2_cfg['matrix'] : null;
+          $rem2_users   = array_filter($users, fn($u) => !empty($u['active']));
+          ?>
+
+          <?php /* show reminders card always */ if (true): ?>
+          <div class="luna-card" style="margin-top:20px" id="luna-reminders-card">
+            <h2 style="margin-top:0">⏰ Recordatorios diarios</h2>
+            <p style="color:#666;font-size:13px;margin-top:-8px">
+              Cada día a la hora configurada se envía a cada destinatario un resumen de sus tareas por columna —
+              por el canal ya configurado en su perfil (email, WhatsApp o Telegram).
+            </p>
+
+            <!-- Activar + Hora -->
+            <div style="display:flex;align-items:center;gap:20px;margin-bottom:16px;padding:12px 16px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;flex-wrap:wrap">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600">
+                <input type="checkbox" id="rem2-enabled" <?php checked($rem2_enabled) ?> style="width:17px;height:17px;accent-color:#16a34a;cursor:pointer">
+                Activar recordatorios automáticos
+              </label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <label for="rem2-hour" style="font-size:13px;font-weight:600">Hora de envío:</label>
+                <select id="rem2-hour" style="font-size:13px;padding:4px 8px;border-radius:7px;border:1px solid #ddd">
+                  <?php for ($h = 0; $h < 24; $h++):
+                    $lbl = sprintf('%02d:00 hs', $h);
+                    if ($h === 8) $lbl .= ' (recomendado)';
+                  ?>
+                    <option value="<?= $h ?>" <?= selected($rem2_hour, $h, false) ?>><?= $lbl ?></option>
+                  <?php endfor; ?>
+                </select>
+                <span style="font-size:11px;color:#64748b">Hora del servidor: <strong><?= date('H:i') ?></strong></span>
+              </div>
+              <?php if ($rem2_last): ?>
+              <span style="font-size:12px;color:#16a34a">Último envío: <strong><?= esc_html($rem2_last) ?></strong></span>
+              <?php endif; ?>
+            </div>
+
+            <!-- Grilla miembros × columnas -->
+            <div style="overflow-x:auto;margin-bottom:16px">
+              <table style="border-collapse:collapse;width:100%;font-size:12px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
+                <thead>
+                  <tr style="background:#f1f5f9">
+                    <th style="padding:10px 14px;text-align:left;font-size:12px;font-weight:700;color:#475569;border-bottom:1px solid #e2e8f0;white-space:nowrap">
+                      Miembro
+                    </th>
+                    <?php foreach ($rem2_cols as $col): ?>
+                    <th style="padding:10px 10px;text-align:center;font-size:11px;font-weight:700;color:#475569;border-bottom:1px solid #e2e8f0;white-space:nowrap;min-width:80px">
+                      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:<?= esc_attr($col['color']?:'#5b6af0') ?>;margin-right:4px;vertical-align:middle"></span>
+                      <?= esc_html($col['title']) ?>
+                    </th>
+                    <?php endforeach; ?>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach (array_values($rem2_users) as $i => $u):
+                    $uid      = (int)$u['id'];
+                    $ch       = $u['notification_channel'] ?: 'email';
+                    $icon     = $ch === 'whatsapp' ? '📱' : ($ch === 'telegram' ? '✈️' : '✉️');
+                    $init     = mb_strtoupper(implode('', array_map(fn($w) => mb_substr($w,0,1), array_slice(preg_split('/\s+/', trim($u['name']??'?')), 0, 2))));
+                    $bg       = esc_attr($u['color'] ?? '#5b6af0');
+                    $rowBg    = $i % 2 === 0 ? '#fff' : '#f8fafc';
+                    $userCols = ($rem2_matrix !== null && isset($rem2_matrix[(string)$uid]))
+                                ? (array)$rem2_matrix[(string)$uid]
+                                : null; // null = all checked
+                  ?>
+                  <tr style="background:<?= $rowBg ?>;border-bottom:1px solid #f1f5f9" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='<?= $rowBg ?>'">
+                    <td style="padding:9px 14px;white-space:nowrap">
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <span style="width:26px;height:26px;border-radius:50%;background:<?= $bg ?>;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0"><?= esc_html($init) ?></span>
+                        <span style="font-weight:600;color:#1e293b"><?= esc_html($u['name']) ?></span>
+                        <span style="font-size:12px" title="Canal: <?= esc_attr($ch) ?>"><?= $icon ?></span>
+                      </div>
+                    </td>
+                    <?php foreach ($rem2_cols as $col):
+                      $colName = $col['title'];
+                      $checked = ($userCols === null || in_array($colName, $userCols));
+                    ?>
+                    <td style="text-align:center;padding:9px 10px">
+                      <input type="checkbox"
+                             class="rem2-cell"
+                             data-rem-uid="<?= $uid ?>"
+                             data-rem-col="<?= esc_attr($colName) ?>"
+                             <?php checked($checked) ?>
+                             style="width:16px;height:16px;accent-color:<?= esc_attr($col['color']?:'#5b6af0') ?>;cursor:pointer">
+                    </td>
+                    <?php endforeach; ?>
+                  </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            </div>
+
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <button id="rem2-btn-save" class="button button-primary" style="font-size:13px;padding:6px 18px">💾 Guardar configuración</button>
+              <button id="rem2-btn-send" class="button button-secondary" style="font-size:13px;padding:6px 18px">🚀 Enviar ahora (prueba)</button>
+              <button type="button" class="button" style="font-size:11px" onclick="$('.rem2-cell').prop('checked',true)">Todos ☑</button>
+              <button type="button" class="button" style="font-size:11px" onclick="$('.rem2-cell').prop('checked',false)">Ninguno □</button>
+              <span id="rem2-msg" style="font-size:13px;display:none"></span>
+            </div>
+
+            <div id="rem2-preview" style="display:none;margin-top:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px">
+              <strong style="font-size:13px">📋 Resultado:</strong>
+              <div id="rem2-preview-body" style="margin-top:8px;font-size:12px"></div>
+            </div>
+          </div>
+          <?php endif; ?>
+
         </div>
 
         <script>
         jQuery(function($){
           var nonce = '<?= wp_create_nonce('luna_admin_nonce') ?>';
+
+          // ── Recordatorios: construir matriz ──────────────────────────────────
+          function buildMatrix2() {
+            var matrix = {};
+            $('.rem2-cell').each(function(){
+              var uid = String($(this).data('rem-uid'));
+              var col = String($(this).data('rem-col'));
+              if (!matrix[uid]) matrix[uid] = [];
+              if ($(this).is(':checked')) matrix[uid].push(col);
+            });
+            return matrix;
+          }
+
+          $('#rem2-btn-save').on('click', function(){
+            var btn = $(this), msg = $('#rem2-msg');
+            btn.prop('disabled', true).text('Guardando…'); msg.hide();
+            $.post(ajaxurl, {
+              action:  'luna_save_reminders',
+              nonce:   nonce,
+              enabled: $('#rem2-enabled').is(':checked') ? 1 : 0,
+              hour:    parseInt($('#rem2-hour').val()),
+              matrix:  JSON.stringify(buildMatrix2())
+            }, function(res){
+              btn.prop('disabled', false).text('💾 Guardar configuración');
+              msg.css('color', res.success ? '#16a34a' : '#dc2626')
+                 .text(res.success ? '✅ ' + (res.data.message || 'Guardado.') : '❌ ' + (res.data || 'Error.')).show();
+              setTimeout(function(){ msg.fadeOut(); }, 4000);
+            }).fail(function(){ btn.prop('disabled', false).text('💾 Guardar configuración'); msg.css('color','#dc2626').text('❌ Error de conexión.').show(); });
+          });
+
+          $('#rem2-btn-send').on('click', function(){
+            var btn = $(this), msg = $('#rem2-msg');
+            btn.prop('disabled', true).text('Enviando…'); msg.hide(); $('#rem2-preview').hide();
+            $.ajax({
+              url: ajaxurl, type: 'POST', timeout: 60000,
+              data: { action: 'luna_send_reminders_now', nonce: nonce, matrix: JSON.stringify(buildMatrix2()) },
+              success: function(res){
+                btn.prop('disabled', false).text('🚀 Enviar ahora (prueba)');
+                if (res.success && res.data) {
+                  var d = res.data;
+                  var detail = d.detail || {};
+                  var sentTxt = d.message || ('✅ Enviados: ' + (detail.sent ?? '?') + (detail.errors ? ' · Errores: ' + detail.errors : ''));
+                  msg.css('color','#16a34a').html(sentTxt).show();
+                  var preview = detail.preview || d.preview || [];
+                  if (preview.length) {
+                    var rows = preview.map(function(p){ return '<div style="padding:5px 0;border-bottom:1px solid #e2e8f0"><strong>' + p.name + '</strong> (' + p.to + ') — ' + p.total + ' tarea(s)</div>'; }).join('');
+                    $('#rem2-preview-body').html(rows || '<p style="color:#94a3b8;margin:0">Sin tareas próximas.</p>');
+                    $('#rem2-preview').show();
+                  }
+                } else { msg.css('color','#dc2626').text('❌ ' + (res.data || 'Error.')).show(); }
+              },
+              error: function(xhr, status){
+                btn.prop('disabled', false).text('🚀 Enviar ahora (prueba)');
+                msg.css('color','#dc2626').text('❌ ' + (status === 'timeout' ? 'Tiempo agotado.' : 'Error de conexión.')).show();
+              }
+            });
+          });
 
           // Reset admin password (runs on both main page and notifications page)
           $(document).on('click', '#luna-btn-reset-pass', function(){
@@ -1392,9 +1593,20 @@ class Luna_Admin {
 
         $enabled = (int)($_POST['enabled'] ?? 0) ? 1 : 0;
         $hour    = max(0, min(23, (int)($_POST['hour'] ?? 8)));
-        $data    = json_encode(['enabled' => (bool)$enabled, 'hour' => $hour]);
 
-        // Try app DB first, fall back to WP options
+        // Matrix: { "uid": ["ColName1", "ColName2", ...] }
+        $matrix_raw = $_POST['matrix'] ?? '{}';
+        $matrix     = json_decode(stripslashes($matrix_raw), true);
+        if (!is_array($matrix)) $matrix = [];
+        $matrix_clean = [];
+        foreach ($matrix as $uid => $cols) {
+            $matrix_clean[(string)(int)$uid] = array_values(array_map('sanitize_text_field', (array)$cols));
+        }
+
+        // Save reminder_config (full config with matrix) + legacy reminder_schedule for cron
+        $config = json_encode(['enabled' => (bool)$enabled, 'hour' => $hour, 'matrix' => $matrix_clean]);
+        $data   = json_encode(['enabled' => (bool)$enabled, 'hour' => $hour]);
+
         $appDb  = $this->get_app_db();
         $appPfx = $this->get_app_prefix();
         $saved  = false;
@@ -1405,12 +1617,16 @@ class Luna_Admin {
                 $appDb->prepare("INSERT INTO {$tbl} (meta_key, meta_value) VALUES ('reminder_schedule', ?)
                                  ON DUPLICATE KEY UPDATE meta_value=?")
                       ->execute([$data, $data]);
+                $appDb->prepare("INSERT INTO {$tbl} (meta_key, meta_value) VALUES ('reminder_config', ?)
+                                 ON DUPLICATE KEY UPDATE meta_value=?")
+                      ->execute([$config, $config]);
                 $saved = true;
             } catch (Exception $e) {}
         }
 
         if (!$saved) {
             update_option('luna_reminder_schedule', $data);
+            update_option('luna_reminder_config',   $config);
         }
 
         // Reschedule WP cron based on new config
@@ -1434,44 +1650,38 @@ class Luna_Admin {
         check_ajax_referer('luna_admin_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error('Sin permisos');
 
-        // Build the URL to reminders.php
-        $secret   = defined('LUNA_CRON_SECRET') ? LUNA_CRON_SECRET : get_option('luna_cron_secret', '');
-        $app_url  = defined('LUNA_APP_URL')      ? LUNA_APP_URL      : '';
-
-        if (!$app_url) {
-            // Derive from the plugin directory URL
-            $app_url = plugin_dir_url(__FILE__) . '../app/';
+        // Write a one-time bypass token into app_settings so reminders.php
+        // can authenticate without needing a luna_token session cookie.
+        $bypass_token = bin2hex(random_bytes(16));
+        $appDb  = $this->get_app_db();
+        $appPfx = $this->get_app_prefix();
+        if ($appDb && $appPfx !== null) {
+            $tbl = $appPfx !== '' ? "{$appPfx}app_settings" : 'app_settings';
+            $val = json_encode(['token' => $bypass_token, 'expires' => time() + 30]);
+            $appDb->prepare("INSERT INTO `{$tbl}` (meta_key,meta_value) VALUES ('wp_admin_bypass',?) ON DUPLICATE KEY UPDATE meta_value=?")
+                  ->execute([$val, $val]);
+        } else {
+            wp_send_json_error('No se pudo conectar a la base de datos de la app.');
         }
 
-        $url = rtrim($app_url, '/') . '/api/reminders.php?action=send';
+        $app_url = defined('LUNA_APP_URL') ? LUNA_APP_URL : plugin_dir_url(__FILE__) . '../app/';
+        $url     = rtrim($app_url, '/') . '/api/reminders.php?action=send';
 
-        // Enviar cron_secret en el body POST (no en la URL para evitar que quede en logs del servidor)
+        $matrix_raw = $_POST['matrix'] ?? '{}';
+        $matrix     = json_decode(stripslashes($matrix_raw), true);
+        if (!is_array($matrix)) $matrix = [];
+
         $resp = wp_remote_post($url, [
             'timeout'   => 60,
             'sslverify' => false,
-            'headers'   => ['Content-Type' => 'application/json'],
-            'body'      => $secret ? json_encode(['cron_secret' => $secret]) : '{}',
+            'headers'   => [
+                'Content-Type'      => 'application/json',
+                'X-WP-Bypass-Token' => $bypass_token,
+            ],
+            'body' => json_encode(['matrix' => $matrix]),
         ]);
 
         if (is_wp_error($resp)) {
-            // Fall back: run directly via PHP include (same process)
-            ob_start();
-            try {
-                $reminders_file = plugin_dir_path(__FILE__) . '../app/api/reminders.php';
-                if (file_exists($reminders_file)) {
-                    $_GET['action'] = 'send';
-                    $_GET['force']  = '1';
-                    include $reminders_file;
-                    $out = ob_get_clean();
-                    $decoded = json_decode($out, true);
-                    if ($decoded) {
-                        wp_send_json_success($decoded);
-                    }
-                    wp_send_json_success(['message' => 'Enviado (CLI). ' . $out]);
-                }
-            } catch (Exception $e) {
-                ob_end_clean();
-            }
             wp_send_json_error('No se pudo contactar reminders.php: ' . $resp->get_error_message());
         }
 

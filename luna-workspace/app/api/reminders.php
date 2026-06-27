@@ -8,17 +8,43 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/email.php';
 // SITE_URL se obtiene automáticamente de config.php (LUNA_SITE_URL)
 
-// Permitir acceso via cron (CLI) o via HTTP con token admin
-// El cron_secret se acepta vía POST body {"cron_secret":"..."} o header X-Cron-Secret (nunca GET para evitar logs)
+// Auth: 3 métodos — cron_secret, one-time bypass token (WP admin), session cookie
 if (php_sapi_name() !== 'cli') {
-    $body_raw    = file_get_contents('php://input');
-    $body_json   = json_decode($body_raw, true);
+    $body_raw  = file_get_contents('php://input');
+    $body_json = json_decode($body_raw, true) ?: [];
+    $authorized = false;
+
+    // 1) cron_secret en body o header
     $cron_secret = $body_json['cron_secret'] ?? $_SERVER['HTTP_X_CRON_SECRET'] ?? '';
-    $is_cron = $cron_secret && defined('LUNA_CRON_SECRET') && LUNA_CRON_SECRET && hash_equals(LUNA_CRON_SECRET, $cron_secret);
-    if (!$is_cron) {
+    if ($cron_secret && defined('LUNA_CRON_SECRET') && LUNA_CRON_SECRET && hash_equals(LUNA_CRON_SECRET, $cron_secret)) {
+        $authorized = true;
+    }
+
+    // 2) one-time bypass token escrito por WP admin en app_settings
+    if (!$authorized) {
+        $bypass_token = $_SERVER['HTTP_X_WP_BYPASS_TOKEN'] ?? '';
+        if ($bypass_token) {
+            try {
+                $db2 = getDB();
+                $row2 = $db2->query("SELECT meta_value FROM ".tb('app_settings')." WHERE meta_key='wp_admin_bypass' LIMIT 1")->fetch();
+                if ($row2) {
+                    $bdata = json_decode($row2['meta_value'], true);
+                    if (!empty($bdata['token']) && $bdata['token'] === $bypass_token && ($bdata['expires'] ?? 0) > time()) {
+                        $authorized = true;
+                        $db2->exec("DELETE FROM ".tb('app_settings')." WHERE meta_key='wp_admin_bypass'");
+                    }
+                }
+            } catch (Exception $e) {}
+        }
+    }
+
+    // 3) session cookie (usuario admin logueado en la app)
+    if (!$authorized) {
         $me = requireAuth();
         if ($me['role'] !== 'admin') jsonErr('Solo admins', 403);
     }
+} else {
+    $body_json = [];
 }
 
 $db     = getDB();
@@ -160,7 +186,8 @@ function buildReminderPlainText($data) {
         if (empty($data[$key])) continue;
         $lines[] = "\n{$label}";
         foreach ($data[$key] as $c) {
-            $lines[] = "  • " . $c['title'] . " ({$c['ws_name']}) — {$c['due_date']}";
+            $colLabel = !empty($c['col_title']) ? $c['col_title'] : 'Sin columna';
+            $lines[] = "  • " . $c['title'] . " [{$colLabel}] ({$c['ws_name']}) — {$c['due_date']}";
         }
     }
     $total = count($data['overdue'] ?? []) + count($data['today']) + count($data['tomorrow']) + count($data['this_week']);
@@ -170,8 +197,36 @@ function buildReminderPlainText($data) {
 
 // ── Main: send reminders ───────────────────────────────────
 if ($action === 'send' || $action === 'preview') {
+    // Leer matriz de filtrado del body o de app_settings
+    $filter_matrix = $body_json['matrix'] ?? null;
+    if ($filter_matrix === null) {
+        try {
+            $cfg_row = getDB()->query("SELECT meta_value FROM ".tb('app_settings')." WHERE meta_key='reminder_config' LIMIT 1")->fetch();
+            if ($cfg_row) {
+                $cfg_data = json_decode($cfg_row['meta_value'], true);
+                $filter_matrix = $cfg_data['matrix'] ?? null;
+            }
+        } catch (Exception $e) {}
+    }
+
     $cards   = getUpcomingCards($db);
     $byUser  = groupByUser($cards);
+
+    // Aplicar filtro de matriz por usuario × columna
+    if ($filter_matrix !== null && is_array($filter_matrix)) {
+        foreach ($byUser as $uid => &$userData) {
+            $allowedCols = isset($filter_matrix[(string)$uid]) ? (array)$filter_matrix[(string)$uid] : null;
+            if ($allowedCols === null) continue; // null = todas las columnas permitidas
+            foreach (['overdue','today','tomorrow','this_week'] as $grp) {
+                $userData[$grp] = array_values(array_filter($userData[$grp], fn($c) => in_array($c['col_title'] ?? '', $allowedCols)));
+            }
+        }
+        unset($userData);
+        // Quitar usuarios sin tareas tras el filtro
+        $byUser = array_filter($byUser, fn($ud) =>
+            count($ud['overdue'] ?? []) + count($ud['today']) + count($ud['tomorrow']) + count($ud['this_week']) > 0
+        );
+    }
     $siteUrl = defined('LUNA_SITE_URL') ? LUNA_SITE_URL : ((isset($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!='off'?'https':'http').'://'.($_SERVER['HTTP_HOST']??'localhost'));
 
     $sent    = 0;

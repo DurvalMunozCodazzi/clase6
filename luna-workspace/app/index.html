@@ -1289,26 +1289,6 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
       <button class="btn bp" onclick="saveSMTPSettings()"><i class="fas fa-check"></i> Guardar configuración</button>
     </div>
 
-    <!-- REMINDERS SECTION -->
-    <div style="border-top:1px solid var(--bdr);padding-top:16px;margin-top:16px">
-      <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
-        <i class="fas fa-clock" style="color:var(--wa)"></i> Recordatorios de vencimiento
-      </div>
-      <p style="font-size:11px;color:var(--t3);line-height:1.6;margin-bottom:12px">
-        Envía un email a cada usuario con sus tareas que vencen hoy, mañana y esta semana.
-      </p>
-      <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:12px;margin-bottom:10px;font-size:11px;color:var(--t3)">
-        <strong style="color:var(--t2)">¿Cuándo enviarlo?</strong><br>
-        Configurá un cron job en tu hosting para llamar automáticamente cada mañana:<br>
-        <code style="background:var(--elev);padding:4px 8px;border-radius:4px;display:inline-block;margin-top:6px;font-size:10px;color:var(--acc)">0 8 * * * php /httpdocs/api/reminders.php</code>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn" style="flex:1" onclick="previewReminders()"><i class="fas fa-eye"></i> Vista previa</button>
-        <button class="btn bp" style="flex:1" onclick="sendReminders()"><i class="fas fa-paper-plane"></i> Enviar ahora</button>
-      </div>
-      <div class="test-result" id="reminder-result"></div>
-    </div>
-
     <!-- TELEGRAM SECTION -->
     <div style="border-top:1px solid var(--bdr);padding-top:16px;margin-top:16px">
       <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
@@ -4075,52 +4055,6 @@ function renderActivity(items){
     </div>`).join('');
 }
 
-
-// ══════════════════════════════════════════════
-//  REMINDERS
-// ══════════════════════════════════════════════
-async function previewReminders(){
-  const res = document.getElementById('reminder-result');
-  if(res){ res.className='test-result'; res.textContent=''; }
-  try{
-    const d = await _wsApi('reminders.php?action=preview');
-    if(!d.preview?.length){
-      if(res){ res.className='test-result ok'; res.innerHTML='<i class="fas fa-info-circle"></i> No hay tareas por vencer esta semana con usuarios asignados.'; }
-      return;
-    }
-    if(res){
-      res.className='test-result ok';
-      res.innerHTML='<strong>Se enviaría a:</strong><br>'+
-        d.preview.map(p=>`• ${esc(p.name)} (${esc(p.to||p.user_email||'')}) — ${p.total} tarea(s)`).join('<br>');
-    }
-  }catch(e){
-    if(res){ res.className='test-result er'; res.innerHTML='<i class="fas fa-times-circle"></i> '+esc(e.message); }
-  }
-}
-
-async function sendReminders(){
-  const res = document.getElementById('reminder-result');
-  if(!confirm('¿Enviar recordatorios ahora a todos los usuarios con tareas por vencer?')) return;
-  if(res){ res.className='test-result'; res.innerHTML='<i class="fas fa-spinner fa-spin"></i> Enviando...'; res.style.display='block'; }
-  try{
-    const d = await _wsApi('reminders.php?action=send');
-    if(res){
-      if(d.skipped){
-        res.className='test-result';
-        res.innerHTML=`<i class="fas fa-info-circle"></i> Ya se enviaron recordatorios hoy. Para reenviar, eliminá el registro en app_settings (meta_key='reminders_last_sent').`;
-      } else if(d.sent===0 && d.errors===0){
-        res.className='test-result';
-        res.innerHTML=`<i class="fas fa-info-circle"></i> No hay tareas por vencer esta semana con usuarios asignados.`;
-      } else {
-        res.className='test-result ok';
-        res.innerHTML=`<i class="fas fa-check-circle"></i> ${d.sent} email(s) enviados${d.errors?`, ${d.errors} errores`:''}. Revisá las bandejas de entrada.`;
-      }
-    }
-    notify(d.skipped ? 'Ya enviado hoy' : `Recordatorios enviados: ${d.sent}`, d.skipped?'wa':'ok');
-  }catch(e){
-    if(res){ res.className='test-result er'; res.innerHTML='<i class="fas fa-times-circle"></i> '+esc(e.message); }
-  }
-}
 
 // ══════════════════════════════════════════════
 //  TELEGRAM CONFIG
