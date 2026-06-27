@@ -589,7 +589,7 @@
 <!-- ══════════════════════ HERO ══════════════════════ -->
 <div class="hero">
   <div class="container">
-    <div class="hero-badge">🌙 Comparativa 2026 — Edición Actualizada</div>
+    <div class="hero-badge">🌙 Comparativa 2026 — Actualizado junio 2026</div>
     <h1>Tu pizarra colaborativa.<br><span>Tus datos. Tu servidor.</span></h1>
     <p>Luna Workspace hace lo que Trello, Asana y Monday cobran una fortuna — instalado directamente en tu WordPress, con notificaciones por WhatsApp incluidas.</p>
     <a href="https://websobreruedas.com" class="hero-cta">
@@ -656,10 +656,10 @@
         <h3>Velocidad local</h3>
         <p>La app corre en tu propio servidor. Sin viajes a centros de datos en el exterior — la velocidad la define tu hosting, no una plataforma SaaS al otro lado del mundo.</p>
       </div>
-      <div class="card">
+      <div class="card highlight">
         <div class="card-icon">🔔</div>
-        <h3>Alarmas y recordatorios</h3>
-        <p>Configurá recordatorios automáticos por tarea, proyecto o fecha límite. El equipo recibe alertas por email o WhatsApp — sin depender de que alguien se acuerde de avisar.</p>
+        <h3>Recordatorios inteligentes — nuevo</h3>
+        <p>Configurá quién recibe recordatorios de qué columna directamente desde WordPress Admin, sin entrar a la app. Grilla usuario × columna, horario diario configurable y mensajes por <strong>email, WhatsApp y Telegram</strong> que incluyen el nombre de la columna para que tu equipo sepa exactamente qué tarea necesita atención.</p>
       </div>
       <div class="card">
         <div class="card-icon">👥</div>
@@ -726,7 +726,7 @@
           </tr>
           <tr>
             <td>Recordatorios automáticos</td>
-            <td class="luna-col"><span class="yes">✓</span></td>
+            <td class="luna-col"><span class="bold-green">✓ Por usuario y columna</span></td>
             <td><span class="no">✗</span></td>
             <td><span class="partial">Plan pago</span></td>
             <td><span class="partial">Plan pago</span></td>
@@ -838,11 +838,19 @@
           </tr>
           <tr>
             <td>Alarmas configurables</td>
-            <td class="luna-col"><span class="bold-green">✓ Email + WhatsApp</span></td>
+            <td class="luna-col"><span class="bold-green">✓ Email + WhatsApp + Telegram</span></td>
             <td><span class="no">✗</span></td>
             <td><span class="partial">Solo email</span></td>
             <td><span class="partial">Solo email</span></td>
             <td><span class="partial">Solo email</span></td>
+          </tr>
+          <tr>
+            <td>Configuración de alarmas desde panel WordPress</td>
+            <td class="luna-col"><span class="bold-green">✓ Sin entrar a la app</span></td>
+            <td><span class="no">✗</span></td>
+            <td><span class="no">✗</span></td>
+            <td><span class="no">✗</span></td>
+            <td><span class="no">✗</span></td>
           </tr>
           <tr>
             <td>Usuarios ilimitados</td>
@@ -933,6 +941,49 @@
 
 <hr class="divider">
 
+<!-- ══════════════════════ RECORDATORIOS ══════════════════════ -->
+<section>
+  <div class="container">
+    <div class="section-label">Nuevo en v11.1.6</div>
+    <h2 class="section-title">Recordatorios que trabajan solos</h2>
+    <p class="section-sub">Configurá una vez desde WordPress Admin. Cada día, a la hora que elejas, tu equipo recibe exactamente lo que necesita saber.</p>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-bottom:48px">
+      <div class="card highlight">
+        <div class="card-icon">🗂️</div>
+        <h3>Grilla usuario × columna</h3>
+        <p>Definís exactamente qué columnas le importan a cada persona. El desarrollador recibe solo tareas en "En progreso". El cliente ve solo "Pendiente aprobación". Sin ruido.</p>
+      </div>
+      <div class="card highlight">
+        <div class="card-icon">⚙️</div>
+        <h3>Configuración desde WordPress</h3>
+        <p>No hay que entrar a la app ni dar acceso admin a nadie más. Todo se configura desde el panel de WordPress — Recordatorios → Guardar → Listo.</p>
+      </div>
+      <div class="card highlight">
+        <div class="card-icon">📍</div>
+        <h3>Mensajes con contexto real</h3>
+        <p>Cada alerta incluye el nombre de la columna y la pizarra. Tu equipo sabe de un vistazo en qué etapa está cada tarea sin tener que abrir la app.</p>
+      </div>
+      <div class="card highlight">
+        <div class="card-icon">📡</div>
+        <h3>Email · WhatsApp · Telegram</h3>
+        <p>Tres canales, una configuración. Enviá el recordatorio diario por los medios que usa tu equipo — todos al mismo tiempo, con el mismo contenido.</p>
+      </div>
+    </div>
+
+    <div style="background:linear-gradient(135deg,#0d1224,#1a1060);border:1px solid rgba(91,106,240,.4);border-radius:16px;padding:32px 36px;display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
+      <div style="font-size:48px;flex-shrink:0">💡</div>
+      <div>
+        <div style="font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--acc2);margin-bottom:8px">Ejemplo real</div>
+        <p style="color:var(--text);font-size:15px;margin-bottom:10px">A las 8:00 AM tu equipo recibe por WhatsApp:<br><em style="color:var(--text2)">"Hola María — tenés 3 tareas en <strong style="color:var(--acc2)">Pendiente revisión</strong>: 'Diseño portada [Pendiente revisión] (Proyecto X) — vence 30/06' …"</em></p>
+        <p style="color:var(--text2);font-size:13px">El nombre de la columna y la pizarra viajan en el mensaje. Sin abrir la app, sin preguntar "¿en qué estado está esto?".</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
 <!-- ══════════════════════ PRIVACIDAD ══════════════════════ -->
 <section>
   <div class="container">
@@ -1007,7 +1058,7 @@
         <div class="plan-users">Hasta 20 usuarios · Ilimitadas pizarras</div>
         <ul class="plan-features">
           <li>Todo el plan Emprendedor</li>
-          <li>Hasta 3 pizarras simultáneas</li>
+          <li>Recordatorios por usuario y columna</li>
           <li>Analítica avanzada</li>
           <li>Soporte prioritario</li>
         </ul>
@@ -1157,7 +1208,7 @@
 </div>
 
 <footer>
-  <p>© 2026 <a href="https://websobreruedas.com">Web Sobre Ruedas</a> &nbsp;·&nbsp; Luna Workspace v11.1.3 &nbsp;·&nbsp; <a href="https://websobreruedas.com">websobreruedas.com</a></p>
+  <p>© 2026 <a href="https://websobreruedas.com">Web Sobre Ruedas</a> &nbsp;·&nbsp; Luna Workspace v11.1.6 &nbsp;·&nbsp; <a href="https://websobreruedas.com">websobreruedas.com</a></p>
 </footer>
 
 <script>
