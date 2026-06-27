@@ -54,6 +54,11 @@ Verificar siempre con: `unzip -l luna-workspace-11.1.3.zip | grep -E "setup|wp-c
 - `luna-wp-config.php` es generado automáticamente por el plugin en producción y contiene credenciales únicas de cada cliente. Distribuirlo vacío/del repo pisa la configuración real del cliente.
 - Ante la duda de si un archivo puede contener datos de producción: excluirlo del ZIP.
 
+## Actualización del plugin — norma de trabajo
+- El cliente sube el ZIP nuevo **pisando el anterior** directamente (WordPress → Plugins → Subir plugin → reemplazar).
+- **NUNCA** indicar que desactive y borre el plugin antes de actualizar — rompe la data existente.
+- El plugin debe tolerar actualizaciones sin pérdida de datos en todo momento.
+
 ## Licencias
 - Las licencias gratuitas requieren registro manual: OTP → verificado → Durval revisa y envía la clave por email. NUNCA generación automática.
 - WhatsApp de soporte: 5491153283558 (CallMeBot, apikey 6291539)
