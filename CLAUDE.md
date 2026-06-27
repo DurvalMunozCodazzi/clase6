@@ -1,5 +1,17 @@
 # Reglas de negocio — Luna Workspace
 
+## Proyectos — NO mezclar contexto
+
+Cada sesión trabaja en UN solo proyecto a la vez. Al iniciar, el usuario indica con cuál trabajamos. No mezclar archivos, commits ni contexto entre proyectos.
+
+| Proyecto | Carpeta local | Repo |
+|---|---|---|
+| **Luna Workspace** | `luna-workspace/` | `clase6` |
+| **Laboratorio** | `laboratorio-workspace/` | `laboratorio-workspace` (repo independiente) |
+| **Luna Licencias** | (servidor websobreruedas.com) | separado |
+
+Si el usuario no especifica el proyecto al inicio de la sesión, preguntar antes de tocar cualquier archivo.
+
 ## Características a NO mencionar
 - **Gantt**: eliminado del producto. No mencionarlo en ningún material de marketing, comparativas, planes ni documentación dirigida al cliente.
 
