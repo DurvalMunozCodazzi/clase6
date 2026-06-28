@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Luna Workspace
  * Plugin URI:        https://websobreruedas.com
- * Description:       Pizarra Colaborativa, gestión de tareas, equipos y proyectos. Versión 11.1.7 | Por Web Sobre Ruedas | 2026 | websobreruedas.com
- * Version:           11.1.7
+ * Description:       Pizarra Colaborativa, gestión de tareas, equipos y proyectos. Versión 11.1.8 | Por Web Sobre Ruedas | 2026 | websobreruedas.com
+ * Version:           11.1.8
  * Author:            Web Sobre Ruedas
  * License:           Proprietary
  * Text Domain:       luna-workspace
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('LUNA_VERSION',     '11.1.7');
+define('LUNA_VERSION',     '11.1.8');
 define('LUNA_PLUGIN_DIR',  plugin_dir_path(__FILE__));
 define('LUNA_PLUGIN_URL',  plugin_dir_url(__FILE__));
 define('LUNA_APP_DIR',     LUNA_PLUGIN_DIR . 'app/');
@@ -51,6 +51,8 @@ function luna_init() {
     add_action('init',               'luna_handle_admin_enter_legacy');
     add_action('wp_ajax_luna_save_license',        'luna_ajax_save_license');
     add_action('wp_ajax_luna_check_license_status','luna_ajax_check_license_status');
+    add_action('wp_ajax_luna_cobros',              'luna_ajax_cobros');
+    add_action('wp_ajax_nopriv_luna_cobros',       'luna_ajax_cobros');
     add_action('luna_hourly_check', 'luna_run_hourly_check');
 }
 
@@ -285,4 +287,151 @@ function luna_write_license_config($key) {
     Luna_Activator::regenerate_app_config();
     // Also delete license cache so it gets re-verified with new key
     @unlink(LUNA_APP_DIR . 'luna-license-cache.json');
+}
+
+// ── Validate Luna session from cookie ────────────────────────────────────────
+function luna_validate_session() {
+    global $wpdb;
+    $p     = $wpdb->prefix . 'luna_';
+    $token = sanitize_text_field($_COOKIE['luna_token'] ?? '');
+    if (!$token) return null;
+    return $wpdb->get_row($wpdb->prepare(
+        "SELECT s.user_id, u.role, u.name FROM `{$p}sessions` s
+         JOIN `{$p}users` u ON u.id = s.user_id
+         WHERE s.token = %s AND s.expires_at > NOW()",
+        $token
+    ), ARRAY_A);
+}
+
+// ── AJAX: Cobranza y Cta Cte (accesible a todos los usuarios autenticados) ───
+function luna_ajax_cobros() {
+    $session = luna_validate_session();
+    if (!$session) { wp_send_json_error('No autorizado'); return; }
+
+    $sub = sanitize_text_field($_POST['sub'] ?? '');
+    global $wpdb;
+    $p = $wpdb->prefix . 'luna_';
+
+    switch ($sub) {
+
+        case 'get_clients':
+            $rows = $wpdb->get_results(
+                "SELECT id, name, cuit, email, phone FROM `{$p}luna_clients` WHERE active=1 ORDER BY name",
+                ARRAY_A
+            );
+            wp_send_json_success($rows ?: []);
+            break;
+
+        case 'get_card_cobros':
+            $card_id = (int)($_POST['card_id'] ?? 0);
+            if (!$card_id) { wp_send_json_error('card_id requerido'); return; }
+
+            $meta = $wpdb->get_row($wpdb->prepare(
+                "SELECT m.client_id, m.total_amount, c.name AS client_name
+                 FROM `{$p}luna_card_cobros_meta` m
+                 LEFT JOIN `{$p}luna_clients` c ON c.id = m.client_id
+                 WHERE m.card_id = %d",
+                $card_id
+            ), ARRAY_A);
+
+            $payments = $wpdb->get_results($wpdb->prepare(
+                "SELECT p.id, p.amount, p.payment_date, p.method, p.notes,
+                        u.name AS created_by_name
+                 FROM `{$p}luna_card_payments` p
+                 LEFT JOIN `{$p}users` u ON u.id = p.created_by
+                 WHERE p.card_id = %d
+                 ORDER BY p.payment_date DESC, p.id DESC",
+                $card_id
+            ), ARRAY_A);
+
+            $cobrado = array_sum(array_column($payments ?: [], 'amount'));
+            wp_send_json_success([
+                'meta'     => $meta,
+                'payments' => $payments ?: [],
+                'cobrado'  => $cobrado,
+            ]);
+            break;
+
+        case 'save_card_meta':
+            $card_id      = (int)($_POST['card_id'] ?? 0);
+            $client_id    = (int)($_POST['client_id'] ?? 0) ?: null;
+            $total_amount = (float)($_POST['total_amount'] ?? 0);
+            if (!$card_id) { wp_send_json_error('card_id requerido'); return; }
+
+            $existing = $wpdb->get_var($wpdb->prepare(
+                "SELECT card_id FROM `{$p}luna_card_cobros_meta` WHERE card_id = %d", $card_id
+            ));
+            if ($existing) {
+                $wpdb->update("{$p}luna_card_cobros_meta",
+                    ['client_id' => $client_id, 'total_amount' => $total_amount],
+                    ['card_id'   => $card_id]
+                );
+            } else {
+                $wpdb->insert("{$p}luna_card_cobros_meta", [
+                    'card_id'      => $card_id,
+                    'client_id'    => $client_id,
+                    'total_amount' => $total_amount,
+                ]);
+            }
+            wp_send_json_success();
+            break;
+
+        case 'add_payment':
+            $card_id = (int)($_POST['card_id'] ?? 0);
+            $amount  = (float)($_POST['amount'] ?? 0);
+            $date    = sanitize_text_field($_POST['payment_date'] ?? date('Y-m-d'));
+            $method  = sanitize_text_field($_POST['method'] ?? '');
+            $notes   = sanitize_textarea_field($_POST['notes'] ?? '');
+            if (!$card_id || $amount <= 0) { wp_send_json_error('Datos inválidos'); return; }
+
+            $wpdb->insert("{$p}luna_card_payments", [
+                'card_id'      => $card_id,
+                'amount'       => $amount,
+                'payment_date' => $date,
+                'method'       => $method,
+                'notes'        => $notes,
+                'created_by'   => (int)$session['user_id'],
+                'created_at'   => current_time('mysql'),
+            ]);
+            wp_send_json_success(['id' => $wpdb->insert_id]);
+            break;
+
+        case 'del_payment':
+            $id = (int)($_POST['id'] ?? 0);
+            if (!$id) { wp_send_json_error('id requerido'); return; }
+            $wpdb->delete("{$p}luna_card_payments", ['id' => $id]);
+            wp_send_json_success();
+            break;
+
+        case 'report':
+            $from      = sanitize_text_field($_POST['from'] ?? '');
+            $to        = sanitize_text_field($_POST['to'] ?? '');
+            $client_id = (int)($_POST['client_id'] ?? 0);
+
+            $sql = "SELECT p.id, p.amount, p.payment_date, p.method, p.notes,
+                           c.name AS client_name,
+                           t.title AS card_title,
+                           u.name  AS created_by_name
+                    FROM `{$p}luna_card_payments` p
+                    LEFT JOIN `{$p}luna_card_cobros_meta` m ON m.card_id = p.card_id
+                    LEFT JOIN `{$p}luna_clients` c ON c.id = m.client_id
+                    LEFT JOIN `{$p}tasks`         t ON t.id = p.card_id
+                    LEFT JOIN `{$p}users`         u ON u.id = p.created_by
+                    WHERE 1=1";
+            $args = [];
+            if ($from) { $sql .= " AND p.payment_date >= %s"; $args[] = $from; }
+            if ($to)   { $sql .= " AND p.payment_date <= %s"; $args[] = $to;   }
+            if ($client_id) { $sql .= " AND m.client_id = %d"; $args[] = $client_id; }
+            $sql .= " ORDER BY p.payment_date DESC, p.id DESC";
+
+            $rows = $args
+                ? $wpdb->get_results($wpdb->prepare($sql, $args), ARRAY_A)
+                : $wpdb->get_results($sql, ARRAY_A);
+
+            wp_send_json_success($rows ?: []);
+            break;
+
+        default:
+            wp_send_json_error('Acción desconocida');
+    }
 }

@@ -289,6 +289,16 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 .chi:focus{border-color:var(--acc)}
 .chs{width:34px;height:34px;border-radius:var(--r);background:var(--acc);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:.15s}
 .chs:hover{background:var(--acch)}
+.cob-item{display:flex;align-items:center;gap:10px;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:8px 12px;font-size:12px}
+.cob-amt{font-weight:700;color:var(--ok);min-width:70px}
+.cob-meta{flex:1;color:var(--t2)}
+.cob-del{background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:11px;padding:3px 5px;border-radius:4px}
+.cob-del:hover{color:var(--er)}
+.inf-table{width:100%;border-collapse:collapse;font-size:12px}
+.inf-table th{background:var(--surf);padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid var(--bdr)}
+.inf-table td{padding:8px 10px;border-bottom:1px solid var(--bdr);color:var(--t1)}
+.inf-table tr:last-child td{border-bottom:none}
+.inf-total-row td{font-weight:700;color:var(--ok);background:var(--surf)}
 .agrid{display:flex;flex-direction:column;gap:5px}
 .arow{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:var(--r);cursor:pointer;transition:.15s;border:1px solid transparent}
 .arow:hover{background:var(--hov)}.arow.on{background:var(--accg);border-color:rgba(91,106,240,.35)}
@@ -884,6 +894,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
     <div class="sep"></div>
     <button class="tbtn" onclick="toggleCalPanel()" title="Calendario"><i class="fas fa-calendar-alt"></i></button>
     <button class="tbtn" onclick="openMetrics()" title="Analítica"><i class="fas fa-chart-bar"></i></button>
+    <button class="tbtn" onclick="openInforme()" title="Cobranza y Cta Cte"><i class="fas fa-file-invoice-dollar"></i></button>
     <div class="notif-bell tbtn" onclick="toggleNotifPanel()" title="Notificaciones">
       <i class="fas fa-bell"></i>
       <span class="notif-badge" id="notif-badge">0</span>
@@ -1019,6 +1030,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
         <button class="cta" onclick="showCT('time',this)"><i class="fas fa-stopwatch"></i> Tiempo</button>
         <button class="cta" onclick="showCT('deps',this)"><i class="fas fa-project-diagram"></i> Deps</button>
         <button class="cta" onclick="showCT('cha',this)"><i class="fas fa-comment"></i> Chat <span id="chcnt" style="font-size:9px;background:var(--acc);color:#fff;padding:1px 5px;border-radius:99px;margin-left:3px;display:none"></span></button>
+        <button class="cta" onclick="showCT('cob',this)"><i class="fas fa-dollar-sign"></i> Cobranza</button>
       </div>
       <div class="tp on" id="tp-det">
         <!-- STATUS BAR - quick column change at top -->
@@ -1034,6 +1046,8 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
           <div class="fg"><label class="fl">Fecha inicio</label><input type="date" class="fi" id="cmstart"></div>
           <div class="fg"><label class="fl">Fecha limite</label><input type="date" class="fi" id="cmdue"></div>
           <div class="fg"><label class="fl">Estimacion (h)</label><input type="number" class="fi" id="cmest" min="0" step="0.5"></div>
+          <div class="fg"><label class="fl">Cliente</label><select class="fse" id="cm-client-sel"><option value="">Sin cliente</option></select></div>
+          <div class="fg"><label class="fl">Total a cobrar ($)</label><input type="number" class="fi" id="cm-total-amount" min="0" step="0.01" placeholder="0.00"></div>
         </div>
         <div class="fg">
           <label class="fl" style="display:flex;align-items:center;justify-content:space-between">
@@ -1085,7 +1099,45 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
         <!-- List of all tasks to select from -->
         <div id="dep-all-list" style="display:flex;flex-direction:column;gap:4px;max-height:340px;overflow-y:auto"></div>
       </div>
+      <div class="tp" id="tp-cob">
+        <div id="cob-summary" style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:12px 14px;margin-bottom:14px">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center">
+            <div><div style="font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:700;margin-bottom:4px">Total</div><div id="cob-total" style="font-size:16px;font-weight:700;color:var(--t1)">$0.00</div></div>
+            <div><div style="font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:700;margin-bottom:4px">Cobrado</div><div id="cob-cobrado" style="font-size:16px;font-weight:700;color:var(--ok)">$0.00</div></div>
+            <div><div style="font-size:10px;color:var(--t3);text-transform:uppercase;font-weight:700;margin-bottom:4px">Saldo</div><div id="cob-saldo" style="font-size:16px;font-weight:700;color:var(--wa)">$0.00</div></div>
+          </div>
+          <div style="margin-top:10px;background:var(--hov);border-radius:99px;height:6px;overflow:hidden"><div id="cob-prog" style="height:100%;background:var(--ok);border-radius:99px;transition:width .4s;width:0%"></div></div>
+        </div>
+        <div id="cob-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;max-height:200px;overflow-y:auto"></div>
+        <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:12px 14px">
+          <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.3px">Agregar cobro</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="fg"><label class="fl">Monto ($)</label><input type="number" class="fi" id="cob-amt" min="0" step="0.01" placeholder="0.00"></div>
+            <div class="fg"><label class="fl">Fecha</label><input type="date" class="fi" id="cob-date"></div>
+            <div class="fg" style="grid-column:1/-1"><label class="fl">Método</label><select class="fse" id="cob-method"><option value="">Sin especificar</option><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Cheque">Cheque</option><option value="Tarjeta">Tarjeta</option><option value="Otro">Otro</option></select></div>
+            <div class="fg" style="grid-column:1/-1"><label class="fl">Notas</label><input class="fi" id="cob-notes" placeholder="Notas opcionales..."></div>
+          </div>
+          <div style="display:flex;justify-content:flex-end"><button class="btn bp" onclick="addCobro()"><i class="fas fa-plus"></i> Registrar pago</button></div>
+        </div>
+      </div>
       <div class="mac"><button class="btn bd" id="cm-delbtn" onclick="delCard()"><i class="fas fa-trash"></i> Eliminar</button><button class="btn" onclick="closeCardM()">Cancelar</button><button class="btn bp" onclick="saveCard()"><i class="fas fa-check"></i> Guardar</button></div>
+    </div>
+  </div>
+  <!-- INFORME DE COBRANZA MODAL -->
+  <div class="mo" id="informeMo">
+    <div class="md lg">
+      <div class="mh"><h3><i class="fas fa-file-invoice-dollar" style="color:var(--acc)"></i> Cobranza y Cta Cte</h3><button class="mx" onclick="closeMo('informeMo')"><i class="fas fa-times"></i></button></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;margin-bottom:16px;align-items:flex-end">
+        <div class="fg" style="margin:0"><label class="fl">Desde</label><input type="date" class="fi" id="inf-from"></div>
+        <div class="fg" style="margin:0"><label class="fl">Hasta</label><input type="date" class="fi" id="inf-to"></div>
+        <div class="fg" style="margin:0"><label class="fl">Cliente</label><select class="fse" id="inf-client"><option value="">Todos los clientes</option></select></div>
+        <button class="btn bp" onclick="runInforme()" style="white-space:nowrap;height:38px"><i class="fas fa-search"></i> Filtrar</button>
+      </div>
+      <div id="inf-results"></div>
+      <div class="mac" id="inf-print-row" style="display:none">
+        <button class="btn" onclick="closeMo('informeMo')">Cerrar</button>
+        <button class="btn bp" onclick="printInforme()"><i class="fas fa-print"></i> Imprimir PDF</button>
+      </div>
     </div>
   </div>
   <!-- USER MODAL (admin only) -->
@@ -2150,6 +2202,8 @@ async function openCardM(cardId){
     // Stop previous timer interval
     if(timerInterval){clearInterval(timerInterval);timerInterval=null;}
     loadTimerData(cardId);
+    loadCardCobros(cardId);
+    const cd=document.getElementById('cob-date'); if(cd&&!cd.value) cd.value=new Date().toISOString().slice(0,10);
     showCT('det',document.querySelector('.cta'));
     openMo('cardMo');
   }catch(e){notify('Error abriendo tarjeta: '+e.message,'er')}
@@ -2158,6 +2212,7 @@ function closeCardM(){
   closeMo('cardMo');
   editCardId=null;editCardData=null;
   mChecklist=[];mDeps=[];
+  COB_DATA={meta:null,payments:[],cobrado:0};
   if(timerInterval){clearInterval(timerInterval);timerInterval=null;}
 }
 
@@ -2196,6 +2251,7 @@ async function saveCard(){
   };
   try{
     await _wsApi(`kanban.php?action=update_card&id=${editCardId}`,'PUT',body);
+    await saveCardCobros();
     // Update local state
     const idx=CARDS.findIndex(c=>c.id==editCardId);
     if(idx!==-1){Object.assign(CARDS[idx],{title,description:body.description,priority:body.priority,due_date:body.due_date,estimated:body.estimated,column_id:newColId,attachment_count:mAtts.length})}
@@ -4982,6 +5038,7 @@ async function showApp(){
   await loadBoard();
   await loadUsers();
   await loadGlobalLabels();
+  loadClients();
   applyRole();
   initTheme();
   detectOSDarkMode();
@@ -5721,6 +5778,201 @@ function setModalColor(color){
 function hexRgb(hex){ hex=hex.replace('#',''); if(hex.length===3) hex=hex.split('').map(x=>x+x).join(''); const n=parseInt(hex,16); return `${(n>>16)&255},${(n>>8)&255},${n&255}`; }
 function lighten(hex){ const[r,g,b]=hexRgb(hex).split(',').map(Number); return `rgb(${Math.min(255,r+30)},${Math.min(255,g+30)},${Math.min(255,b+30)})`; }
 
+// ── COBRANZA Y CTA CTE ────────────────────────────────────────────────────────
+let COB_CLIENTS = [];
+let COB_DATA    = { meta: null, payments: [], cobrado: 0 };
+let INF_DATA    = [];
+
+async function _cobAjax(sub, extra={}) {
+  const fd = new FormData();
+  fd.append('action', 'luna_cobros');
+  fd.append('sub',    sub);
+  Object.entries(extra).forEach(([k,v]) => fd.append(k, v));
+  const r = await fetch(window.LUNA_WP ? window.LUNA_WP.ajaxUrl : '/wp-admin/admin-ajax.php', { method:'POST', body:fd, credentials:'include' });
+  const j = await r.json();
+  if (!j.success) throw new Error(j.data || 'Error');
+  return j.data;
+}
+
+async function loadClients() {
+  try {
+    COB_CLIENTS = await _cobAjax('get_clients');
+    const sel = document.getElementById('cm-client-sel');
+    if (sel) {
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">Sin cliente</option>' +
+        COB_CLIENTS.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+      if (cur) sel.value = cur;
+    }
+    const isel = document.getElementById('inf-client');
+    if (isel) {
+      isel.innerHTML = '<option value="">Todos los clientes</option>' +
+        COB_CLIENTS.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    }
+  } catch(e) { /* sin clientes */ }
+}
+
+async function loadCardCobros(cardId) {
+  try {
+    COB_DATA = await _cobAjax('get_card_cobros', { card_id: cardId });
+  } catch(e) {
+    COB_DATA = { meta: null, payments: [], cobrado: 0 };
+  }
+  const sel = document.getElementById('cm-client-sel');
+  if (sel && COB_DATA.meta) sel.value = COB_DATA.meta.client_id || '';
+  const ta = document.getElementById('cm-total-amount');
+  if (ta && COB_DATA.meta) ta.value = COB_DATA.meta.total_amount || '';
+  renderCobros();
+}
+
+function fmtMoney(v) { return '$' + parseFloat(v||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+
+function renderCobros() {
+  const total   = parseFloat(document.getElementById('cm-total-amount')?.value || 0);
+  const cobrado = parseFloat(COB_DATA.cobrado || 0);
+  const saldo   = Math.max(0, total - cobrado);
+  const pct     = total > 0 ? Math.min(100, (cobrado / total) * 100) : 0;
+  document.getElementById('cob-total').textContent   = fmtMoney(total);
+  document.getElementById('cob-cobrado').textContent = fmtMoney(cobrado);
+  document.getElementById('cob-saldo').textContent   = fmtMoney(saldo);
+  document.getElementById('cob-prog').style.width    = pct.toFixed(1) + '%';
+  const list = document.getElementById('cob-list');
+  if (!list) return;
+  const pays = COB_DATA.payments || [];
+  if (!pays.length) {
+    list.innerHTML = '<p style="font-size:12px;color:var(--t3);text-align:center;padding:10px">Sin cobros registrados</p>';
+    return;
+  }
+  list.innerHTML = pays.map(p => `
+    <div class="cob-item">
+      <span class="cob-amt">${fmtMoney(p.amount)}</span>
+      <span class="cob-meta">${esc(p.payment_date||'')} ${p.method ? '· '+esc(p.method) : ''} ${p.created_by_name ? '· '+esc(p.created_by_name) : ''} ${p.notes ? '· '+esc(p.notes) : ''}</span>
+      <button class="cob-del" onclick="delCobro(${p.id})" title="Eliminar"><i class="fas fa-trash"></i></button>
+    </div>`).join('');
+}
+
+async function addCobro() {
+  const amt   = parseFloat(document.getElementById('cob-amt').value || 0);
+  const date  = document.getElementById('cob-date').value;
+  const meth  = document.getElementById('cob-method').value;
+  const notes = document.getElementById('cob-notes').value;
+  if (!amt || amt <= 0) { notify('Ingresá un monto válido', 'wa'); return; }
+  if (!date)            { notify('Seleccioná una fecha', 'wa'); return; }
+  try {
+    const r = await _cobAjax('add_payment', { card_id: editCardId, amount: amt, payment_date: date, method: meth, notes });
+    COB_DATA.payments.unshift({ id: r.id, amount: amt, payment_date: date, method: meth, notes, created_by_name: '' });
+    COB_DATA.cobrado = (parseFloat(COB_DATA.cobrado)||0) + amt;
+    document.getElementById('cob-amt').value   = '';
+    document.getElementById('cob-notes').value = '';
+    renderCobros();
+    notify('Cobro registrado', 'ok');
+  } catch(e) { notify('Error: ' + e.message, 'er'); }
+}
+
+async function delCobro(id) {
+  if (!confirm('¿Eliminar este cobro?')) return;
+  try {
+    await _cobAjax('del_payment', { id });
+    const p = COB_DATA.payments.find(x => x.id == id);
+    if (p) COB_DATA.cobrado = Math.max(0, (parseFloat(COB_DATA.cobrado)||0) - parseFloat(p.amount));
+    COB_DATA.payments = COB_DATA.payments.filter(x => x.id != id);
+    renderCobros();
+    notify('Cobro eliminado', 'ok');
+  } catch(e) { notify('Error: ' + e.message, 'er'); }
+}
+
+async function saveCardCobros() {
+  const clientId = document.getElementById('cm-client-sel')?.value || '';
+  const total    = document.getElementById('cm-total-amount')?.value || '0';
+  try {
+    await _cobAjax('save_card_meta', { card_id: editCardId, client_id: clientId, total_amount: total });
+  } catch(e) { /* no bloquear guardado */ }
+}
+
+function openInforme() {
+  if (COB_CLIENTS.length) {
+    const isel = document.getElementById('inf-client');
+    if (isel && isel.options.length <= 1) {
+      isel.innerHTML = '<option value="">Todos los clientes</option>' +
+        COB_CLIENTS.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    }
+  }
+  document.getElementById('inf-results').innerHTML = '';
+  document.getElementById('inf-print-row').style.display = 'none';
+  openMo('informeMo');
+}
+
+async function runInforme() {
+  const from     = document.getElementById('inf-from').value;
+  const to       = document.getElementById('inf-to').value;
+  const clientId = document.getElementById('inf-client').value;
+  const btn      = document.querySelector('#informeMo .btn.bp');
+  if (btn) btn.disabled = true;
+  try {
+    INF_DATA = await _cobAjax('report', { from, to, client_id: clientId });
+    renderInforme();
+  } catch(e) { notify('Error al generar informe: ' + e.message, 'er'); }
+  finally { if (btn) btn.disabled = false; }
+}
+
+function renderInforme() {
+  const el = document.getElementById('inf-results');
+  if (!INF_DATA.length) {
+    el.innerHTML = '<p style="text-align:center;color:var(--t3);padding:20px;font-size:13px">Sin resultados para los filtros seleccionados.</p>';
+    document.getElementById('inf-print-row').style.display = 'none';
+    return;
+  }
+  const total = INF_DATA.reduce((s, r) => s + parseFloat(r.amount||0), 0);
+  el.innerHTML = `<div style="overflow-x:auto"><table class="inf-table">
+    <thead><tr><th>Fecha</th><th>Cliente</th><th>Tarea</th><th>Método</th><th>Monto</th><th>Notas</th></tr></thead>
+    <tbody>${INF_DATA.map(r=>`<tr>
+      <td>${esc(r.payment_date||'')}</td>
+      <td>${esc(r.client_name||'—')}</td>
+      <td>${esc(r.card_title||'—')}</td>
+      <td>${esc(r.method||'—')}</td>
+      <td style="font-weight:700;color:var(--ok)">${fmtMoney(r.amount)}</td>
+      <td>${esc(r.notes||'')}</td>
+    </tr>`).join('')}</tbody>
+    <tfoot><tr class="inf-total-row"><td colspan="4">TOTAL</td><td>${fmtMoney(total)}</td><td></td></tr></tfoot>
+  </table></div>`;
+  document.getElementById('inf-print-row').style.display = 'flex';
+}
+
+function printInforme() {
+  const from     = document.getElementById('inf-from').value || '—';
+  const to       = document.getElementById('inf-to').value   || '—';
+  const clientEl = document.getElementById('inf-client');
+  const clientTxt = clientEl.options[clientEl.selectedIndex]?.text || 'Todos';
+  const total = INF_DATA.reduce((s,r)=>s+parseFloat(r.amount||0),0);
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cobranza y Cta Cte</title><style>
+    body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:20px}
+    h2{font-size:16px;margin-bottom:4px}
+    .sub{color:#666;font-size:11px;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse}
+    th{background:#f0f0f0;padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.3px;border-bottom:2px solid #ccc}
+    td{padding:6px 8px;border-bottom:1px solid #eee}
+    .tot{font-weight:700;background:#f9f9f9}
+    @media print{button{display:none}}
+  </style></head><body>
+  <h2>Cobranza y Cta Cte</h2>
+  <div class="sub">Período: ${from} al ${to} &nbsp;·&nbsp; Cliente: ${clientTxt}</div>
+  <table>
+    <thead><tr><th>Fecha</th><th>Cliente</th><th>Tarea</th><th>Método</th><th>Monto</th><th>Notas</th></tr></thead>
+    <tbody>${INF_DATA.map(r=>`<tr>
+      <td>${r.payment_date||''}</td>
+      <td>${r.client_name||'—'}</td>
+      <td>${r.card_title||'—'}</td>
+      <td>${r.method||'—'}</td>
+      <td>$${parseFloat(r.amount||0).toFixed(2)}</td>
+      <td>${r.notes||''}</td>
+    </tr>`).join('')}</tbody>
+    <tfoot><tr class="tot"><td colspan="4">TOTAL</td><td>$${total.toFixed(2)}</td><td></td></tr></tfoot>
+  </table>
+  <script>setTimeout(()=>window.print(),400)<\/script>
+  </body></html>`);
+  w.document.close();
+}
 
 
 </script>

@@ -351,6 +351,24 @@ class Luna_Activator {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
         // Vínculo cliente ↔ pizarra (opcional)
         self::add_column_if_missing($wpdb, "{$p}luna_workspaces", 'client_id', "INT DEFAULT NULL");
+        // Cobros por tarjeta kanban
+        $wpdb->query("CREATE TABLE IF NOT EXISTS `{$p}luna_card_payments` (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            card_id INT NOT NULL,
+            amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+            payment_date DATE NOT NULL,
+            method VARCHAR(50) DEFAULT '',
+            notes TEXT DEFAULT '',
+            created_by INT DEFAULT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX(card_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $wpdb->query("CREATE TABLE IF NOT EXISTS `{$p}luna_card_cobros_meta` (
+            card_id INT NOT NULL PRIMARY KEY,
+            client_id INT DEFAULT NULL,
+            total_amount DECIMAL(10,2) DEFAULT 0.00,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 
     // ── Initial data ─────────────────────────────────────────────────────────
