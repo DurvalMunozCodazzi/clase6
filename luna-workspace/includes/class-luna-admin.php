@@ -3067,9 +3067,9 @@ class Luna_Admin {
                 var firstCols = parseLine(lines[0]);
                 var start = /nombre|razon|dominio|domain|vencimiento|abonado|cobrar|costo|name|date/i.test(firstCols.join(',')) ? 1 : 0;
 
-                // Formato del CSV del usuario:
-                // col[0]=nombre/razón social  col[1]=dominio  col[2]=fecha(DD/M)
-                // col[3]=abonado(SI/-)  col[4]=estado(PAGO/DEBE)  col[5]=monto (opcional)
+                // Formato del CSV:
+                // col[0]=nombre/razón social  col[1]=dominio  col[2]=Vencimiento(DD/M o "abonado")
+                // col[3]=ABONADO(SI/-)  col[4]=A COBRAR(SI/NO)  col[5]=monto (opcional, legado)
                 var rows = [];
                 for (var i = start; i < lines.length; i++) {
                     var cols = parseLine(lines[i]);
@@ -3077,14 +3077,20 @@ class Luna_Admin {
                     if (!name) continue;
                     var isSub = (cols[3] || '').toUpperCase() === 'SI';
                     var dateStr = cols[2] || '';
+                    var dateIsText = /abonado|mensual|anual/i.test(dateStr);
+                    // A COBRAR: SI → DEBE (pendiente de cobro); NO → PAGO
+                    // También acepta el formato legado PAGO/DEBE directamente
+                    var col4 = (cols[4] || '').toUpperCase();
+                    var aCobrar = (col4 === 'SI' || col4 === 'DEBE');
                     rows.push({
                         name:            name,
                         domain:          cols[1] || '',
-                        renewal_date:    toIsoDate(dateStr),
+                        renewal_date:    dateIsText ? '' : toIsoDate(dateStr),
                         is_subscription: isSub ? '1' : '0',
-                        billing_day:     isSub ? toDay(dateStr) : '',
-                        notes:           cols[4] || '',
+                        billing_day:     (isSub && !dateIsText) ? toDay(dateStr) : '',
+                        notes:           aCobrar ? 'DEBE' : 'PAGO',
                         renewal_amount:  toAmount(cols[5] || ''),
+                        a_cobrar:        aCobrar ? '1' : '0',
                     });
                 }
                 if (!rows.length) return;
@@ -3097,6 +3103,7 @@ class Luna_Admin {
                 }, function(r){
                     if (r.success) {
                         var msg = '✓ Nuevos: ' + r.data.imported + ' · Actualizados: ' + r.data.updated;
+                        if (r.data.payments) msg += ' · Cobros creados: ' + r.data.payments;
                         if (r.data.errors) msg += ' · Errores: ' + r.data.errors;
                         $msg.css({background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534'}).text(msg);
                         loadClients();
@@ -3344,41 +3351,77 @@ class Luna_Admin {
             if (!$exists) $wpdb->query("ALTER TABLE `{$table}` ADD COLUMN {$col} {$def}");
         }
 
-        $imported = 0; $updated = 0; $errors = 0;
-        $seen = [];
+        $imported = 0; $updated = 0; $errors = 0; $payments_created = 0;
+        $pay_table = "{$p}payments";
         foreach ($rows as $row) {
             $name = sanitize_text_field($row['name'] ?? '');
             if (!$name) continue;
 
-            $rd  = !empty($row['renewal_date']) ? sanitize_text_field($row['renewal_date']) : null;
-            $ra  = strlen($row['renewal_amount'] ?? '') ? (float)preg_replace('/[^0-9.]/', '', $row['renewal_amount']) : null;
-            $sub = !empty($row['is_subscription']) && in_array(strtolower($row['is_subscription']), ['1','si','sí','yes','true','abonado']) ? 1 : 0;
-            $bd  = !empty($row['billing_day']) ? min(31, max(1, (int)$row['billing_day'])) : null;
+            $rd       = !empty($row['renewal_date']) ? sanitize_text_field($row['renewal_date']) : null;
+            $ra       = strlen($row['renewal_amount'] ?? '') ? (float)preg_replace('/[^0-9.]/', '', $row['renewal_amount']) : null;
+            $sub      = !empty($row['is_subscription']) && in_array(strtolower($row['is_subscription']), ['1','si','sí','yes','true','abonado']) ? 1 : 0;
+            $bd       = !empty($row['billing_day']) ? min(31, max(1, (int)$row['billing_day'])) : null;
+            $a_cobrar = !empty($row['a_cobrar']) && $row['a_cobrar'] === '1';
 
             $data = [
-                'domain'          => sanitize_text_field($row['domain']  ?? ''),
-                'notes'           => sanitize_text_field($row['notes']   ?? ''),
-                'active'          => 1,
-                'updated_at'      => $now,
+                'domain'     => sanitize_text_field($row['domain'] ?? ''),
+                'notes'      => sanitize_text_field($row['notes']  ?? ''),
+                'active'     => 1,
+                'updated_at' => $now,
             ];
-            if ($rd !== null)  $data['renewal_date']    = $rd;
-            if ($ra !== null)  $data['renewal_amount']  = $ra;
-            // Solo sobreescribir is_subscription/billing_day si el CSV lo marca como SI
-            if ($sub)          { $data['is_subscription'] = 1; $data['billing_day'] = $bd; }
+            if ($rd !== null)  $data['renewal_date']   = $rd;
+            if ($ra !== null)  $data['renewal_amount'] = $ra;
+            if ($sub) {
+                $data['is_subscription'] = 1;
+                $data['billing_day']     = $bd;
+                $data['subscription_type'] = 'mensual';
+            }
 
-            $exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM `{$table}` WHERE name = %s LIMIT 1", $name));
+            $exists    = $wpdb->get_var($wpdb->prepare("SELECT id FROM `{$table}` WHERE name = %s LIMIT 1", $name));
+            $client_id = 0;
             if ($exists) {
                 $res = $wpdb->update($table, $data, ['name' => $name]);
                 $res !== false ? $updated++ : $errors++;
+                $client_id = (int)$exists;
             } else {
-                $data['name']       = $name;
-                $data['created_at'] = $now;
-                if (!$sub) { $data['is_subscription'] = 0; }
+                $data['name']            = $name;
+                $data['created_at']      = $now;
+                if (!$sub) $data['is_subscription'] = 0;
                 $res = $wpdb->insert($table, $data);
                 $res ? $imported++ : $errors++;
+                $client_id = (int)$wpdb->insert_id;
+            }
+
+            // Crear registro de pago pendiente si A COBRAR = SI y hay fecha de vencimiento
+            if ($a_cobrar && $rd && $client_id) {
+                // Usar el monto del CSV; si no viene, buscarlo en la BD del cliente
+                $ra_val = ($ra !== null) ? $ra : (float)$wpdb->get_var(
+                    $wpdb->prepare("SELECT renewal_amount FROM `{$table}` WHERE id=%d", $client_id)
+                );
+                if ($ra_val > 0) {
+                    $pay_exists = $wpdb->get_var($wpdb->prepare(
+                        "SELECT id FROM `{$pay_table}` WHERE client_id=%d AND due_date=%s LIMIT 1",
+                        $client_id, $rd
+                    ));
+                    if (!$pay_exists) {
+                        $domain_val = sanitize_text_field($row['domain'] ?? '') ?: $name;
+                        $wpdb->insert($pay_table, [
+                            'client_id'  => $client_id,
+                            'concept'    => 'Renovación — ' . $domain_val,
+                            'amount'     => $ra_val,
+                            'currency'   => 'ARS',
+                            'due_date'   => $rd,
+                            'status'     => 'pending',
+                            'method'     => 'Transferencia',
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ]);
+                        $payments_created++;
+                    }
+                }
             }
         }
-        wp_send_json_success(['imported' => $imported, 'updated' => $updated, 'errors' => $errors]);
+        wp_send_json_success(['imported' => $imported, 'updated' => $updated, 'errors' => $errors, 'payments' => $payments_created]);
     }
 
     // ── AJAX: delete client ───────────────────────────────────────────────────
