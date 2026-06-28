@@ -2702,35 +2702,70 @@ class Luna_Admin {
         function fmt(n){ return parseFloat(n||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
         // ── CLIENTS TABLE ─────────────────────────────────────
+        var clientsData = [], sortCol = 'name', sortDir = 1;
+
+        function renderClients() {
+            if (!clientsData.length) { $('#lc-clients-wrap').html('<p class="lc-empty">Sin clientes aún. Creá el primero con el botón de arriba.</p>'); return; }
+            var sorted = clientsData.slice().sort(function(a, b) {
+                var va = a[sortCol] || '', vb = b[sortCol] || '';
+                if (sortCol === 'renewal_date') {
+                    va = va || '9999-99-99'; vb = vb || '9999-99-99';
+                } else if (sortCol === 'renewal_amount') {
+                    return (parseFloat(va||0) - parseFloat(vb||0)) * sortDir;
+                }
+                return va.toString().localeCompare(vb.toString(), 'es') * sortDir;
+            });
+
+            function th(label, col) {
+                var arrow = sortCol===col ? (sortDir===1?' ▲':' ▼') : ' ⇅';
+                return '<th style="cursor:pointer;user-select:none" data-col="'+col+'">'+label+'<span style="color:#94a3b8;font-size:10px">'+arrow+'</span></th>';
+            }
+
+            var h = '<table class="lc-table"><thead><tr>'
+                + th('Nombre / Razón social','name')
+                + th('Dominio','domain')
+                + th('Vencimiento','renewal_date')
+                + th('Monto','renewal_amount')
+                + '<th>Email</th><th>Teléfono</th><th>Acciones</th>'
+                + '</tr></thead><tbody>';
+
+            sorted.forEach(function(c){
+                var isSub = parseInt(c.is_subscription, 10) === 1;
+                var rd = '—';
+                if (c.renewal_date) {
+                    var p = c.renewal_date.split('-');
+                    rd = p.length === 3 ? p[2]+'/'+p[1]+'/'+p[0] : c.renewal_date;
+                }
+                var ra = c.renewal_amount && parseFloat(c.renewal_amount) > 0 ? '$'+fmt(c.renewal_amount) : '—';
+                h += '<tr>';
+                h += '<td><strong>'+esc(c.name)+'</strong>'+(isSub?'<br><span style="font-size:11px;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px">🔄 Abonado · Día '+esc(c.billing_day)+'</span>':'')+(c.notes?'<br><small style="color:'+(c.notes==='DEBE'?'#ef4444':'#16a34a')+'">'+esc(c.notes)+'</small>':'')+'</td>';
+                h += '<td>'+(c.domain?'<a href="https://'+esc(c.domain)+'" target="_blank" style="font-size:12px">'+esc(c.domain)+'</a>':'—')+'</td>';
+                h += '<td style="white-space:nowrap">'+rd+'</td>';
+                h += '<td style="white-space:nowrap;font-weight:600">'+ra+'</td>';
+                h += '<td>'+(c.email?'<a href="mailto:'+esc(c.email)+'">'+esc(c.email)+'</a>':'—')+'</td>';
+                h += '<td>'+(c.phone||'—')+'</td>';
+                h += '<td style="white-space:nowrap">';
+                h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-edit-client" data-id="'+c.id+'" style="margin-right:4px">✏️ Editar</button>';
+                h += '<button class="lc-btn lc-btn-sm lc-btn-green lc-view-payments" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:4px">💰 Pagos</button>';
+                h += '<button class="lc-btn lc-btn-sm lc-btn-danger lc-delete-client" data-id="'+c.id+'">🗑</button>';
+                h += '</td></tr>';
+            });
+            h += '</tbody></table>';
+            $('#lc-clients-wrap').html(h);
+
+            // Clic en encabezado para ordenar
+            $('#lc-clients-wrap thead th[data-col]').on('click', function(){
+                var col = $(this).data('col');
+                if (sortCol === col) { sortDir *= -1; } else { sortCol = col; sortDir = 1; }
+                renderClients();
+            });
+        }
+
         function loadClients() {
             $.post(ajaxUrl, {action:'luna_list_clients', nonce}, function(r) {
                 if (!r.success) { $('#lc-clients-wrap').html('<p class="lc-empty">Error al cargar.</p>'); return; }
-                var rows = r.data;
-                if (!rows.length) { $('#lc-clients-wrap').html('<p class="lc-empty">Sin clientes aún. Creá el primero con el botón de arriba.</p>'); return; }
-                var h = '<table class="lc-table"><thead><tr><th>Nombre / Razón social</th><th>Dominio</th><th>Vencimiento</th><th>Monto</th><th>Email</th><th>Teléfono</th><th>Acciones</th></tr></thead><tbody>';
-                rows.forEach(function(c){
-                    var isSub = parseInt(c.is_subscription, 10) === 1;
-                    var rd = '—';
-                    if (c.renewal_date) {
-                        var p = c.renewal_date.split('-');
-                        rd = p.length === 3 ? p[2]+'/'+p[1]+'/'+p[0] : c.renewal_date;
-                    }
-                    var ra = c.renewal_amount && parseFloat(c.renewal_amount) > 0 ? '$'+fmt(c.renewal_amount) : '—';
-                    h += '<tr>';
-                    h += '<td><strong>'+esc(c.name)+'</strong>'+(isSub?'<br><span style="font-size:11px;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px">🔄 Abonado · Día '+esc(c.billing_day)+'</span>':'')+(c.notes?'<br><small style="color:'+(c.notes==='DEBE'?'#ef4444':'#16a34a')+'">'+esc(c.notes)+'</small>':'')+'</td>';
-                    h += '<td>'+(c.domain?'<a href="https://'+esc(c.domain)+'" target="_blank" style="font-size:12px">'+esc(c.domain)+'</a>':'—')+'</td>';
-                    h += '<td style="white-space:nowrap">'+rd+'</td>';
-                    h += '<td style="white-space:nowrap;font-weight:600">'+ra+'</td>';
-                    h += '<td>'+(c.email?'<a href="mailto:'+esc(c.email)+'">'+esc(c.email)+'</a>':'—')+'</td>';
-                    h += '<td>'+(c.phone||'—')+'</td>';
-                    h += '<td style="white-space:nowrap">';
-                    h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-edit-client" data-id="'+c.id+'" style="margin-right:4px">✏️ Editar</button>';
-                    h += '<button class="lc-btn lc-btn-sm lc-btn-green lc-view-payments" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:4px">💰 Pagos</button>';
-                    h += '<button class="lc-btn lc-btn-sm lc-btn-danger lc-delete-client" data-id="'+c.id+'">🗑</button>';
-                    h += '</td></tr>';
-                });
-                h += '</tbody></table>';
-                $('#lc-clients-wrap').html(h);
+                clientsData = r.data;
+                renderClients();
             });
         }
 
