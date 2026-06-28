@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Luna Workspace
  * Plugin URI:        https://websobreruedas.com
- * Description:       Pizarra Colaborativa, gestión de tareas, equipos y proyectos. Versión 11.1.22 | Por Web Sobre Ruedas | 2026 | websobreruedas.com
- * Version:           11.1.22
+ * Description:       Pizarra Colaborativa, gestión de tareas, equipos y proyectos. Versión 11.1.23 | Por Web Sobre Ruedas | 2026 | websobreruedas.com
+ * Version:           11.1.23
  * Author:            Web Sobre Ruedas
  * License:           Proprietary
  * Text Domain:       luna-workspace
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('LUNA_VERSION',     '11.1.22');
+define('LUNA_VERSION',     '11.1.23');
 define('LUNA_PLUGIN_DIR',  plugin_dir_path(__FILE__));
 define('LUNA_PLUGIN_URL',  plugin_dir_url(__FILE__));
 define('LUNA_APP_DIR',     LUNA_PLUGIN_DIR . 'app/');
@@ -302,54 +302,91 @@ function luna_run_daily_billing_check() {
     global $wpdb;
     $p = $wpdb->prefix . 'luna_';
 
-    $today_day = (int) date('j'); // día del mes sin cero (1-31)
-
-    $clients = $wpdb->get_results( $wpdb->prepare(
-        "SELECT id, name, domain, renewal_amount
-         FROM `{$p}luna_clients`
-         WHERE is_subscription = 1 AND billing_day = %d AND active = 1
-         ORDER BY name",
-        $today_day
-    ), ARRAY_A );
-
-    if ( empty( $clients ) ) return;
-
-    $fecha = date('d/m/Y');
-    $lines = [];
-    $total = 0;
-    foreach ( $clients as $c ) {
-        $monto  = '$' . number_format( (float)$c['renewal_amount'], 0, ',', '.' );
-        $domain = $c['domain'] ? " ({$c['domain']})" : '';
-        $lines[] = "• {$c['name']}{$domain} — {$monto}";
-        $total  += (float) $c['renewal_amount'];
-    }
-    $resumen   = implode( "\n", $lines );
-    $total_fmt = '$' . number_format( $total, 0, ',', '.' );
-    $cantidad  = count( $clients );
-
-    $titulo_wa  = "🔔 Cobranzas del {$fecha} ({$cantidad} cliente" . ($cantidad > 1 ? 's' : '') . ")";
-    $msg_wa     = "{$titulo_wa}\n\n{$resumen}\n\nTotal del día: {$total_fmt}";
-
-    // ── Email al admin de WordPress ───────────────────────────────────────────
     $admin_email = get_option('admin_email');
     $site_name   = get_bloginfo('name');
-    $body_email  = "Recordatorio de cobranzas — {$fecha}\n\n{$resumen}\n\nTotal del día: {$total_fmt}\n\nGenerado por Luna Workspace.";
-    wp_mail( $admin_email, "[{$site_name}] Cobranzas de hoy — {$fecha}", $body_email );
+    $fecha       = date('d/m/Y');
 
-    // ── WhatsApp vía admin Luna con CallMeBot configurado ─────────────────────
+    // ── WhatsApp admin (se reutiliza abajo) ───────────────────────────────────
     $admin_wa = $wpdb->get_row(
         "SELECT phone, whatsapp_apikey FROM `{$p}users`
          WHERE role='admin' AND active=1 AND phone != '' AND whatsapp_apikey != ''
          ORDER BY id LIMIT 1",
         ARRAY_A
     );
-    if ( $admin_wa ) {
-        $url = 'https://api.callmebot.com/whatsapp.php?' . http_build_query([
-            'phone'  => $admin_wa['phone'],
-            'text'   => $msg_wa,
-            'apikey' => $admin_wa['whatsapp_apikey'],
-        ]);
-        wp_remote_get( $url, ['timeout' => 15, 'blocking' => false] );
+
+    // ── 1. Abonos con billing_day = hoy ──────────────────────────────────────
+    $today_day = (int) date('j');
+    $clients = $wpdb->get_results( $wpdb->prepare(
+        "SELECT id, name, domain, renewal_amount
+         FROM `{$p}clients`
+         WHERE is_subscription = 1 AND billing_day = %d AND active = 1
+         ORDER BY name",
+        $today_day
+    ), ARRAY_A );
+
+    if ( ! empty( $clients ) ) {
+        $lines = [];
+        $total = 0;
+        foreach ( $clients as $c ) {
+            $monto   = '$' . number_format( (float)$c['renewal_amount'], 0, ',', '.' );
+            $domain  = $c['domain'] ? " ({$c['domain']})" : '';
+            $lines[] = "• {$c['name']}{$domain} — {$monto}";
+            $total  += (float) $c['renewal_amount'];
+        }
+        $resumen    = implode( "\n", $lines );
+        $total_fmt  = '$' . number_format( $total, 0, ',', '.' );
+        $cantidad   = count( $clients );
+        $titulo_wa  = "🔔 Cobranzas del {$fecha} ({$cantidad} cliente" . ($cantidad > 1 ? 's' : '') . ")";
+        $msg_wa     = "{$titulo_wa}\n\n{$resumen}\n\nTotal del día: {$total_fmt}";
+
+        wp_mail( $admin_email, "[{$site_name}] Cobranzas de hoy — {$fecha}",
+            "Recordatorio de cobranzas — {$fecha}\n\n{$resumen}\n\nTotal del día: {$total_fmt}\n\nGenerado por Luna Workspace." );
+
+        if ( $admin_wa ) {
+            wp_remote_get( 'https://api.callmebot.com/whatsapp.php?' . http_build_query([
+                'phone'  => $admin_wa['phone'],
+                'text'   => $msg_wa,
+                'apikey' => $admin_wa['whatsapp_apikey'],
+            ]), ['timeout' => 15, 'blocking' => false] );
+        }
+    }
+
+    // ── 2. Vencimientos próximos (clientes no abonados) ───────────────────────
+    $days_ahead  = (int) get_option('luna_renewal_reminder_days', 7);
+    $target_date = date('Y-m-d', strtotime("+{$days_ahead} days"));
+    $upcoming    = $wpdb->get_results( $wpdb->prepare(
+        "SELECT id, name, domain, renewal_date, renewal_amount
+         FROM `{$p}clients`
+         WHERE is_subscription = 0 AND renewal_date = %s AND active = 1
+         ORDER BY name",
+        $target_date
+    ), ARRAY_A );
+
+    if ( ! empty( $upcoming ) ) {
+        $fecha_venc = date('d/m/Y', strtotime($target_date));
+        $up_lines   = [];
+        $up_total   = 0;
+        foreach ( $upcoming as $c ) {
+            $monto      = '$' . number_format( (float)$c['renewal_amount'], 0, ',', '.' );
+            $domain     = $c['domain'] ? " ({$c['domain']})" : '';
+            $up_lines[] = "• {$c['name']}{$domain} — Vence: {$fecha_venc} — {$monto}";
+            $up_total  += (float) $c['renewal_amount'];
+        }
+        $up_resumen   = implode( "\n", $up_lines );
+        $up_total_fmt = '$' . number_format( $up_total, 0, ',', '.' );
+        $up_cant      = count( $upcoming );
+        $titulo_up    = "⚠️ Vencimientos en {$days_ahead} días ({$up_cant} cliente" . ($up_cant > 1 ? 's' : '') . ")";
+
+        wp_mail( $admin_email, "[{$site_name}] Vencimientos próximos — {$fecha_venc}",
+            "Vencimientos en {$days_ahead} días ({$fecha_venc})\n\n{$up_resumen}\n\nTotal: {$up_total_fmt}\n\nGenerado por Luna Workspace." );
+
+        if ( $admin_wa ) {
+            wp_remote_get( 'https://api.callmebot.com/whatsapp.php?' . http_build_query([
+                'phone'  => $admin_wa['phone'],
+                'text'   => "{$titulo_up}\n\n{$up_resumen}\n\nTotal: {$up_total_fmt}",
+                'apikey' => $admin_wa['whatsapp_apikey'],
+            ]), ['timeout' => 15, 'blocking' => false] );
+        }
     }
 }
 

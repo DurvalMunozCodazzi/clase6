@@ -27,9 +27,10 @@ class Luna_Admin {
         add_action('wp_ajax_luna_save_client',     [$this, 'ajax_save_client']);
         add_action('wp_ajax_luna_delete_client',   [$this, 'ajax_delete_client']);
         add_action('wp_ajax_luna_import_clients',  [$this, 'ajax_import_clients']);
-        add_action('wp_ajax_luna_list_payments',  [$this, 'ajax_list_payments']);
-        add_action('wp_ajax_luna_save_payment',   [$this, 'ajax_save_payment']);
-        add_action('wp_ajax_luna_delete_payment', [$this, 'ajax_delete_payment']);
+        add_action('wp_ajax_luna_list_payments',   [$this, 'ajax_list_payments']);
+        add_action('wp_ajax_luna_save_payment',    [$this, 'ajax_save_payment']);
+        add_action('wp_ajax_luna_delete_payment',  [$this, 'ajax_delete_payment']);
+        add_action('wp_ajax_luna_report_payments', [$this, 'ajax_report_payments']);
     }
 
     public function show_db_diagnostic() {
@@ -2505,6 +2506,7 @@ class Luna_Admin {
         <div class="lc-header">
             <div class="lc-title">👥 Clientes</div>
             <div style="display:flex;gap:8px">
+                <button class="lc-btn lc-btn-ghost" id="lc-btn-informe" style="font-size:12px">📊 Informe</button>
                 <button class="lc-btn lc-btn-ghost" id="lc-btn-import-csv" style="font-size:12px">📥 Importar CSV</button>
                 <input type="file" id="lc-csv-file" accept=".csv" style="display:none">
                 <button class="lc-btn" id="lc-btn-new-client">+ Nuevo cliente</button>
@@ -2674,9 +2676,41 @@ class Luna_Admin {
                         <label>Notas</label>
                         <textarea id="lc-p-notes" placeholder="Observaciones adicionales..."></textarea>
                     </div>
+                    <div class="lc-fg" style="grid-column:1/-1" id="lc-p-installments-row">
+                        <label>Dividir en cuotas <small style="color:#94a3b8;font-weight:normal">(solo para pagos nuevos)</small></label>
+                        <div style="display:flex;align-items:center;gap:16px;margin-top:4px">
+                            <label style="font-weight:normal;display:flex;align-items:center;gap:4px"><input type="radio" name="lc-p-inst-type" value="1" checked> Pago único</label>
+                            <label style="font-weight:normal;display:flex;align-items:center;gap:4px"><input type="radio" name="lc-p-inst-type" value="n"> En cuotas</label>
+                            <input type="number" id="lc-p-inst-n" min="2" max="24" value="2" style="width:70px;display:none" placeholder="N cuotas">
+                        </div>
+                    </div>
                 </div>
                 <button class="lc-submit" id="lc-submit-payment">Guardar</button>
                 <p class="lc-msg" id="lc-payment-msg"></p>
+            </div>
+        </div>
+
+        <!-- Modal: Informe de caja -->
+        <div class="lc-overlay" id="lc-modal-informe">
+            <div class="lc-modal" style="max-width:820px">
+                <button class="lc-close" id="lc-close-informe">×</button>
+                <h3>📊 Informe de Caja</h3>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
+                    <div class="lc-fg" style="flex:1;min-width:130px">
+                        <label>Desde</label>
+                        <input type="date" id="lc-inf-from">
+                    </div>
+                    <div class="lc-fg" style="flex:1;min-width:130px">
+                        <label>Hasta</label>
+                        <input type="date" id="lc-inf-to">
+                    </div>
+                    <div class="lc-fg" style="flex:2;min-width:180px">
+                        <label>Cliente</label>
+                        <select id="lc-inf-client"><option value="">— Todos —</option></select>
+                    </div>
+                    <button class="lc-btn" id="lc-btn-run-informe" style="margin-bottom:2px">Ver informe</button>
+                </div>
+                <div id="lc-informe-result"></div>
             </div>
         </div>
 
@@ -2732,7 +2766,7 @@ class Luna_Admin {
                 + th('Dominio','domain')
                 + th('Vencimiento','renewal_date')
                 + th('Monto','renewal_amount')
-                + '<th>Email</th><th>Teléfono</th><th>Acciones</th>'
+                + '<th>Saldo</th><th>Email</th><th>Teléfono</th><th>Acciones</th>'
                 + '</tr></thead><tbody>';
 
             sorted.forEach(function(c){
@@ -2746,11 +2780,20 @@ class Luna_Admin {
                 var subBadge = '';
                 if (subType === 'mensual') subBadge = '<br><span style="font-size:11px;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px">🔄 Mensual · Día '+esc(c.billing_day)+'</span>';
                 if (subType === 'anual')   subBadge = '<br><span style="font-size:11px;background:#ede9fe;color:#6d28d9;padding:1px 6px;border-radius:10px">📅 Anual · '+rd+'</span>';
+                var totalPending = parseFloat(c.total_pending || 0);
+                var totalPaid    = parseFloat(c.total_paid    || 0);
+                var saldoHtml = '—';
+                if (totalPending > 0) {
+                    saldoHtml = '<span style="color:#ef4444;font-weight:700">Debe $'+fmt(totalPending)+'</span>';
+                } else if (totalPaid > 0) {
+                    saldoHtml = '<span style="color:#16a34a;font-size:12px">✓ Al día</span>';
+                }
                 h += '<tr>';
                 h += '<td><strong>'+esc(c.name)+'</strong>'+subBadge+(c.notes?'<br><small style="color:'+(c.notes==='DEBE'?'#ef4444':'#16a34a')+'">'+esc(c.notes)+'</small>':'')+'</td>';
                 h += '<td>'+(c.domain?'<a href="https://'+esc(c.domain)+'" target="_blank" style="font-size:12px">'+esc(c.domain)+'</a>':'—')+'</td>';
                 h += '<td style="white-space:nowrap">'+rd+'</td>';
                 h += '<td style="white-space:nowrap;font-weight:600">'+ra+'</td>';
+                h += '<td style="white-space:nowrap">'+saldoHtml+'</td>';
                 h += '<td>'+(c.email?'<a href="mailto:'+esc(c.email)+'">'+esc(c.email)+'</a>':'—')+'</td>';
                 h += '<td>'+(c.phone||'—')+'</td>';
                 h += '<td style="white-space:nowrap">';
@@ -2914,6 +2957,10 @@ class Luna_Admin {
             $('#lc-p-invoice').val(data ? data.invoice_number : '');
             $('#lc-p-workspace').val(data ? (data.workspace_id||'') : '');
             $('#lc-p-notes').val(data ? data.notes : '');
+            // Cuotas: solo disponible en nuevos pagos
+            $('input[name=lc-p-inst-type][value=1]').prop('checked', true);
+            $('#lc-p-inst-n').hide().val(2);
+            $('#lc-p-installments-row').toggle(!data);
             $('#lc-payment-modal-title').text(data ? 'Editar pago' : 'Nuevo pago / trabajo');
             $('#lc-payment-msg').text('').removeClass('ok err');
             $('#lc-modal-payment').addClass('open');
@@ -2922,6 +2969,54 @@ class Luna_Admin {
         // ── EVENTS ───────────────────────────────────────────
         $('#lc-btn-new-client').on('click', function(){ openClientModal(null); });
         $('#lc-c-subscription').on('change', function(){ $('#lc-billing-day-row').toggle($(this).val() === 'mensual'); });
+
+        // Cuotas: mostrar/ocultar campo N
+        $(document).on('change', 'input[name=lc-p-inst-type]', function(){
+            $('#lc-p-inst-n').toggle($(this).val() === 'n');
+        });
+
+        // Informe de caja
+        $('#lc-btn-informe').on('click', function(){
+            var sel = $('#lc-inf-client');
+            sel.find('option:not(:first)').remove();
+            clientsData.forEach(function(c){ sel.append('<option value="'+c.id+'">'+esc(c.name)+'</option>'); });
+            var now = new Date();
+            var y = now.getFullYear(), m = now.getMonth()+1;
+            var from = y+'-'+String(m).padStart(2,'0')+'-01';
+            var to   = y+'-'+String(m).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+            $('#lc-inf-from').val(from);
+            $('#lc-inf-to').val(to);
+            $('#lc-informe-result').html('');
+            $('#lc-modal-informe').addClass('open');
+        });
+        $('#lc-close-informe, #lc-modal-informe').on('click', function(e){ if(e.target===this) $('#lc-modal-informe').removeClass('open'); });
+        $('#lc-btn-run-informe').on('click', function(){
+            var from = $('#lc-inf-from').val(), to = $('#lc-inf-to').val();
+            if (!from || !to) { alert('Completá el rango de fechas.'); return; }
+            $('#lc-informe-result').html('<p class="lc-empty">Cargando...</p>');
+            $.post(ajaxUrl, {action:'luna_report_payments', nonce, from, to, client_id: $('#lc-inf-client').val()}, function(r){
+                if (!r.success) { $('#lc-informe-result').html('<p style="color:#ef4444">'+r.data+'</p>'); return; }
+                var rows = r.data.rows, totals = r.data.totals;
+                if (!rows.length) { $('#lc-informe-result').html('<p class="lc-empty">Sin registros para ese período.</p>'); return; }
+                var h = '<table class="lc-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Concepto</th><th>Monto</th><th>Moneda</th><th>Estado</th></tr></thead><tbody>';
+                rows.forEach(function(p){
+                    h += '<tr>';
+                    h += '<td style="white-space:nowrap">'+(p.payment_date||p.due_date||'—')+'</td>';
+                    h += '<td>'+esc(p.client_name)+'</td>';
+                    h += '<td>'+esc(p.concept)+'</td>';
+                    h += '<td style="font-weight:700">'+fmt(p.amount)+'</td>';
+                    h += '<td>'+esc(p.currency)+'</td>';
+                    h += '<td>'+statusBadge(p.status)+'</td>';
+                    h += '</tr>';
+                });
+                h += '</tbody></table>';
+                h += '<div style="margin-top:12px;text-align:right;font-size:13px">';
+                if (totals.ARS) h += '<strong>Total ARS: $'+fmt(totals.ARS)+'</strong>&nbsp;&nbsp;';
+                if (totals.USD) h += '<strong>Total USD: U$S '+fmt(totals.USD)+'</strong>';
+                h += '</div>';
+                $('#lc-informe-result').html(h);
+            });
+        });
 
         // ── IMPORTAR CSV ──────────────────────────────────────
         $('#lc-btn-import-csv').on('click', function(){ $('#lc-csv-file').val('').trigger('click'); });
@@ -3100,6 +3195,11 @@ class Luna_Admin {
             var amount  = parseFloat($('#lc-p-amount').val());
             if(!concept){ $('#lc-payment-msg').text('El concepto es obligatorio.').addClass('err'); return; }
             if(isNaN(amount)||amount<0){ $('#lc-payment-msg').text('Ingresá un monto válido.').addClass('err'); return; }
+            var installments = 1;
+            var instType = $('input[name=lc-p-inst-type]:checked').val();
+            if (!$('#lc-payment-id').val() && instType === 'n') {
+                installments = Math.max(2, parseInt($('#lc-p-inst-n').val(), 10) || 2);
+            }
             var data = {
                 action:'luna_save_payment', nonce,
                 id:             $('#lc-payment-id').val(),
@@ -3114,10 +3214,12 @@ class Luna_Admin {
                 invoice_number: $('#lc-p-invoice').val(),
                 workspace_id:   $('#lc-p-workspace').val(),
                 notes:          $('#lc-p-notes').val(),
+                installments:   installments,
             };
             $.post(ajaxUrl, data, function(r){
                 if(r.success){
-                    $('#lc-payment-msg').text('✓ Guardado').addClass('ok');
+                    var msg = installments > 1 ? '✓ '+installments+' cuotas creadas' : '✓ Guardado';
+                    $('#lc-payment-msg').text(msg).addClass('ok');
                     setTimeout(function(){ $('#lc-modal-payment').removeClass('open'); loadPayments(activeClientId); }, 800);
                 } else {
                     $('#lc-payment-msg').text('Error: '+r.data).addClass('err');
@@ -3162,7 +3264,17 @@ class Luna_Admin {
         if ($id) {
             $rows = $wpdb->get_results($wpdb->prepare("SELECT * FROM `{$p}clients` WHERE id=%d", $id), ARRAY_A);
         } else {
-            $rows = $wpdb->get_results("SELECT * FROM `{$p}clients` WHERE active=1 ORDER BY name ASC", ARRAY_A);
+            $rows = $wpdb->get_results(
+                "SELECT c.*,
+                    COALESCE(SUM(CASE WHEN pm.status='paid'    THEN pm.amount ELSE 0 END),0) AS total_paid,
+                    COALESCE(SUM(CASE WHEN pm.status='pending' THEN pm.amount ELSE 0 END),0) AS total_pending
+                 FROM `{$p}clients` c
+                 LEFT JOIN `{$p}payments` pm ON pm.client_id = c.id AND pm.currency = 'ARS'
+                 WHERE c.active = 1
+                 GROUP BY c.id
+                 ORDER BY c.name ASC",
+                ARRAY_A
+            );
         }
         wp_send_json_success($rows ?: []);
     }
@@ -3313,11 +3425,12 @@ class Luna_Admin {
         if (!$cid || !$concept) wp_send_json_error('Datos incompletos.');
 
         $wsid = (int)($_POST['workspace_id'] ?? 0);
+        $total_amount = (float)($_POST['amount'] ?? 0);
         $data = [
             'client_id'      => $cid,
             'workspace_id'   => $wsid ?: null,
             'concept'        => $concept,
-            'amount'         => (float)($_POST['amount'] ?? 0),
+            'amount'         => $total_amount,
             'currency'       => sanitize_text_field($_POST['currency']       ?? 'ARS'),
             'payment_date'   => sanitize_text_field($_POST['payment_date']   ?? '') ?: null,
             'due_date'       => sanitize_text_field($_POST['due_date']       ?? '') ?: null,
@@ -3328,14 +3441,48 @@ class Luna_Admin {
             'updated_at'     => current_time('mysql'),
         ];
 
+        // Cuotas: solo aplicable a nuevos registros
+        $installments = $id ? 1 : max(1, (int)($_POST['installments'] ?? 1));
+
         if ($id) {
             $wpdb->update("{$p}payments", $data, ['id' => $id]);
-        } else {
-            $data['created_at'] = current_time('mysql');
-            $wpdb->insert("{$p}payments", $data);
-            $id = $wpdb->insert_id;
+            wp_send_json_success(['id' => $id]);
         }
-        wp_send_json_success(['id' => $id]);
+
+        if ($installments > 1) {
+            $base_amount  = round($total_amount / $installments, 2);
+            $base_concept = $concept;
+            $base_date = $data['payment_date'] ? new DateTime($data['payment_date']) : null;
+            $base_due  = $data['due_date']     ? new DateTime($data['due_date'])     : null;
+            $first_id  = null;
+            for ($i = 0; $i < $installments; $i++) {
+                $row = $data;
+                $row['concept'] = $base_concept . ' (Cuota ' . ($i + 1) . '/' . $installments . ')';
+                $row['amount']  = ($i === $installments - 1)
+                    ? round($total_amount - $base_amount * ($installments - 1), 2)
+                    : $base_amount;
+                if ($i > 0) {
+                    if ($base_date) {
+                        $d = clone $base_date;
+                        $d->modify("+{$i} month");
+                        $row['payment_date'] = $d->format('Y-m-d');
+                    }
+                    if ($base_due) {
+                        $dd = clone $base_due;
+                        $dd->modify("+{$i} month");
+                        $row['due_date'] = $dd->format('Y-m-d');
+                    }
+                }
+                $row['created_at'] = current_time('mysql');
+                $wpdb->insert("{$p}payments", $row);
+                if ($i === 0) $first_id = $wpdb->insert_id;
+            }
+            wp_send_json_success(['id' => $first_id, 'installments' => $installments]);
+        }
+
+        $data['created_at'] = current_time('mysql');
+        $wpdb->insert("{$p}payments", $data);
+        wp_send_json_success(['id' => $wpdb->insert_id]);
     }
 
     // ── AJAX: delete payment ──────────────────────────────────────────────────
@@ -3348,6 +3495,38 @@ class Luna_Admin {
         if (!$id) wp_send_json_error('ID inválido.');
         $wpdb->delete("{$p}payments", ['id' => $id]);
         wp_send_json_success();
+    }
+
+    // ── AJAX: informe de caja ─────────────────────────────────────────────────
+    public function ajax_report_payments() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+        global $wpdb;
+        $p    = $wpdb->prefix . 'luna_';
+        $from = sanitize_text_field($_POST['from'] ?? '');
+        $to   = sanitize_text_field($_POST['to']   ?? '');
+        $cid  = (int)($_POST['client_id'] ?? 0);
+        if (!$from || !$to) wp_send_json_error('Rango de fechas requerido.');
+
+        $cid_sql = $cid ? $wpdb->prepare(" AND pm.client_id = %d", $cid) : '';
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT pm.*, c.name AS client_name
+             FROM `{$p}payments` pm
+             JOIN `{$p}clients` c ON c.id = pm.client_id
+             WHERE (pm.payment_date BETWEEN %s AND %s
+                    OR (pm.payment_date IS NULL AND pm.due_date BETWEEN %s AND %s))
+             {$cid_sql}
+             ORDER BY COALESCE(pm.payment_date, pm.due_date) ASC",
+            $from, $to, $from, $to
+        ), ARRAY_A);
+
+        $totals = ['ARS' => 0.0, 'USD' => 0.0];
+        foreach (($rows ?: []) as $r) {
+            $cur = ($r['currency'] === 'USD') ? 'USD' : 'ARS';
+            $totals[$cur] += (float)$r['amount'];
+        }
+        wp_send_json_success(['rows' => $rows ?: [], 'totals' => $totals]);
     }
 
 }
