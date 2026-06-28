@@ -2553,6 +2553,10 @@ class Luna_Admin {
                         <label>Nombre / Razón social *</label>
                         <input type="text" id="lc-c-name" placeholder="Empresa SA / Juan Pérez">
                     </div>
+                    <div class="lc-fg" style="grid-column:1/-1">
+                        <label>Dominio web</label>
+                        <input type="text" id="lc-c-domain" placeholder="ejemplo.com.ar">
+                    </div>
                     <div class="lc-fg">
                         <label>CUIT</label>
                         <input type="text" id="lc-c-cuit" placeholder="20-12345678-9">
@@ -2874,6 +2878,7 @@ class Luna_Admin {
         function openClientModal(data) {
             $('#lc-client-id').val(data ? data.id : '');
             $('#lc-c-name').val(data ? data.name : '');
+            $('#lc-c-domain').val(data ? data.domain : '');
             $('#lc-c-cuit').val(data ? data.cuit : '');
             $('#lc-c-iva').val(data ? data.iva_condition : 'Consumidor Final');
             $('#lc-c-email').val(data ? data.email : '');
@@ -3061,6 +3066,7 @@ class Luna_Admin {
                 action:'luna_save_client', nonce,
                 id:            $('#lc-client-id').val(),
                 name:          name,
+                domain:        $('#lc-c-domain').val(),
                 cuit:          $('#lc-c-cuit').val(),
                 iva_condition: $('#lc-c-iva').val(),
                 email:         $('#lc-c-email').val(),
