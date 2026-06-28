@@ -2707,14 +2707,18 @@ class Luna_Admin {
                 if (!r.success) { $('#lc-clients-wrap').html('<p class="lc-empty">Error al cargar.</p>'); return; }
                 var rows = r.data;
                 if (!rows.length) { $('#lc-clients-wrap').html('<p class="lc-empty">Sin clientes aún. Creá el primero con el botón de arriba.</p>'); return; }
-                var h = '<table class="lc-table"><thead><tr><th>Nombre / Razón social</th><th>CUIT</th><th>Email</th><th>Teléfono</th><th>IVA</th><th>Acciones</th></tr></thead><tbody>';
+                var h = '<table class="lc-table"><thead><tr><th>Nombre / Razón social</th><th>Dominio</th><th>Vencimiento</th><th>Monto</th><th>Email</th><th>Teléfono</th><th>Acciones</th></tr></thead><tbody>';
                 rows.forEach(function(c){
+                    var isSub = parseInt(c.is_subscription, 10) === 1;
+                    var rd = c.renewal_date ? c.renewal_date : '—';
+                    var ra = c.renewal_amount && parseFloat(c.renewal_amount) > 0 ? '$'+fmt(c.renewal_amount) : '—';
                     h += '<tr>';
-                    h += '<td><strong>'+esc(c.name)+'</strong>'+(c.is_subscription?'<br><span style="font-size:11px;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px">🔄 Abonado · Día '+esc(c.billing_day)+'</span>':'')+(c.city?'<br><small style="color:#94a3b8">'+esc(c.city)+'</small>':'')+'</td>';
-                    h += '<td>'+(c.cuit||'—')+'</td>';
+                    h += '<td><strong>'+esc(c.name)+'</strong>'+(isSub?'<br><span style="font-size:11px;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px">🔄 Abonado · Día '+esc(c.billing_day)+'</span>':'')+(c.notes?'<br><small style="color:'+(c.notes==='DEBE'?'#ef4444':'#16a34a')+'">'+esc(c.notes)+'</small>':'')+'</td>';
+                    h += '<td>'+(c.domain?'<a href="https://'+esc(c.domain)+'" target="_blank" style="font-size:12px">'+esc(c.domain)+'</a>':'—')+'</td>';
+                    h += '<td style="white-space:nowrap">'+rd+'</td>';
+                    h += '<td style="white-space:nowrap;font-weight:600">'+ra+'</td>';
                     h += '<td>'+(c.email?'<a href="mailto:'+esc(c.email)+'">'+esc(c.email)+'</a>':'—')+'</td>';
                     h += '<td>'+(c.phone||'—')+'</td>';
-                    h += '<td>'+ivaBadge(c.iva_condition||'Consumidor Final')+'</td>';
                     h += '<td style="white-space:nowrap">';
                     h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-edit-client" data-id="'+c.id+'" style="margin-right:4px">✏️ Editar</button>';
                     h += '<button class="lc-btn lc-btn-sm lc-btn-green lc-view-payments" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:4px">💰 Pagos</button>';
@@ -2838,9 +2842,10 @@ class Luna_Admin {
             $('#lc-c-address').val(data ? data.address : '');
             $('#lc-c-city').val(data ? data.city : '');
             $('#lc-c-notes').val(data ? data.notes : '');
-            $('#lc-c-subscription').prop('checked', !!(data && data.is_subscription));
+            var isSub = !!(data && parseInt(data.is_subscription, 10) === 1);
+            $('#lc-c-subscription').prop('checked', isSub);
             $('#lc-c-billing-day').val(data && data.billing_day ? data.billing_day : '');
-            $('#lc-billing-day-row').toggle(!!(data && data.is_subscription));
+            $('#lc-billing-day-row').toggle(isSub);
             $('#lc-client-modal-title').text(data ? 'Editar cliente' : 'Nuevo cliente');
             $('#lc-client-msg').text('').removeClass('ok err');
             $('#lc-modal-client').addClass('open');
