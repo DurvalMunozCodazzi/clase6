@@ -2710,7 +2710,11 @@ class Luna_Admin {
                 var h = '<table class="lc-table"><thead><tr><th>Nombre / Razón social</th><th>Dominio</th><th>Vencimiento</th><th>Monto</th><th>Email</th><th>Teléfono</th><th>Acciones</th></tr></thead><tbody>';
                 rows.forEach(function(c){
                     var isSub = parseInt(c.is_subscription, 10) === 1;
-                    var rd = c.renewal_date ? c.renewal_date : '—';
+                    var rd = '—';
+                    if (c.renewal_date) {
+                        var p = c.renewal_date.split('-');
+                        rd = p.length === 3 ? p[2]+'/'+p[1]+'/'+p[0] : c.renewal_date;
+                    }
                     var ra = c.renewal_amount && parseFloat(c.renewal_amount) > 0 ? '$'+fmt(c.renewal_amount) : '—';
                     h += '<tr>';
                     h += '<td><strong>'+esc(c.name)+'</strong>'+(isSub?'<br><span style="font-size:11px;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px">🔄 Abonado · Día '+esc(c.billing_day)+'</span>':'')+(c.notes?'<br><small style="color:'+(c.notes==='DEBE'?'#ef4444':'#16a34a')+'">'+esc(c.notes)+'</small>':'')+'</td>';
