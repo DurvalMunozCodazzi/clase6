@@ -2921,9 +2921,9 @@ class Luna_Admin {
                     return String(s || '').replace(/[$,\s"]/g, '');
                 }
 
-                // Detectar si primera fila es cabecera (primera celda vacía o texto)
+                // Detectar cabecera: si alguna celda de la primera fila contiene texto no numérico típico de encabezado
                 var firstCols = parseLine(lines[0]);
-                var start = (!firstCols[0] || /vencimiento|nombre|name|abonado/i.test(firstCols[1] || '')) ? 1 : 0;
+                var start = /nombre|razon|dominio|domain|vencimiento|abonado|cobrar|costo|name|date/i.test(firstCols.join(',')) ? 1 : 0;
 
                 // Formato del CSV del usuario:
                 // col[0]=nombre/razón social  col[1]=dominio  col[2]=fecha(DD/M)
