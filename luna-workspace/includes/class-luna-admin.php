@@ -23,6 +23,12 @@ class Luna_Admin {
         add_action('wp_ajax_luna_backup_delete',      [$this, 'ajax_backup_delete']);
         add_action('wp_ajax_luna_backup_download',    [$this, 'ajax_backup_download']);
         add_action('wp_ajax_luna_backup_restore',     [$this, 'ajax_backup_restore']);
+        add_action('wp_ajax_luna_list_clients',   [$this, 'ajax_list_clients']);
+        add_action('wp_ajax_luna_save_client',    [$this, 'ajax_save_client']);
+        add_action('wp_ajax_luna_delete_client',  [$this, 'ajax_delete_client']);
+        add_action('wp_ajax_luna_list_payments',  [$this, 'ajax_list_payments']);
+        add_action('wp_ajax_luna_save_payment',   [$this, 'ajax_save_payment']);
+        add_action('wp_ajax_luna_delete_payment', [$this, 'ajax_delete_payment']);
     }
 
     public function show_db_diagnostic() {
@@ -143,6 +149,7 @@ class Luna_Admin {
         add_submenu_page('luna-workspace', 'Notificaciones','Notificaciones','manage_options', 'luna-notifications',   [$this, 'render_notifications_page']);
         add_submenu_page('luna-workspace', 'Base de datos', 'Base de datos', 'manage_options', 'luna-database',        [$this, 'render_database_page']);
         add_submenu_page('luna-workspace', 'Backup & Restore', 'Backup & Restore', 'manage_options', 'luna-backup', [$this, 'render_backup_page']);
+        add_submenu_page('luna-workspace', 'Clientes',         'Clientes',         'manage_options', 'luna-clientes', [$this, 'render_clients_page']);
         // Wizard — oculto del menú pero accesible por URL
         add_submenu_page(null, 'Luna — Configuración inicial', '', 'manage_options', 'luna-onboarding', [$this, 'render_onboarding_wizard']);
     }
@@ -2420,6 +2427,698 @@ class Luna_Admin {
         });
         </script>
         <?php
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // CLIENTES — ABM, pagos y presupuesto imprimible
+    // ════════════════════════════════════════════════════════════════════════
+
+    public function render_clients_page() {
+        if (!current_user_can('manage_options')) return;
+        global $wpdb;
+        $p = $wpdb->prefix . 'luna_';
+        // Pizarras disponibles para vincular
+        $workspaces = $wpdb->get_results("SELECT id, name FROM `{$p}workspaces` ORDER BY name", ARRAY_A) ?: [];
+        // Datos del prestador para el encabezado del presupuesto
+        $provider_name  = get_option('luna_provider_name',  get_bloginfo('name'));
+        $provider_cuit  = get_option('luna_provider_cuit',  '');
+        $provider_email = get_option('luna_provider_email', get_option('admin_email'));
+        $provider_phone = get_option('luna_provider_phone', '');
+        ?>
+        <div class="wrap" style="max-width:1100px">
+        <style>
+        .lc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+        .lc-title{font-size:1.4rem;font-weight:700;color:#1e1e1e}
+        .lc-btn{display:inline-flex;align-items:center;gap:6px;background:#5b6af0;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none}
+        .lc-btn:hover{background:#4a59d0;color:#fff}
+        .lc-btn-sm{padding:5px 11px;font-size:12px;border-radius:5px}
+        .lc-btn-ghost{background:transparent;color:#5b6af0;border:1.5px solid #5b6af0}
+        .lc-btn-ghost:hover{background:#5b6af0;color:#fff}
+        .lc-btn-danger{background:#ef4444}
+        .lc-btn-danger:hover{background:#dc2626}
+        .lc-btn-green{background:#22c55e}
+        .lc-btn-green:hover{background:#16a34a}
+        .lc-table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+        .lc-table th{background:#f1f5f9;padding:10px 14px;text-align:left;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0}
+        .lc-table td{padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#334155;vertical-align:middle}
+        .lc-table tr:last-child td{border-bottom:none}
+        .lc-table tr:hover td{background:#fafbff}
+        .lc-badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700}
+        .lc-badge-paid{background:#dcfce7;color:#16a34a}
+        .lc-badge-pending{background:#fef9c3;color:#a16207}
+        .lc-badge-partial{background:#dbeafe;color:#1d4ed8}
+        .lc-badge-ri{background:#ede9fe;color:#6d28d9}
+        .lc-badge-mono{background:#fce7f3;color:#9d174d}
+        .lc-badge-cf{background:#f1f5f9;color:#475569}
+        .lc-badge-ex{background:#f0fdf4;color:#166534}
+        .lc-panel{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:20px 24px;margin-top:24px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+        .lc-panel-title{font-size:1rem;font-weight:700;color:#1e1e1e;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+        .lc-empty{text-align:center;color:#94a3b8;padding:32px;font-size:13px}
+        /* Modal */
+        .lc-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100000;align-items:center;justify-content:center}
+        .lc-overlay.open{display:flex}
+        .lc-modal{background:#fff;border-radius:12px;padding:32px;width:100%;max-width:520px;position:relative;max-height:90vh;overflow-y:auto}
+        .lc-modal h3{font-size:1.1rem;font-weight:700;margin-bottom:20px;color:#1e1e1e}
+        .lc-close{position:absolute;top:14px;right:18px;background:none;border:none;font-size:22px;cursor:pointer;color:#94a3b8;line-height:1}
+        .lc-close:hover{color:#334155}
+        .lc-form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        .lc-fg{margin-bottom:14px}
+        .lc-fg label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+        .lc-fg input,.lc-fg select,.lc-fg textarea{width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;font-size:13px;color:#1e1e1e;outline:none;font-family:inherit}
+        .lc-fg input:focus,.lc-fg select:focus,.lc-fg textarea:focus{border-color:#5b6af0;box-shadow:0 0 0 2px rgba(91,106,240,.15)}
+        .lc-fg textarea{resize:vertical;min-height:72px}
+        .lc-submit{width:100%;background:#5b6af0;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px}
+        .lc-submit:hover{background:#4a59d0}
+        .lc-msg{margin-top:10px;font-size:12px;text-align:center;min-height:18px}
+        .lc-msg.ok{color:#16a34a} .lc-msg.err{color:#ef4444}
+        /* Provider settings */
+        .lc-settings-bar{background:#fafafa;border:1px solid #e2e8f0;border-radius:8px;padding:14px 18px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;font-size:12px}
+        .lc-settings-bar label{font-weight:600;color:#475569;display:block;margin-bottom:3px}
+        .lc-settings-bar input{border:1px solid #cbd5e1;border-radius:5px;padding:5px 8px;font-size:12px;width:180px}
+        .lc-settings-bar .lc-btn-sm{align-self:flex-end}
+        .lc-section-label{font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin:0 0 6px}
+        /* Print presupuesto */
+        @media print{.no-print{display:none!important}}
+        </style>
+
+        <div class="lc-header">
+            <div class="lc-title">👥 Clientes</div>
+            <button class="lc-btn" id="lc-btn-new-client">+ Nuevo cliente</button>
+        </div>
+
+        <!-- Datos del prestador (para el encabezado del presupuesto) -->
+        <details class="lc-settings-bar no-print" style="display:block">
+            <summary style="font-weight:700;font-size:12px;color:#5b6af0;cursor:pointer;margin-bottom:8px">⚙️ Datos de tu empresa (aparecen en el presupuesto)</summary>
+            <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:10px">
+                <div><label>Nombre / Razón social</label><input type="text" id="lc-prov-name" value="<?php echo esc_attr($provider_name) ?>"></div>
+                <div><label>CUIT</label><input type="text" id="lc-prov-cuit" value="<?php echo esc_attr($provider_cuit) ?>" style="width:140px"></div>
+                <div><label>Email</label><input type="text" id="lc-prov-email" value="<?php echo esc_attr($provider_email) ?>"></div>
+                <div><label>Teléfono</label><input type="text" id="lc-prov-phone" value="<?php echo esc_attr($provider_phone) ?>" style="width:140px"></div>
+                <button class="lc-btn lc-btn-sm" id="lc-save-provider">Guardar</button>
+                <span id="lc-prov-msg" style="font-size:12px;color:#16a34a;align-self:flex-end"></span>
+            </div>
+        </details>
+
+        <!-- Tabla de clientes -->
+        <div id="lc-clients-wrap">
+            <p class="lc-empty">Cargando...</p>
+        </div>
+
+        <!-- Panel de pagos del cliente seleccionado -->
+        <div id="lc-payments-panel" style="display:none" class="lc-panel no-print">
+            <div class="lc-panel-title">
+                <span id="lc-payments-title">Pagos del cliente</span>
+                <button class="lc-btn lc-btn-sm" id="lc-btn-new-payment" style="margin-left:auto">+ Nuevo pago</button>
+                <button class="lc-btn lc-btn-sm lc-btn-ghost" id="lc-btn-close-panel" style="margin-left:8px">✕ Cerrar</button>
+            </div>
+            <div id="lc-payments-wrap">
+                <p class="lc-empty">Cargando...</p>
+            </div>
+        </div>
+
+        <!-- Modal: cliente -->
+        <div class="lc-overlay" id="lc-modal-client">
+            <div class="lc-modal">
+                <button class="lc-close" id="lc-close-client">×</button>
+                <h3 id="lc-client-modal-title">Nuevo cliente</h3>
+                <input type="hidden" id="lc-client-id" value="">
+                <div class="lc-form-row">
+                    <div class="lc-fg" style="grid-column:1/-1">
+                        <label>Nombre / Razón social *</label>
+                        <input type="text" id="lc-c-name" placeholder="Empresa SA / Juan Pérez">
+                    </div>
+                    <div class="lc-fg">
+                        <label>CUIT</label>
+                        <input type="text" id="lc-c-cuit" placeholder="20-12345678-9">
+                    </div>
+                    <div class="lc-fg">
+                        <label>Condición IVA</label>
+                        <select id="lc-c-iva">
+                            <option>Consumidor Final</option>
+                            <option>Responsable Inscripto</option>
+                            <option>Monotributista</option>
+                            <option>Exento</option>
+                        </select>
+                    </div>
+                    <div class="lc-fg">
+                        <label>Email</label>
+                        <input type="email" id="lc-c-email" placeholder="cliente@email.com">
+                    </div>
+                    <div class="lc-fg">
+                        <label>Teléfono</label>
+                        <input type="text" id="lc-c-phone" placeholder="11 2345 6789">
+                    </div>
+                    <div class="lc-fg" style="grid-column:1/-1">
+                        <label>Dirección</label>
+                        <input type="text" id="lc-c-address" placeholder="Av. Corrientes 1234">
+                    </div>
+                    <div class="lc-fg">
+                        <label>Ciudad</label>
+                        <input type="text" id="lc-c-city" placeholder="Buenos Aires">
+                    </div>
+                    <div class="lc-fg" style="grid-column:1/-1">
+                        <label>Notas internas</label>
+                        <textarea id="lc-c-notes" placeholder="Observaciones..."></textarea>
+                    </div>
+                </div>
+                <button class="lc-submit" id="lc-submit-client">Guardar cliente</button>
+                <p class="lc-msg" id="lc-client-msg"></p>
+            </div>
+        </div>
+
+        <!-- Modal: pago -->
+        <div class="lc-overlay" id="lc-modal-payment">
+            <div class="lc-modal">
+                <button class="lc-close" id="lc-close-payment">×</button>
+                <h3 id="lc-payment-modal-title">Nuevo pago / trabajo</h3>
+                <input type="hidden" id="lc-payment-id" value="">
+                <input type="hidden" id="lc-payment-client-id" value="">
+                <div class="lc-form-row">
+                    <div class="lc-fg" style="grid-column:1/-1">
+                        <label>Concepto / descripción del trabajo *</label>
+                        <input type="text" id="lc-p-concept" placeholder="Diseño web, consultoría, desarrollo...">
+                    </div>
+                    <div class="lc-fg">
+                        <label>Monto *</label>
+                        <input type="number" id="lc-p-amount" placeholder="0.00" step="0.01" min="0">
+                    </div>
+                    <div class="lc-fg">
+                        <label>Moneda</label>
+                        <select id="lc-p-currency">
+                            <option value="ARS">ARS — Pesos</option>
+                            <option value="USD">USD — Dólares</option>
+                        </select>
+                    </div>
+                    <div class="lc-fg">
+                        <label>Fecha emisión</label>
+                        <input type="date" id="lc-p-date">
+                    </div>
+                    <div class="lc-fg">
+                        <label>Fecha vencimiento</label>
+                        <input type="date" id="lc-p-due">
+                    </div>
+                    <div class="lc-fg">
+                        <label>Método de pago</label>
+                        <select id="lc-p-method">
+                            <option>Transferencia</option>
+                            <option>Efectivo</option>
+                            <option>Cheque</option>
+                            <option>Tarjeta</option>
+                            <option>Otro</option>
+                        </select>
+                    </div>
+                    <div class="lc-fg">
+                        <label>Estado</label>
+                        <select id="lc-p-status">
+                            <option value="pending">Pendiente</option>
+                            <option value="partial">Parcial</option>
+                            <option value="paid">Pagado</option>
+                        </select>
+                    </div>
+                    <div class="lc-fg">
+                        <label>N° de presupuesto / factura</label>
+                        <input type="text" id="lc-p-invoice" placeholder="0001-00000001">
+                    </div>
+                    <div class="lc-fg">
+                        <label>Pizarra vinculada</label>
+                        <select id="lc-p-workspace">
+                            <option value="">— Ninguna —</option>
+                            <?php foreach ($workspaces as $ws): ?>
+                            <option value="<?php echo (int)$ws['id'] ?>"><?php echo esc_html($ws['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="lc-fg" style="grid-column:1/-1">
+                        <label>Notas</label>
+                        <textarea id="lc-p-notes" placeholder="Observaciones adicionales..."></textarea>
+                    </div>
+                </div>
+                <button class="lc-submit" id="lc-submit-payment">Guardar</button>
+                <p class="lc-msg" id="lc-payment-msg"></p>
+            </div>
+        </div>
+
+        </div><!-- .wrap -->
+        <script>
+        (function($){
+        var ajaxUrl = <?php echo json_encode(admin_url('admin-ajax.php')) ?>;
+        var nonce   = <?php echo json_encode(wp_create_nonce('luna_admin_nonce')) ?>;
+        var activeClientId = 0;
+        var activeClientName = '';
+        // Provider data for print
+        var providerData = {
+            name:  <?php echo json_encode($provider_name) ?>,
+            cuit:  <?php echo json_encode($provider_cuit) ?>,
+            email: <?php echo json_encode($provider_email) ?>,
+            phone: <?php echo json_encode($provider_phone) ?>
+        };
+
+        // ── STATUS BADGE ──────────────────────────────────────
+        function statusBadge(s) {
+            var map = {paid:['Pagado','lc-badge-paid'],partial:['Parcial','lc-badge-partial'],pending:['Pendiente','lc-badge-pending']};
+            var d = map[s] || [s,''];
+            return '<span class="lc-badge '+d[1]+'">'+d[0]+'</span>';
+        }
+        function ivaBadge(c) {
+            var map = {'Responsable Inscripto':'lc-badge-ri','Monotributista':'lc-badge-mono','Consumidor Final':'lc-badge-cf','Exento':'lc-badge-ex'};
+            return '<span class="lc-badge '+(map[c]||'lc-badge-cf')+'">'+c+'</span>';
+        }
+        function fmt(n){ return parseFloat(n||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+        // ── CLIENTS TABLE ─────────────────────────────────────
+        function loadClients() {
+            $.post(ajaxUrl, {action:'luna_list_clients', nonce}, function(r) {
+                if (!r.success) { $('#lc-clients-wrap').html('<p class="lc-empty">Error al cargar.</p>'); return; }
+                var rows = r.data;
+                if (!rows.length) { $('#lc-clients-wrap').html('<p class="lc-empty">Sin clientes aún. Creá el primero con el botón de arriba.</p>'); return; }
+                var h = '<table class="lc-table"><thead><tr><th>Nombre / Razón social</th><th>CUIT</th><th>Email</th><th>Teléfono</th><th>IVA</th><th>Acciones</th></tr></thead><tbody>';
+                rows.forEach(function(c){
+                    h += '<tr>';
+                    h += '<td><strong>'+esc(c.name)+'</strong>'+(c.city?'<br><small style="color:#94a3b8">'+esc(c.city)+'</small>':'')+'</td>';
+                    h += '<td>'+(c.cuit||'—')+'</td>';
+                    h += '<td>'+(c.email?'<a href="mailto:'+esc(c.email)+'">'+esc(c.email)+'</a>':'—')+'</td>';
+                    h += '<td>'+(c.phone||'—')+'</td>';
+                    h += '<td>'+ivaBadge(c.iva_condition||'Consumidor Final')+'</td>';
+                    h += '<td style="white-space:nowrap">';
+                    h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-edit-client" data-id="'+c.id+'" style="margin-right:4px">✏️ Editar</button>';
+                    h += '<button class="lc-btn lc-btn-sm lc-btn-green lc-view-payments" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:4px">💰 Pagos</button>';
+                    h += '<button class="lc-btn lc-btn-sm lc-btn-danger lc-delete-client" data-id="'+c.id+'">🗑</button>';
+                    h += '</td></tr>';
+                });
+                h += '</tbody></table>';
+                $('#lc-clients-wrap').html(h);
+            });
+        }
+
+        // ── PAYMENTS TABLE ────────────────────────────────────
+        function loadPayments(clientId) {
+            $('#lc-payments-wrap').html('<p class="lc-empty">Cargando...</p>');
+            $.post(ajaxUrl, {action:'luna_list_payments', nonce, client_id: clientId}, function(r) {
+                if (!r.success) { $('#lc-payments-wrap').html('<p class="lc-empty">Error.</p>'); return; }
+                var rows = r.data;
+                if (!rows.length) { $('#lc-payments-wrap').html('<p class="lc-empty">Sin pagos registrados para este cliente.</p>'); return; }
+                var total_ars = 0, total_usd = 0;
+                var h = '<table class="lc-table"><thead><tr><th>Concepto</th><th>Monto</th><th>Emisión</th><th>Vence</th><th>Método</th><th>Estado</th><th>N° Pres.</th><th>Acciones</th></tr></thead><tbody>';
+                rows.forEach(function(p){
+                    if(p.currency==='USD') total_usd += parseFloat(p.amount||0);
+                    else total_ars += parseFloat(p.amount||0);
+                    h += '<tr>';
+                    h += '<td><strong>'+esc(p.concept)+'</strong>'+(p.workspace_name?'<br><small style="color:#94a3b8">📋 '+esc(p.workspace_name)+'</small>':'')+'</td>';
+                    h += '<td style="font-weight:700">'+p.currency+' '+fmt(p.amount)+'</td>';
+                    h += '<td>'+(p.payment_date||'—')+'</td>';
+                    h += '<td>'+(p.due_date?'<span style="color:'+(new Date(p.due_date)<new Date()&&p.status!=='paid'?'#ef4444':'#334155')+'">'+p.due_date+'</span>':'—')+'</td>';
+                    h += '<td>'+(p.method||'—')+'</td>';
+                    h += '<td>'+statusBadge(p.status)+'</td>';
+                    h += '<td>'+(p.invoice_number||'—')+'</td>';
+                    h += '<td style="white-space:nowrap">';
+                    h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-edit-payment" data-id="'+p.id+'" style="margin-right:4px">✏️</button>';
+                    h += '<button class="lc-btn lc-btn-sm" style="background:#0ea5e9;margin-right:4px" data-id="'+p.id+'" class="lc-print-payment" onclick="lcPrintPayment('+p.id+')">🖨️</button>';
+                    h += '<button class="lc-btn lc-btn-sm lc-btn-danger lc-delete-payment" data-id="'+p.id+'">🗑</button>';
+                    h += '</td></tr>';
+                });
+                h += '</tbody></table>';
+                if(total_ars||total_usd){
+                    h += '<div style="text-align:right;margin-top:10px;font-size:13px;color:#475569">';
+                    if(total_ars) h += '<strong>Total ARS: $'+fmt(total_ars)+'</strong>&nbsp;&nbsp;';
+                    if(total_usd) h += '<strong>Total USD: U$S'+fmt(total_usd)+'</strong>';
+                    h += '</div>';
+                }
+                $('#lc-payments-wrap').html(h);
+            });
+        }
+
+        // ── PRINT ─────────────────────────────────────────────
+        window.lcPrintPayment = function(paymentId) {
+            $.post(ajaxUrl, {action:'luna_list_payments', nonce, client_id: activeClientId}, function(r) {
+                if(!r.success) return;
+                var p = r.data.find(function(x){return x.id==paymentId});
+                if(!p) return;
+                var today = new Date().toLocaleDateString('es-AR');
+                var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+                    + '<title>Presupuesto #'+(p.invoice_number||p.id)+'</title>'
+                    + '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Segoe UI",sans-serif;font-size:13px;color:#1e1e1e;padding:40px}'
+                    + 'h1{font-size:22px;font-weight:900;color:#5b6af0;margin-bottom:4px}'
+                    + '.sub{color:#64748b;font-size:12px;margin-bottom:24px}'
+                    + '.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:32px}'
+                    + '.box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px}'
+                    + '.box-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:8px}'
+                    + '.box p{margin-bottom:4px;font-size:13px}'
+                    + 'table{width:100%;border-collapse:collapse;margin-bottom:24px}'
+                    + 'th{background:#f1f5f9;padding:10px 14px;text-align:left;font-weight:700;font-size:12px;color:#475569}'
+                    + 'td{padding:12px 14px;border-bottom:1px solid #f1f5f9;font-size:13px}'
+                    + '.total-row td{font-weight:900;font-size:16px;color:#5b6af0;border-bottom:none;border-top:2px solid #e2e8f0}'
+                    + '.status{display:inline-block;padding:4px 14px;border-radius:999px;font-size:12px;font-weight:700}'
+                    + '.status-paid{background:#dcfce7;color:#16a34a}.status-pending{background:#fef9c3;color:#a16207}.status-partial{background:#dbeafe;color:#1d4ed8}'
+                    + '.footer{text-align:center;color:#94a3b8;font-size:11px;margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0}'
+                    + '@media print{body{padding:20px}}'
+                    + '</style></head><body>';
+                html += '<h1>🌙 Presupuesto</h1>';
+                html += '<div class="sub">N° '+(p.invoice_number||('P-'+String(p.id).padStart(6,'0')))+' &nbsp;·&nbsp; Emitido: '+today+'</div>';
+                html += '<div class="grid">';
+                html += '<div class="box"><div class="box-label">De (Prestador)</div>'
+                    + '<p><strong>'+esc2(providerData.name)+'</strong></p>'
+                    + (providerData.cuit?'<p>CUIT: '+esc2(providerData.cuit)+'</p>':'')
+                    + (providerData.email?'<p>'+esc2(providerData.email)+'</p>':'')
+                    + (providerData.phone?'<p>'+esc2(providerData.phone)+'</p>':'')
+                    + '</div>';
+                html += '<div class="box"><div class="box-label">Para (Cliente)</div>'
+                    + '<p><strong>'+esc2(activeClientName)+'</strong></p>'
+                    + (p.client_cuit?'<p>CUIT: '+esc2(p.client_cuit)+'</p>':'')
+                    + (p.client_email?'<p>'+esc2(p.client_email)+'</p>':'')
+                    + (p.client_city?'<p>'+esc2(p.client_city)+'</p>':'')
+                    + '</div>';
+                html += '</div>';
+                html += '<table><thead><tr><th>Concepto / Descripción</th><th>Método</th><th>Vencimiento</th><th style="text-align:right">Monto</th></tr></thead><tbody>';
+                html += '<tr><td>'+esc2(p.concept)+(p.notes?'<br><small style="color:#64748b">'+esc2(p.notes)+'</small>':'')+'</td>'
+                    + '<td>'+esc2(p.method||'—')+'</td>'
+                    + '<td>'+(p.due_date||'—')+'</td>'
+                    + '<td style="text-align:right;font-weight:700">'+p.currency+' '+parseFloat(p.amount||0).toLocaleString('es-AR',{minimumFractionDigits:2})+'</td></tr>';
+                html += '<tr class="total-row"><td colspan="3"><strong>TOTAL</strong></td>'
+                    + '<td style="text-align:right">'+p.currency+' '+parseFloat(p.amount||0).toLocaleString('es-AR',{minimumFractionDigits:2})+'</td></tr>';
+                html += '</tbody></table>';
+                var sClass = {paid:'status-paid',pending:'status-pending',partial:'status-partial'}[p.status]||'';
+                var sLabel = {paid:'✓ Pagado',pending:'Pendiente de pago',partial:'Pago parcial'}[p.status]||p.status;
+                html += '<p>Estado: <span class="status '+sClass+'">'+sLabel+'</span></p>';
+                html += '<div class="footer">Generado con Luna Workspace · websobreruedas.com</div>';
+                html += '</body></html>';
+                var w = window.open('','_blank','width=820,height=700,scrollbars=yes');
+                w.document.write(html);
+                w.document.close();
+                setTimeout(function(){w.print();},600);
+            });
+        };
+
+        function esc(s){ var d=document.createElement('div');d.textContent=s||'';return d.innerHTML; }
+        function esc2(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+        // ── OPEN / CLOSE MODALS ───────────────────────────────
+        function openClientModal(data) {
+            $('#lc-client-id').val(data ? data.id : '');
+            $('#lc-c-name').val(data ? data.name : '');
+            $('#lc-c-cuit').val(data ? data.cuit : '');
+            $('#lc-c-iva').val(data ? data.iva_condition : 'Consumidor Final');
+            $('#lc-c-email').val(data ? data.email : '');
+            $('#lc-c-phone').val(data ? data.phone : '');
+            $('#lc-c-address').val(data ? data.address : '');
+            $('#lc-c-city').val(data ? data.city : '');
+            $('#lc-c-notes').val(data ? data.notes : '');
+            $('#lc-client-modal-title').text(data ? 'Editar cliente' : 'Nuevo cliente');
+            $('#lc-client-msg').text('').removeClass('ok err');
+            $('#lc-modal-client').addClass('open');
+        }
+        function openPaymentModal(data) {
+            $('#lc-payment-id').val(data ? data.id : '');
+            $('#lc-payment-client-id').val(activeClientId);
+            $('#lc-p-concept').val(data ? data.concept : '');
+            $('#lc-p-amount').val(data ? data.amount : '');
+            $('#lc-p-currency').val(data ? data.currency : 'ARS');
+            $('#lc-p-date').val(data ? data.payment_date : '');
+            $('#lc-p-due').val(data ? data.due_date : '');
+            $('#lc-p-method').val(data ? data.method : 'Transferencia');
+            $('#lc-p-status').val(data ? data.status : 'pending');
+            $('#lc-p-invoice').val(data ? data.invoice_number : '');
+            $('#lc-p-workspace').val(data ? (data.workspace_id||'') : '');
+            $('#lc-p-notes').val(data ? data.notes : '');
+            $('#lc-payment-modal-title').text(data ? 'Editar pago' : 'Nuevo pago / trabajo');
+            $('#lc-payment-msg').text('').removeClass('ok err');
+            $('#lc-modal-payment').addClass('open');
+        }
+
+        // ── EVENTS ───────────────────────────────────────────
+        $('#lc-btn-new-client').on('click', function(){ openClientModal(null); });
+        $('#lc-close-client, #lc-modal-client').on('click', function(e){ if(e.target===this) $('#lc-modal-client').removeClass('open'); });
+        $('#lc-close-payment, #lc-modal-payment').on('click', function(e){ if(e.target===this) $('#lc-modal-payment').removeClass('open'); });
+        $('#lc-btn-close-panel').on('click', function(){ $('#lc-payments-panel').hide(); activeClientId=0; });
+
+        $('#lc-btn-new-payment').on('click', function(){
+            if(!activeClientId){ alert('Seleccioná un cliente primero.'); return; }
+            openPaymentModal(null);
+        });
+
+        // Edit client
+        $(document).on('click', '.lc-edit-client', function(){
+            var id = $(this).data('id');
+            $.post(ajaxUrl, {action:'luna_list_clients', nonce, id}, function(r){
+                if(r.success && r.data.length) openClientModal(r.data[0]);
+            });
+        });
+
+        // View payments
+        $(document).on('click', '.lc-view-payments', function(){
+            activeClientId   = $(this).data('id');
+            activeClientName = $(this).data('name');
+            $('#lc-payments-title').text('💰 Pagos de: ' + activeClientName);
+            $('#lc-payments-panel').show();
+            loadPayments(activeClientId);
+            $('html,body').animate({scrollTop: $('#lc-payments-panel').offset().top - 40}, 400);
+        });
+
+        // Delete client
+        $(document).on('click', '.lc-delete-client', function(){
+            if(!confirm('¿Eliminar este cliente y todos sus pagos?')) return;
+            $.post(ajaxUrl, {action:'luna_delete_client', nonce, id: $(this).data('id')}, function(r){
+                if(r.success) { loadClients(); if($('#lc-payments-panel').is(':visible')) $('#lc-payments-panel').hide(); }
+                else alert('Error: ' + r.data);
+            });
+        });
+
+        // Edit payment
+        $(document).on('click', '.lc-edit-payment', function(){
+            var id = $(this).data('id');
+            $.post(ajaxUrl, {action:'luna_list_payments', nonce, client_id: activeClientId}, function(r){
+                if(r.success){ var p = r.data.find(function(x){return x.id==id}); if(p) openPaymentModal(p); }
+            });
+        });
+
+        // Delete payment
+        $(document).on('click', '.lc-delete-payment', function(){
+            if(!confirm('¿Eliminar este pago?')) return;
+            $.post(ajaxUrl, {action:'luna_delete_payment', nonce, id: $(this).data('id')}, function(r){
+                if(r.success) loadPayments(activeClientId);
+                else alert('Error: ' + r.data);
+            });
+        });
+
+        // Submit client form
+        $('#lc-submit-client').on('click', function(){
+            var name = $.trim($('#lc-c-name').val());
+            if(!name){ $('#lc-client-msg').text('El nombre es obligatorio.').addClass('err'); return; }
+            var data = {
+                action:'luna_save_client', nonce,
+                id:            $('#lc-client-id').val(),
+                name:          name,
+                cuit:          $('#lc-c-cuit').val(),
+                iva_condition: $('#lc-c-iva').val(),
+                email:         $('#lc-c-email').val(),
+                phone:         $('#lc-c-phone').val(),
+                address:       $('#lc-c-address').val(),
+                city:          $('#lc-c-city').val(),
+                notes:         $('#lc-c-notes').val(),
+            };
+            $.post(ajaxUrl, data, function(r){
+                if(r.success){
+                    $('#lc-client-msg').text('✓ Guardado').addClass('ok');
+                    setTimeout(function(){ $('#lc-modal-client').removeClass('open'); loadClients(); }, 800);
+                } else {
+                    $('#lc-client-msg').text('Error: '+r.data).addClass('err');
+                }
+            });
+        });
+
+        // Submit payment form
+        $('#lc-submit-payment').on('click', function(){
+            var concept = $.trim($('#lc-p-concept').val());
+            var amount  = parseFloat($('#lc-p-amount').val());
+            if(!concept){ $('#lc-payment-msg').text('El concepto es obligatorio.').addClass('err'); return; }
+            if(isNaN(amount)||amount<0){ $('#lc-payment-msg').text('Ingresá un monto válido.').addClass('err'); return; }
+            var data = {
+                action:'luna_save_payment', nonce,
+                id:             $('#lc-payment-id').val(),
+                client_id:      activeClientId,
+                concept:        concept,
+                amount:         amount,
+                currency:       $('#lc-p-currency').val(),
+                payment_date:   $('#lc-p-date').val(),
+                due_date:       $('#lc-p-due').val(),
+                method:         $('#lc-p-method').val(),
+                status:         $('#lc-p-status').val(),
+                invoice_number: $('#lc-p-invoice').val(),
+                workspace_id:   $('#lc-p-workspace').val(),
+                notes:          $('#lc-p-notes').val(),
+            };
+            $.post(ajaxUrl, data, function(r){
+                if(r.success){
+                    $('#lc-payment-msg').text('✓ Guardado').addClass('ok');
+                    setTimeout(function(){ $('#lc-modal-payment').removeClass('open'); loadPayments(activeClientId); }, 800);
+                } else {
+                    $('#lc-payment-msg').text('Error: '+r.data).addClass('err');
+                }
+            });
+        });
+
+        // Save provider data
+        $('#lc-save-provider').on('click', function(){
+            $.post(ajaxUrl, {
+                action:'luna_save_client', nonce,
+                _provider: 1,
+                provider_name:  $('#lc-prov-name').val(),
+                provider_cuit:  $('#lc-prov-cuit').val(),
+                provider_email: $('#lc-prov-email').val(),
+                provider_phone: $('#lc-prov-phone').val(),
+            }, function(r){
+                if(r.success){
+                    providerData = { name:$('#lc-prov-name').val(), cuit:$('#lc-prov-cuit').val(), email:$('#lc-prov-email').val(), phone:$('#lc-prov-phone').val() };
+                    $('#lc-prov-msg').text('✓ Guardado').show();
+                    setTimeout(function(){ $('#lc-prov-msg').text('') }, 2000);
+                }
+            });
+        });
+
+        // Escape key closes modals
+        $(document).on('keydown', function(e){ if(e.key==='Escape'){ $('.lc-overlay').removeClass('open'); } });
+
+        loadClients();
+        })(jQuery);
+        </script>
+        <?php
+    }
+
+    // ── AJAX: list clients ────────────────────────────────────────────────────
+    public function ajax_list_clients() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+        global $wpdb;
+        $p  = $wpdb->prefix . 'luna_';
+        $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        if ($id) {
+            $rows = $wpdb->get_results($wpdb->prepare("SELECT * FROM `{$p}clients` WHERE id=%d", $id), ARRAY_A);
+        } else {
+            $rows = $wpdb->get_results("SELECT * FROM `{$p}clients` WHERE active=1 ORDER BY name ASC", ARRAY_A);
+        }
+        wp_send_json_success($rows ?: []);
+    }
+
+    // ── AJAX: save client (or provider data) ─────────────────────────────────
+    public function ajax_save_client() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+
+        // Provider data save
+        if (!empty($_POST['_provider'])) {
+            update_option('luna_provider_name',  sanitize_text_field($_POST['provider_name']  ?? ''));
+            update_option('luna_provider_cuit',  sanitize_text_field($_POST['provider_cuit']  ?? ''));
+            update_option('luna_provider_email', sanitize_email($_POST['provider_email']       ?? ''));
+            update_option('luna_provider_phone', sanitize_text_field($_POST['provider_phone']  ?? ''));
+            wp_send_json_success();
+        }
+
+        global $wpdb;
+        $p    = $wpdb->prefix . 'luna_';
+        $id   = (int)($_POST['id'] ?? 0);
+        $name = sanitize_text_field($_POST['name'] ?? '');
+        if (!$name) wp_send_json_error('El nombre es obligatorio.');
+
+        $data = [
+            'name'          => $name,
+            'cuit'          => sanitize_text_field($_POST['cuit']          ?? ''),
+            'email'         => sanitize_email($_POST['email']              ?? ''),
+            'phone'         => sanitize_text_field($_POST['phone']         ?? ''),
+            'address'       => sanitize_text_field($_POST['address']       ?? ''),
+            'city'          => sanitize_text_field($_POST['city']          ?? ''),
+            'iva_condition' => sanitize_text_field($_POST['iva_condition'] ?? 'Consumidor Final'),
+            'notes'         => sanitize_textarea_field($_POST['notes']     ?? ''),
+            'updated_at'    => current_time('mysql'),
+        ];
+
+        if ($id) {
+            $wpdb->update("{$p}clients", $data, ['id' => $id]);
+        } else {
+            $data['created_at'] = current_time('mysql');
+            $wpdb->insert("{$p}clients", $data);
+            $id = $wpdb->insert_id;
+        }
+        wp_send_json_success(['id' => $id]);
+    }
+
+    // ── AJAX: delete client ───────────────────────────────────────────────────
+    public function ajax_delete_client() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+        global $wpdb;
+        $p  = $wpdb->prefix . 'luna_';
+        $id = (int)($_POST['id'] ?? 0);
+        if (!$id) wp_send_json_error('ID inválido.');
+        $wpdb->delete("{$p}payments", ['client_id' => $id]);
+        $wpdb->delete("{$p}clients",  ['id'        => $id]);
+        wp_send_json_success();
+    }
+
+    // ── AJAX: list payments ───────────────────────────────────────────────────
+    public function ajax_list_payments() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+        global $wpdb;
+        $p  = $wpdb->prefix . 'luna_';
+        $cid = (int)($_POST['client_id'] ?? 0);
+        if (!$cid) wp_send_json_error('Cliente inválido.');
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT p.*, w.name AS workspace_name, c.cuit AS client_cuit, c.email AS client_email, c.city AS client_city
+             FROM `{$p}payments` p
+             LEFT JOIN `{$p}workspaces` w ON w.id = p.workspace_id
+             LEFT JOIN `{$p}clients`    c ON c.id = p.client_id
+             WHERE p.client_id = %d ORDER BY p.created_at DESC",
+            $cid
+        ), ARRAY_A);
+        wp_send_json_success($rows ?: []);
+    }
+
+    // ── AJAX: save payment ────────────────────────────────────────────────────
+    public function ajax_save_payment() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+        global $wpdb;
+        $p       = $wpdb->prefix . 'luna_';
+        $id      = (int)($_POST['id']        ?? 0);
+        $cid     = (int)($_POST['client_id'] ?? 0);
+        $concept = sanitize_text_field($_POST['concept'] ?? '');
+        if (!$cid || !$concept) wp_send_json_error('Datos incompletos.');
+
+        $wsid = (int)($_POST['workspace_id'] ?? 0);
+        $data = [
+            'client_id'      => $cid,
+            'workspace_id'   => $wsid ?: null,
+            'concept'        => $concept,
+            'amount'         => (float)($_POST['amount'] ?? 0),
+            'currency'       => sanitize_text_field($_POST['currency']       ?? 'ARS'),
+            'payment_date'   => sanitize_text_field($_POST['payment_date']   ?? '') ?: null,
+            'due_date'       => sanitize_text_field($_POST['due_date']       ?? '') ?: null,
+            'method'         => sanitize_text_field($_POST['method']         ?? 'Transferencia'),
+            'status'         => sanitize_text_field($_POST['status']         ?? 'pending'),
+            'invoice_number' => sanitize_text_field($_POST['invoice_number'] ?? ''),
+            'notes'          => sanitize_textarea_field($_POST['notes']      ?? ''),
+            'updated_at'     => current_time('mysql'),
+        ];
+
+        if ($id) {
+            $wpdb->update("{$p}payments", $data, ['id' => $id]);
+        } else {
+            $data['created_at'] = current_time('mysql');
+            $wpdb->insert("{$p}payments", $data);
+            $id = $wpdb->insert_id;
+        }
+        wp_send_json_success(['id' => $id]);
+    }
+
+    // ── AJAX: delete payment ──────────────────────────────────────────────────
+    public function ajax_delete_payment() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+        global $wpdb;
+        $p  = $wpdb->prefix . 'luna_';
+        $id = (int)($_POST['id'] ?? 0);
+        if (!$id) wp_send_json_error('ID inválido.');
+        $wpdb->delete("{$p}payments", ['id' => $id]);
+        wp_send_json_success();
     }
 
 }

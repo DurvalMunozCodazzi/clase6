@@ -316,6 +316,41 @@ class Luna_Activator {
             color VARCHAR(10) DEFAULT '#5b6af0',
             created_by INT DEFAULT 0
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        // Clientes (ABM)
+        $wpdb->query("CREATE TABLE IF NOT EXISTS `{$p}luna_clients` (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(200) NOT NULL,
+            cuit VARCHAR(20) DEFAULT '',
+            email VARCHAR(200) DEFAULT '',
+            phone VARCHAR(50) DEFAULT '',
+            address TEXT DEFAULT '',
+            city VARCHAR(100) DEFAULT '',
+            iva_condition VARCHAR(50) DEFAULT 'Consumidor Final',
+            notes TEXT DEFAULT '',
+            active TINYINT(1) DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        // Pagos y trabajos por cliente
+        $wpdb->query("CREATE TABLE IF NOT EXISTS `{$p}luna_payments` (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            client_id INT NOT NULL,
+            workspace_id INT DEFAULT NULL,
+            concept VARCHAR(300) NOT NULL DEFAULT '',
+            amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            currency VARCHAR(10) DEFAULT 'ARS',
+            payment_date DATE DEFAULT NULL,
+            due_date DATE DEFAULT NULL,
+            method VARCHAR(50) DEFAULT 'Transferencia',
+            status VARCHAR(20) DEFAULT 'pending',
+            invoice_number VARCHAR(50) DEFAULT '',
+            notes TEXT DEFAULT '',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX(client_id), INDEX(workspace_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        // Vínculo cliente ↔ pizarra (opcional)
+        self::add_column_if_missing($wpdb, "{$p}luna_workspaces", 'client_id', "INT DEFAULT NULL");
     }
 
     // ── Initial data ─────────────────────────────────────────────────────────
