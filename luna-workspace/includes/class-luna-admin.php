@@ -2926,23 +2926,23 @@ class Luna_Admin {
                 var start = (!firstCols[0] || /vencimiento|nombre|name|abonado/i.test(firstCols[1] || '')) ? 1 : 0;
 
                 // Formato del CSV del usuario:
-                // col[0]=nombre/dominio  col[1]=fecha(DD/M)  col[2]=abonado(SI/-)
-                // col[3]=estado(PAGO/DEBE)  col[4]=monto
+                // col[0]=nombre/razón social  col[1]=dominio  col[2]=fecha(DD/M)
+                // col[3]=abonado(SI/-)  col[4]=estado(PAGO/DEBE)  col[5]=monto (opcional)
                 var rows = [];
                 for (var i = start; i < lines.length; i++) {
                     var cols = parseLine(lines[i]);
                     var name = cols[0] || '';
                     if (!name) continue;
-                    var isSub = (cols[2] || '').toUpperCase() === 'SI';
-                    var dateStr = cols[1] || '';
+                    var isSub = (cols[3] || '').toUpperCase() === 'SI';
+                    var dateStr = cols[2] || '';
                     rows.push({
                         name:            name,
-                        domain:          (/\.[a-z]{2,}$/i.test(name) && !/\s/.test(name)) ? name : '',
+                        domain:          cols[1] || '',
                         renewal_date:    toIsoDate(dateStr),
                         is_subscription: isSub ? '1' : '0',
                         billing_day:     isSub ? toDay(dateStr) : '',
-                        notes:           cols[3] || '',
-                        renewal_amount:  toAmount(cols[4]),
+                        notes:           cols[4] || '',
+                        renewal_amount:  toAmount(cols[5] || ''),
                     });
                 }
                 if (!rows.length) return;
