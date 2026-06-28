@@ -2577,6 +2577,16 @@ class Luna_Admin {
                         <input type="text" id="lc-c-city" placeholder="Buenos Aires">
                     </div>
                     <div class="lc-fg" style="grid-column:1/-1">
+                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+                            <input type="checkbox" id="lc-c-subscription" style="width:16px;height:16px">
+                            <span>Abonado / Recurrente mensual</span>
+                        </label>
+                    </div>
+                    <div class="lc-fg" id="lc-billing-day-row" style="display:none">
+                        <label>Día de cobro (1-31)</label>
+                        <input type="number" id="lc-c-billing-day" min="1" max="31" placeholder="Ej: 5">
+                    </div>
+                    <div class="lc-fg" style="grid-column:1/-1">
                         <label>Notas internas</label>
                         <textarea id="lc-c-notes" placeholder="Observaciones..."></textarea>
                     </div>
@@ -2694,7 +2704,7 @@ class Luna_Admin {
                 var h = '<table class="lc-table"><thead><tr><th>Nombre / Razón social</th><th>CUIT</th><th>Email</th><th>Teléfono</th><th>IVA</th><th>Acciones</th></tr></thead><tbody>';
                 rows.forEach(function(c){
                     h += '<tr>';
-                    h += '<td><strong>'+esc(c.name)+'</strong>'+(c.city?'<br><small style="color:#94a3b8">'+esc(c.city)+'</small>':'')+'</td>';
+                    h += '<td><strong>'+esc(c.name)+'</strong>'+(c.is_subscription?'<br><span style="font-size:11px;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px">🔄 Abonado · Día '+esc(c.billing_day)+'</span>':'')+(c.city?'<br><small style="color:#94a3b8">'+esc(c.city)+'</small>':'')+'</td>';
                     h += '<td>'+(c.cuit||'—')+'</td>';
                     h += '<td>'+(c.email?'<a href="mailto:'+esc(c.email)+'">'+esc(c.email)+'</a>':'—')+'</td>';
                     h += '<td>'+(c.phone||'—')+'</td>';
@@ -2822,6 +2832,9 @@ class Luna_Admin {
             $('#lc-c-address').val(data ? data.address : '');
             $('#lc-c-city').val(data ? data.city : '');
             $('#lc-c-notes').val(data ? data.notes : '');
+            $('#lc-c-subscription').prop('checked', !!(data && data.is_subscription));
+            $('#lc-c-billing-day').val(data && data.billing_day ? data.billing_day : '');
+            $('#lc-billing-day-row').toggle(!!(data && data.is_subscription));
             $('#lc-client-modal-title').text(data ? 'Editar cliente' : 'Nuevo cliente');
             $('#lc-client-msg').text('').removeClass('ok err');
             $('#lc-modal-client').addClass('open');
@@ -2846,6 +2859,7 @@ class Luna_Admin {
 
         // ── EVENTS ───────────────────────────────────────────
         $('#lc-btn-new-client').on('click', function(){ openClientModal(null); });
+        $('#lc-c-subscription').on('change', function(){ $('#lc-billing-day-row').toggle(this.checked); });
         $('#lc-close-client, #lc-modal-client').on('click', function(e){ if(e.target===this) $('#lc-modal-client').removeClass('open'); });
         $('#lc-close-payment, #lc-modal-payment').on('click', function(e){ if(e.target===this) $('#lc-modal-payment').removeClass('open'); });
         $('#lc-btn-close-panel').on('click', function(){ $('#lc-payments-panel').hide(); activeClientId=0; });
@@ -2914,6 +2928,8 @@ class Luna_Admin {
                 address:       $('#lc-c-address').val(),
                 city:          $('#lc-c-city').val(),
                 notes:         $('#lc-c-notes').val(),
+                is_subscription: $('#lc-c-subscription').is(':checked') ? 1 : 0,
+                billing_day:     $('#lc-c-billing-day').val() || '',
             };
             $.post(ajaxUrl, data, function(r){
                 if(r.success){
@@ -3025,9 +3041,11 @@ class Luna_Admin {
             'phone'         => sanitize_text_field($_POST['phone']         ?? ''),
             'address'       => sanitize_text_field($_POST['address']       ?? ''),
             'city'          => sanitize_text_field($_POST['city']          ?? ''),
-            'iva_condition' => sanitize_text_field($_POST['iva_condition'] ?? 'Consumidor Final'),
-            'notes'         => sanitize_textarea_field($_POST['notes']     ?? ''),
-            'updated_at'    => current_time('mysql'),
+            'iva_condition'   => sanitize_text_field($_POST['iva_condition'] ?? 'Consumidor Final'),
+            'notes'           => sanitize_textarea_field($_POST['notes']     ?? ''),
+            'is_subscription' => !empty($_POST['is_subscription']) ? 1 : 0,
+            'billing_day'     => !empty($_POST['billing_day']) ? min(31, max(1, (int)$_POST['billing_day'])) : null,
+            'updated_at'      => current_time('mysql'),
         ];
 
         if ($id) {

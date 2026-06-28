@@ -36,6 +36,7 @@ class Luna_Activator {
 
     public static function deactivate() {
         wp_clear_scheduled_hook('luna_hourly_check');
+        wp_clear_scheduled_hook('luna_daily_billing');
         flush_rewrite_rules();
     }
 
@@ -369,6 +370,19 @@ class Luna_Activator {
             total_amount DECIMAL(10,2) DEFAULT 0.00,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    }
+
+    // ── Migración v2: columnas de abono/suscripción (se llama en plugins_loaded) ─
+    public static function migrate_subscription_fields() {
+        if (get_option('luna_cobros_tables_v2')) return;
+        global $wpdb;
+        $p = $wpdb->prefix;
+        self::add_column_if_missing($wpdb, "{$p}luna_clients", 'domain',          "VARCHAR(200) NOT NULL DEFAULT ''");
+        self::add_column_if_missing($wpdb, "{$p}luna_clients", 'renewal_date',    "DATE DEFAULT NULL");
+        self::add_column_if_missing($wpdb, "{$p}luna_clients", 'renewal_amount',  "DECIMAL(10,2) DEFAULT 0.00");
+        self::add_column_if_missing($wpdb, "{$p}luna_clients", 'is_subscription', "TINYINT(1) DEFAULT 0");
+        self::add_column_if_missing($wpdb, "{$p}luna_clients", 'billing_day',     "TINYINT(2) DEFAULT NULL");
+        update_option('luna_cobros_tables_v2', 1);
     }
 
     // ── Migración de tablas de Cobranza (se llama en plugins_loaded) ──────────

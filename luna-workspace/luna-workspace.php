@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Luna Workspace
  * Plugin URI:        https://websobreruedas.com
- * Description:       Pizarra Colaborativa, gestión de tareas, equipos y proyectos. Versión 11.1.9 | Por Web Sobre Ruedas | 2026 | websobreruedas.com
- * Version:           11.1.9
+ * Description:       Pizarra Colaborativa, gestión de tareas, equipos y proyectos. Versión 11.1.10 | Por Web Sobre Ruedas | 2026 | websobreruedas.com
+ * Version:           11.1.10
  * Author:            Web Sobre Ruedas
  * License:           Proprietary
  * Text Domain:       luna-workspace
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('LUNA_VERSION',     '11.1.9');
+define('LUNA_VERSION',     '11.1.10');
 define('LUNA_PLUGIN_DIR',  plugin_dir_path(__FILE__));
 define('LUNA_PLUGIN_URL',  plugin_dir_url(__FILE__));
 define('LUNA_APP_DIR',     LUNA_PLUGIN_DIR . 'app/');
@@ -42,6 +42,12 @@ function luna_init() {
     }
 
     Luna_Activator::migrate_cobros_tables();
+    Luna_Activator::migrate_subscription_fields();
+
+    if (!wp_next_scheduled('luna_daily_billing')) {
+        wp_schedule_event(time(), 'daily', 'luna_daily_billing');
+    }
+    add_action('luna_daily_billing', 'luna_run_daily_billing_check');
 
     if (is_admin()) {
         new Luna_Admin();
@@ -288,6 +294,62 @@ function luna_write_license_config($key) {
     Luna_Activator::regenerate_app_config();
     // Also delete license cache so it gets re-verified with new key
     @unlink(LUNA_APP_DIR . 'luna-license-cache.json');
+}
+
+// ── Recordatorio diario de cobranzas ─────────────────────────────────────────
+function luna_run_daily_billing_check() {
+    global $wpdb;
+    $p = $wpdb->prefix . 'luna_';
+
+    $today_day = (int) date('j'); // día del mes sin cero (1-31)
+
+    $clients = $wpdb->get_results( $wpdb->prepare(
+        "SELECT id, name, domain, renewal_amount
+         FROM `{$p}luna_clients`
+         WHERE is_subscription = 1 AND billing_day = %d AND active = 1
+         ORDER BY name",
+        $today_day
+    ), ARRAY_A );
+
+    if ( empty( $clients ) ) return;
+
+    $fecha = date('d/m/Y');
+    $lines = [];
+    $total = 0;
+    foreach ( $clients as $c ) {
+        $monto  = '$' . number_format( (float)$c['renewal_amount'], 0, ',', '.' );
+        $domain = $c['domain'] ? " ({$c['domain']})" : '';
+        $lines[] = "• {$c['name']}{$domain} — {$monto}";
+        $total  += (float) $c['renewal_amount'];
+    }
+    $resumen   = implode( "\n", $lines );
+    $total_fmt = '$' . number_format( $total, 0, ',', '.' );
+    $cantidad  = count( $clients );
+
+    $titulo_wa  = "🔔 Cobranzas del {$fecha} ({$cantidad} cliente" . ($cantidad > 1 ? 's' : '') . ")";
+    $msg_wa     = "{$titulo_wa}\n\n{$resumen}\n\nTotal del día: {$total_fmt}";
+
+    // ── Email al admin de WordPress ───────────────────────────────────────────
+    $admin_email = get_option('admin_email');
+    $site_name   = get_bloginfo('name');
+    $body_email  = "Recordatorio de cobranzas — {$fecha}\n\n{$resumen}\n\nTotal del día: {$total_fmt}\n\nGenerado por Luna Workspace.";
+    wp_mail( $admin_email, "[{$site_name}] Cobranzas de hoy — {$fecha}", $body_email );
+
+    // ── WhatsApp vía admin Luna con CallMeBot configurado ─────────────────────
+    $admin_wa = $wpdb->get_row(
+        "SELECT phone, whatsapp_apikey FROM `{$p}users`
+         WHERE role='admin' AND active=1 AND phone != '' AND whatsapp_apikey != ''
+         ORDER BY id LIMIT 1",
+        ARRAY_A
+    );
+    if ( $admin_wa ) {
+        $url = 'https://api.callmebot.com/whatsapp.php?' . http_build_query([
+            'phone'  => $admin_wa['phone'],
+            'text'   => $msg_wa,
+            'apikey' => $admin_wa['whatsapp_apikey'],
+        ]);
+        wp_remote_get( $url, ['timeout' => 15, 'blocking' => false] );
+    }
 }
 
 // ── Validate Luna session from cookie ────────────────────────────────────────
