@@ -23,9 +23,10 @@ class Luna_Admin {
         add_action('wp_ajax_luna_backup_delete',      [$this, 'ajax_backup_delete']);
         add_action('wp_ajax_luna_backup_download',    [$this, 'ajax_backup_download']);
         add_action('wp_ajax_luna_backup_restore',     [$this, 'ajax_backup_restore']);
-        add_action('wp_ajax_luna_list_clients',   [$this, 'ajax_list_clients']);
-        add_action('wp_ajax_luna_save_client',    [$this, 'ajax_save_client']);
-        add_action('wp_ajax_luna_delete_client',  [$this, 'ajax_delete_client']);
+        add_action('wp_ajax_luna_list_clients',    [$this, 'ajax_list_clients']);
+        add_action('wp_ajax_luna_save_client',     [$this, 'ajax_save_client']);
+        add_action('wp_ajax_luna_delete_client',   [$this, 'ajax_delete_client']);
+        add_action('wp_ajax_luna_import_clients',  [$this, 'ajax_import_clients']);
         add_action('wp_ajax_luna_list_payments',  [$this, 'ajax_list_payments']);
         add_action('wp_ajax_luna_save_payment',   [$this, 'ajax_save_payment']);
         add_action('wp_ajax_luna_delete_payment', [$this, 'ajax_delete_payment']);
@@ -2503,8 +2504,13 @@ class Luna_Admin {
 
         <div class="lc-header">
             <div class="lc-title">👥 Clientes</div>
-            <button class="lc-btn" id="lc-btn-new-client">+ Nuevo cliente</button>
+            <div style="display:flex;gap:8px">
+                <button class="lc-btn lc-btn-ghost" id="lc-btn-import-csv" style="font-size:12px">📥 Importar CSV</button>
+                <input type="file" id="lc-csv-file" accept=".csv" style="display:none">
+                <button class="lc-btn" id="lc-btn-new-client">+ Nuevo cliente</button>
+            </div>
         </div>
+        <div id="lc-import-msg" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:13px"></div>
 
         <!-- Datos del prestador (para el encabezado del presupuesto) -->
         <details class="lc-settings-bar no-print" style="display:block">
@@ -2860,6 +2866,50 @@ class Luna_Admin {
         // ── EVENTS ───────────────────────────────────────────
         $('#lc-btn-new-client').on('click', function(){ openClientModal(null); });
         $('#lc-c-subscription').on('change', function(){ $('#lc-billing-day-row').toggle(this.checked); });
+
+        // ── IMPORTAR CSV ──────────────────────────────────────
+        $('#lc-btn-import-csv').on('click', function(){ $('#lc-csv-file').val('').trigger('click'); });
+        $('#lc-csv-file').on('change', function(){
+            var file = this.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e){
+                var lines = e.target.result.split(/\r?\n/).filter(function(l){ return $.trim(l); });
+                if (!lines.length) return;
+                // detectar si la primera línea es cabecera
+                var start = 0;
+                if (lines[0].match(/^(nombre|name|dominio|domain)/i)) start = 1;
+                var rows = [];
+                for (var i = start; i < lines.length; i++) {
+                    var cols = lines[i].split(',');
+                    if (cols.length < 1) continue;
+                    rows.push({
+                        name:           $.trim(cols[0] || ''),
+                        domain:         $.trim(cols[1] || ''),
+                        renewal_date:   $.trim(cols[2] || ''),
+                        renewal_amount: $.trim(cols[3] || ''),
+                        notes:          $.trim(cols[4] || ''),
+                    });
+                }
+                if (!rows.length) return;
+                var $msg = $('#lc-import-msg');
+                $msg.show().css({background:'#fefce8',border:'1px solid #fde68a',color:'#92400e'}).text('Importando ' + rows.length + ' filas...');
+                $.post(ajaxUrl, {
+                    action: 'luna_import_clients',
+                    nonce:  nonce,
+                    rows:   JSON.stringify(rows),
+                }, function(r){
+                    if (r.success) {
+                        $msg.css({background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534'})
+                            .text('✓ Importados: ' + r.data.imported + ' · Ya existían: ' + r.data.skipped + (r.data.errors ? ' · Errores: ' + r.data.errors : ''));
+                        loadClients();
+                    } else {
+                        $msg.css({background:'#fef2f2',border:'1px solid #fca5a5',color:'#dc2626'}).text('Error: ' + r.data);
+                    }
+                });
+            };
+            reader.readAsText(file, 'UTF-8');
+        });
         $('#lc-close-client, #lc-modal-client').on('click', function(e){ if(e.target===this) $('#lc-modal-client').removeClass('open'); });
         $('#lc-close-payment, #lc-modal-payment').on('click', function(e){ if(e.target===this) $('#lc-modal-payment').removeClass('open'); });
         $('#lc-btn-close-panel').on('click', function(){ $('#lc-payments-panel').hide(); activeClientId=0; });
@@ -3056,6 +3106,49 @@ class Luna_Admin {
             $id = $wpdb->insert_id;
         }
         wp_send_json_success(['id' => $id]);
+    }
+
+    // ── AJAX: import clients from CSV rows ───────────────────────────────────
+    public function ajax_import_clients() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+
+        $rows = json_decode(stripslashes($_POST['rows'] ?? '[]'), true);
+        if (!is_array($rows)) wp_send_json_error('Datos inválidos.');
+
+        global $wpdb;
+        $p     = $wpdb->prefix . 'luna_';
+        $table = "{$p}clients";
+        $now   = current_time('mysql');
+
+        // Asegurar columnas opcionales
+        $cols = ['domain' => "VARCHAR(200) NOT NULL DEFAULT ''", 'renewal_date' => "DATE DEFAULT NULL", 'renewal_amount' => "DECIMAL(10,2) DEFAULT 0.00", 'is_subscription' => "TINYINT(1) DEFAULT 0", 'billing_day' => "TINYINT(2) DEFAULT NULL"];
+        foreach ($cols as $col => $def) {
+            $exists = $wpdb->get_var("SHOW COLUMNS FROM `{$table}` LIKE '{$col}'");
+            if (!$exists) $wpdb->query("ALTER TABLE `{$table}` ADD COLUMN {$col} {$def}");
+        }
+
+        $imported = 0; $skipped = 0; $errors = 0;
+        foreach ($rows as $row) {
+            $name = sanitize_text_field($row['name'] ?? '');
+            if (!$name) continue;
+            $exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM `{$table}` WHERE name = %s LIMIT 1", $name));
+            if ($exists) { $skipped++; continue; }
+            $rd  = !empty($row['renewal_date']) ? sanitize_text_field($row['renewal_date']) : null;
+            $ra  = !empty($row['renewal_amount']) ? (float)str_replace(['.', ','], ['', '.'], $row['renewal_amount']) : 0;
+            $res = $wpdb->insert($table, [
+                'name'           => $name,
+                'domain'         => sanitize_text_field($row['domain']  ?? ''),
+                'renewal_date'   => $rd,
+                'renewal_amount' => $ra,
+                'notes'          => sanitize_text_field($row['notes']   ?? ''),
+                'active'         => 1,
+                'created_at'     => $now,
+                'updated_at'     => $now,
+            ]);
+            $res ? $imported++ : $errors++;
+        }
+        wp_send_json_success(['imported' => $imported, 'skipped' => $skipped, 'errors' => $errors]);
     }
 
     // ── AJAX: delete client ───────────────────────────────────────────────────
