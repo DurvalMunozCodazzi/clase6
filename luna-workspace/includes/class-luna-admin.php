@@ -2884,11 +2884,13 @@ class Luna_Admin {
                     var cols = lines[i].split(',');
                     if (cols.length < 1) continue;
                     rows.push({
-                        name:           $.trim(cols[0] || ''),
-                        domain:         $.trim(cols[1] || ''),
-                        renewal_date:   $.trim(cols[2] || ''),
-                        renewal_amount: $.trim(cols[3] || ''),
-                        notes:          $.trim(cols[4] || ''),
+                        name:            $.trim(cols[0] || ''),
+                        domain:          $.trim(cols[1] || ''),
+                        renewal_date:    $.trim(cols[2] || ''),
+                        renewal_amount:  $.trim(cols[3] || ''),
+                        notes:           $.trim(cols[4] || ''),
+                        is_subscription: $.trim(cols[5] || ''),
+                        billing_day:     $.trim(cols[6] || ''),
                     });
                 }
                 if (!rows.length) return;
@@ -3136,15 +3138,19 @@ class Luna_Admin {
             if ($exists) { $skipped++; continue; }
             $rd  = !empty($row['renewal_date']) ? sanitize_text_field($row['renewal_date']) : null;
             $ra  = !empty($row['renewal_amount']) ? (float)str_replace(['.', ','], ['', '.'], $row['renewal_amount']) : 0;
+            $sub = !empty($row['is_subscription']) && in_array(strtolower($row['is_subscription']), ['1','si','sí','yes','true','abonado']) ? 1 : 0;
+            $bd  = !empty($row['billing_day']) ? min(31, max(1, (int)$row['billing_day'])) : null;
             $res = $wpdb->insert($table, [
-                'name'           => $name,
-                'domain'         => sanitize_text_field($row['domain']  ?? ''),
-                'renewal_date'   => $rd,
-                'renewal_amount' => $ra,
-                'notes'          => sanitize_text_field($row['notes']   ?? ''),
-                'active'         => 1,
-                'created_at'     => $now,
-                'updated_at'     => $now,
+                'name'            => $name,
+                'domain'          => sanitize_text_field($row['domain']  ?? ''),
+                'renewal_date'    => $rd,
+                'renewal_amount'  => $ra,
+                'notes'           => sanitize_text_field($row['notes']   ?? ''),
+                'is_subscription' => $sub,
+                'billing_day'     => $bd,
+                'active'          => 1,
+                'created_at'      => $now,
+                'updated_at'      => $now,
             ]);
             $res ? $imported++ : $errors++;
         }
