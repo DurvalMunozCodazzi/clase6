@@ -2881,34 +2881,78 @@ class Luna_Admin {
             reader.onload = function(e){
                 var lines = e.target.result.split(/\r?\n/).filter(function(l){ return $.trim(l); });
                 if (!lines.length) return;
-                // detectar si la primera línea es cabecera
-                var start = 0;
-                if (lines[0].match(/^(nombre|name|dominio|domain)/i)) start = 1;
+
+                // Parser CSV que maneja campos entre comillas (ej: "$1,160,000")
+                function parseLine(line) {
+                    var cols = [], cur = '', inQ = false;
+                    for (var i = 0; i < line.length; i++) {
+                        var ch = line[i];
+                        if (ch === '"') { inQ = !inQ; }
+                        else if (ch === ',' && !inQ) { cols.push($.trim(cur)); cur = ''; }
+                        else { cur += ch; }
+                    }
+                    cols.push($.trim(cur));
+                    return cols;
+                }
+
+                // Convierte DD/M → 2026-MM-DD. Ignora "abonado" y valores no numéricos.
+                function toIsoDate(s) {
+                    if (!s || /[a-z]/i.test(s)) return '';
+                    var p = s.split('/');
+                    if (p.length !== 2) return '';
+                    var d = parseInt(p[0], 10), m = parseInt(p[1], 10);
+                    if (!d || !m || d > 31 || m > 12) return '';
+                    return '2026-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+                }
+
+                // Extrae el día del mes de DD/M
+                function toDay(s) {
+                    if (!s || /[a-z]/i.test(s)) return '';
+                    var d = parseInt((s.split('/'))[0], 10);
+                    return (d >= 1 && d <= 31) ? String(d) : '';
+                }
+
+                // Limpia monto: quita $, comas, espacios, comillas
+                function toAmount(s) {
+                    return String(s || '').replace(/[$,\s"]/g, '');
+                }
+
+                // Detectar si primera fila es cabecera (primera celda vacía o texto)
+                var firstCols = parseLine(lines[0]);
+                var start = (!firstCols[0] || /vencimiento|nombre|name|abonado/i.test(firstCols[1] || '')) ? 1 : 0;
+
+                // Formato del CSV del usuario:
+                // col[0]=nombre/dominio  col[1]=fecha(DD/M)  col[2]=abonado(SI/-)
+                // col[3]=estado(PAGO/DEBE)  col[4]=monto
                 var rows = [];
                 for (var i = start; i < lines.length; i++) {
-                    var cols = lines[i].split(',');
-                    if (cols.length < 1) continue;
+                    var cols = parseLine(lines[i]);
+                    var name = cols[0] || '';
+                    if (!name) continue;
+                    var isSub = (cols[2] || '').toUpperCase() === 'SI';
+                    var dateStr = cols[1] || '';
                     rows.push({
-                        name:            $.trim(cols[0] || ''),
-                        domain:          $.trim(cols[1] || ''),
-                        renewal_date:    $.trim(cols[2] || ''),
-                        renewal_amount:  $.trim(cols[3] || ''),
-                        notes:           $.trim(cols[4] || ''),
-                        is_subscription: $.trim(cols[5] || ''),
-                        billing_day:     $.trim(cols[6] || ''),
+                        name:            name,
+                        domain:          (/\.[a-z]{2,}$/i.test(name) && !/\s/.test(name)) ? name : '',
+                        renewal_date:    toIsoDate(dateStr),
+                        is_subscription: isSub ? '1' : '0',
+                        billing_day:     isSub ? toDay(dateStr) : '',
+                        notes:           cols[3] || '',
+                        renewal_amount:  toAmount(cols[4]),
                     });
                 }
                 if (!rows.length) return;
                 var $msg = $('#lc-import-msg');
-                $msg.show().css({background:'#fefce8',border:'1px solid #fde68a',color:'#92400e'}).text('Importando ' + rows.length + ' filas...');
+                $msg.show().css({background:'#fefce8',border:'1px solid #fde68a',color:'#92400e'}).text('Procesando ' + rows.length + ' filas...');
                 $.post(ajaxUrl, {
                     action: 'luna_import_clients',
                     nonce:  nonce,
                     rows:   JSON.stringify(rows),
                 }, function(r){
                     if (r.success) {
-                        $msg.css({background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534'})
-                            .text('✓ Importados: ' + r.data.imported + ' · Ya existían: ' + r.data.skipped + (r.data.errors ? ' · Errores: ' + r.data.errors : ''));
+                        var msg = '✓ Nuevos: ' + r.data.imported + ' · Actualizados: ' + r.data.updated;
+                        if (r.data.errors) msg += ' · Errores: ' + r.data.errors;
+                        $msg.css({background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534'}).text(msg);
                         loadClients();
                     } else {
                         $msg.css({background:'#fef2f2',border:'1px solid #fca5a5',color:'#dc2626'}).text('Error: ' + r.data);
@@ -3135,31 +3179,41 @@ class Luna_Admin {
             if (!$exists) $wpdb->query("ALTER TABLE `{$table}` ADD COLUMN {$col} {$def}");
         }
 
-        $imported = 0; $skipped = 0; $errors = 0;
+        $imported = 0; $updated = 0; $errors = 0;
+        $seen = [];
         foreach ($rows as $row) {
             $name = sanitize_text_field($row['name'] ?? '');
             if (!$name) continue;
-            $exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM `{$table}` WHERE name = %s LIMIT 1", $name));
-            if ($exists) { $skipped++; continue; }
+
             $rd  = !empty($row['renewal_date']) ? sanitize_text_field($row['renewal_date']) : null;
-            $ra  = !empty($row['renewal_amount']) ? (float)str_replace(['.', ','], ['', '.'], $row['renewal_amount']) : 0;
+            $ra  = strlen($row['renewal_amount'] ?? '') ? (float)preg_replace('/[^0-9.]/', '', $row['renewal_amount']) : null;
             $sub = !empty($row['is_subscription']) && in_array(strtolower($row['is_subscription']), ['1','si','sí','yes','true','abonado']) ? 1 : 0;
             $bd  = !empty($row['billing_day']) ? min(31, max(1, (int)$row['billing_day'])) : null;
-            $res = $wpdb->insert($table, [
-                'name'            => $name,
+
+            $data = [
                 'domain'          => sanitize_text_field($row['domain']  ?? ''),
-                'renewal_date'    => $rd,
-                'renewal_amount'  => $ra,
                 'notes'           => sanitize_text_field($row['notes']   ?? ''),
-                'is_subscription' => $sub,
-                'billing_day'     => $bd,
                 'active'          => 1,
-                'created_at'      => $now,
                 'updated_at'      => $now,
-            ]);
-            $res ? $imported++ : $errors++;
+            ];
+            if ($rd !== null)  $data['renewal_date']    = $rd;
+            if ($ra !== null)  $data['renewal_amount']  = $ra;
+            // Solo sobreescribir is_subscription/billing_day si el CSV lo marca como SI
+            if ($sub)          { $data['is_subscription'] = 1; $data['billing_day'] = $bd; }
+
+            $exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM `{$table}` WHERE name = %s LIMIT 1", $name));
+            if ($exists) {
+                $res = $wpdb->update($table, $data, ['name' => $name]);
+                $res !== false ? $updated++ : $errors++;
+            } else {
+                $data['name']       = $name;
+                $data['created_at'] = $now;
+                if (!$sub) { $data['is_subscription'] = 0; }
+                $res = $wpdb->insert($table, $data);
+                $res ? $imported++ : $errors++;
+            }
         }
-        wp_send_json_success(['imported' => $imported, 'skipped' => $skipped, 'errors' => $errors]);
+        wp_send_json_success(['imported' => $imported, 'updated' => $updated, 'errors' => $errors]);
     }
 
     // ── AJAX: delete client ───────────────────────────────────────────────────
