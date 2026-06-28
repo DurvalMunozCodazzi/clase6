@@ -372,6 +372,55 @@ class Luna_Activator {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 
+    // ── Garantiza que luna_clients y luna_payments existan (sin gate, idempotente) ─
+    public static function ensure_client_tables() {
+        global $wpdb;
+        $p = $wpdb->prefix;
+        $c = 'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4';
+        $wpdb->query("CREATE TABLE IF NOT EXISTS `{$p}luna_clients` (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(200) NOT NULL,
+            cuit VARCHAR(20) DEFAULT '',
+            email VARCHAR(200) DEFAULT '',
+            phone VARCHAR(50) DEFAULT '',
+            address TEXT DEFAULT '',
+            city VARCHAR(100) DEFAULT '',
+            iva_condition VARCHAR(50) DEFAULT 'Consumidor Final',
+            notes TEXT DEFAULT '',
+            domain VARCHAR(200) NOT NULL DEFAULT '',
+            renewal_date DATE DEFAULT NULL,
+            renewal_amount DECIMAL(10,2) DEFAULT 0.00,
+            is_subscription TINYINT(1) DEFAULT 0,
+            billing_day TINYINT(2) DEFAULT NULL,
+            active TINYINT(1) DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) $c");
+        $wpdb->query("CREATE TABLE IF NOT EXISTS `{$p}luna_payments` (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            client_id INT NOT NULL,
+            workspace_id INT DEFAULT NULL,
+            concept VARCHAR(300) NOT NULL DEFAULT '',
+            amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            currency VARCHAR(10) DEFAULT 'ARS',
+            payment_date DATE DEFAULT NULL,
+            due_date DATE DEFAULT NULL,
+            method VARCHAR(50) DEFAULT 'Transferencia',
+            status VARCHAR(20) DEFAULT 'pending',
+            invoice_number VARCHAR(50) DEFAULT '',
+            notes TEXT DEFAULT '',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX(client_id), INDEX(workspace_id)
+        ) $c");
+        // Columnas opcionales en instalaciones antiguas
+        self::add_column_if_missing($wpdb, "{$p}luna_clients", 'domain',          "VARCHAR(200) NOT NULL DEFAULT ''");
+        self::add_column_if_missing($wpdb, "{$p}luna_clients", 'renewal_date',    "DATE DEFAULT NULL");
+        self::add_column_if_missing($wpdb, "{$p}luna_clients", 'renewal_amount',  "DECIMAL(10,2) DEFAULT 0.00");
+        self::add_column_if_missing($wpdb, "{$p}luna_clients", 'is_subscription', "TINYINT(1) DEFAULT 0");
+        self::add_column_if_missing($wpdb, "{$p}luna_clients", 'billing_day',     "TINYINT(2) DEFAULT NULL");
+    }
+
     // ── Migración v2: columnas de abono/suscripción (se llama en plugins_loaded) ─
     public static function migrate_subscription_fields() {
         if (get_option('luna_cobros_tables_v2')) return;
