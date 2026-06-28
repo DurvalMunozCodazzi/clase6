@@ -22,12 +22,13 @@ if ( ! current_user_can( 'manage_options' ) ) {
 
 global $wpdb;
 $p = $wpdb->prefix . 'luna_';
+$table = "{$p}clients";
 
 // ── Agregar columnas nuevas si no existen ─────────────────────────────────────
-$add_col = function ( $col, $def ) use ( $wpdb, $p ) {
-    $exists = $wpdb->get_var( "SHOW COLUMNS FROM `{$p}luna_clients` LIKE '$col'" );
+$add_col = function ( $col, $def ) use ( $wpdb, $table ) {
+    $exists = $wpdb->get_var( "SHOW COLUMNS FROM `{$table}` LIKE '$col'" );
     if ( ! $exists ) {
-        $wpdb->query( "ALTER TABLE `{$p}luna_clients` ADD COLUMN $col $def" );
+        $wpdb->query( "ALTER TABLE `{$table}` ADD COLUMN $col $def" );
     }
 };
 $add_col( 'domain',         "VARCHAR(200) NOT NULL DEFAULT '' AFTER `name`" );
@@ -86,14 +87,14 @@ $log        = [];
 foreach ( $clientes as $c ) {
     $nombre = $c[0];
     $exists = $wpdb->get_var(
-        $wpdb->prepare( "SELECT id FROM `{$p}luna_clients` WHERE name = %s LIMIT 1", $nombre )
+        $wpdb->prepare( "SELECT id FROM `{$table}` WHERE name = %s LIMIT 1", $nombre )
     );
     if ( $exists ) {
         $omitidos++;
         $log[] = [ 'skip', $nombre ];
         continue;
     }
-    $res = $wpdb->insert( "{$p}luna_clients", [
+    $res = $wpdb->insert( $table, [
         'name'           => $nombre,
         'domain'         => $c[1],
         'renewal_date'   => $c[2],
