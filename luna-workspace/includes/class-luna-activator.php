@@ -417,8 +417,9 @@ class Luna_Activator {
         self::add_column_if_missing($wpdb, "{$p}luna_clients", 'domain',          "VARCHAR(200) NOT NULL DEFAULT ''");
         self::add_column_if_missing($wpdb, "{$p}luna_clients", 'renewal_date',    "DATE DEFAULT NULL");
         self::add_column_if_missing($wpdb, "{$p}luna_clients", 'renewal_amount',  "DECIMAL(10,2) DEFAULT 0.00");
-        self::add_column_if_missing($wpdb, "{$p}luna_clients", 'is_subscription', "TINYINT(1) DEFAULT 0");
-        self::add_column_if_missing($wpdb, "{$p}luna_clients", 'billing_day',     "TINYINT(2) DEFAULT NULL");
+        self::add_column_if_missing($wpdb, "{$p}luna_clients", 'is_subscription',  "TINYINT(1) DEFAULT 0");
+        self::add_column_if_missing($wpdb, "{$p}luna_clients", 'billing_day',      "TINYINT(2) DEFAULT NULL");
+        self::add_column_if_missing($wpdb, "{$p}luna_clients", 'subscription_type',"VARCHAR(20) DEFAULT 'none'");
     }
 
     // ── Migración v2: columnas de abono/suscripción (se llama en plugins_loaded) ─

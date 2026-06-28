@@ -2586,15 +2586,17 @@ class Luna_Admin {
                         <label>Ciudad</label>
                         <input type="text" id="lc-c-city" placeholder="Buenos Aires">
                     </div>
-                    <div class="lc-fg" style="grid-column:1/-1">
-                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-                            <input type="checkbox" id="lc-c-subscription" style="width:16px;height:16px">
-                            <span>Abonado / Recurrente mensual</span>
-                        </label>
+                    <div class="lc-fg">
+                        <label>Tipo de renovación</label>
+                        <select id="lc-c-subscription">
+                            <option value="none">Sin renovación periódica</option>
+                            <option value="mensual">Abono mensual</option>
+                            <option value="anual">Abono anual</option>
+                        </select>
                     </div>
                     <div class="lc-fg" id="lc-billing-day-row" style="display:none">
-                        <label>Día de cobro (1-31)</label>
-                        <input type="number" id="lc-c-billing-day" min="1" max="31" placeholder="Ej: 5">
+                        <label>Día de cobro mensual (1-31)</label>
+                        <input type="number" id="lc-c-billing-day" min="1" max="31" placeholder="Ej: 1">
                     </div>
                     <div class="lc-fg" style="grid-column:1/-1">
                         <label>Notas internas</label>
@@ -2734,15 +2736,18 @@ class Luna_Admin {
                 + '</tr></thead><tbody>';
 
             sorted.forEach(function(c){
-                var isSub = parseInt(c.is_subscription, 10) === 1;
+                var subType = c.subscription_type || (parseInt(c.is_subscription,10)===1 ? 'mensual' : 'none');
                 var rd = '—';
                 if (c.renewal_date) {
                     var p = c.renewal_date.split('-');
                     rd = p.length === 3 ? p[2]+'/'+p[1]+'/'+p[0] : c.renewal_date;
                 }
                 var ra = c.renewal_amount && parseFloat(c.renewal_amount) > 0 ? '$'+fmt(c.renewal_amount) : '—';
+                var subBadge = '';
+                if (subType === 'mensual') subBadge = '<br><span style="font-size:11px;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px">🔄 Mensual · Día '+esc(c.billing_day)+'</span>';
+                if (subType === 'anual')   subBadge = '<br><span style="font-size:11px;background:#ede9fe;color:#6d28d9;padding:1px 6px;border-radius:10px">📅 Anual · '+rd+'</span>';
                 h += '<tr>';
-                h += '<td><strong>'+esc(c.name)+'</strong>'+(isSub?'<br><span style="font-size:11px;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px">🔄 Abonado · Día '+esc(c.billing_day)+'</span>':'')+(c.notes?'<br><small style="color:'+(c.notes==='DEBE'?'#ef4444':'#16a34a')+'">'+esc(c.notes)+'</small>':'')+'</td>';
+                h += '<td><strong>'+esc(c.name)+'</strong>'+subBadge+(c.notes?'<br><small style="color:'+(c.notes==='DEBE'?'#ef4444':'#16a34a')+'">'+esc(c.notes)+'</small>':'')+'</td>';
                 h += '<td>'+(c.domain?'<a href="https://'+esc(c.domain)+'" target="_blank" style="font-size:12px">'+esc(c.domain)+'</a>':'—')+'</td>';
                 h += '<td style="white-space:nowrap">'+rd+'</td>';
                 h += '<td style="white-space:nowrap;font-weight:600">'+ra+'</td>';
@@ -2886,10 +2891,12 @@ class Luna_Admin {
             $('#lc-c-address').val(data ? data.address : '');
             $('#lc-c-city').val(data ? data.city : '');
             $('#lc-c-notes').val(data ? data.notes : '');
-            var isSub = !!(data && parseInt(data.is_subscription, 10) === 1);
-            $('#lc-c-subscription').prop('checked', isSub);
+            var subType = (data && data.subscription_type) ? data.subscription_type : 'none';
+            // compatibilidad con registros viejos (is_subscription=1 sin subscription_type)
+            if (subType === 'none' && data && parseInt(data.is_subscription, 10) === 1) subType = 'mensual';
+            $('#lc-c-subscription').val(subType);
             $('#lc-c-billing-day').val(data && data.billing_day ? data.billing_day : '');
-            $('#lc-billing-day-row').toggle(isSub);
+            $('#lc-billing-day-row').toggle(subType === 'mensual');
             $('#lc-client-modal-title').text(data ? 'Editar cliente' : 'Nuevo cliente');
             $('#lc-client-msg').text('').removeClass('ok err');
             $('#lc-modal-client').addClass('open');
@@ -2914,7 +2921,7 @@ class Luna_Admin {
 
         // ── EVENTS ───────────────────────────────────────────
         $('#lc-btn-new-client').on('click', function(){ openClientModal(null); });
-        $('#lc-c-subscription').on('change', function(){ $('#lc-billing-day-row').toggle(this.checked); });
+        $('#lc-c-subscription').on('change', function(){ $('#lc-billing-day-row').toggle($(this).val() === 'mensual'); });
 
         // ── IMPORTAR CSV ──────────────────────────────────────
         $('#lc-btn-import-csv').on('click', function(){ $('#lc-csv-file').val('').trigger('click'); });
@@ -3074,8 +3081,8 @@ class Luna_Admin {
                 address:       $('#lc-c-address').val(),
                 city:          $('#lc-c-city').val(),
                 notes:         $('#lc-c-notes').val(),
-                is_subscription: $('#lc-c-subscription').is(':checked') ? 1 : 0,
-                billing_day:     $('#lc-c-billing-day').val() || '',
+                subscription_type: $('#lc-c-subscription').val(),
+                billing_day:       $('#lc-c-billing-day').val() || '',
             };
             $.post(ajaxUrl, data, function(r){
                 if(r.success){
@@ -3189,8 +3196,9 @@ class Luna_Admin {
             'city'          => sanitize_text_field($_POST['city']          ?? ''),
             'iva_condition'   => sanitize_text_field($_POST['iva_condition'] ?? 'Consumidor Final'),
             'notes'           => sanitize_textarea_field($_POST['notes']     ?? ''),
-            'is_subscription' => !empty($_POST['is_subscription']) ? 1 : 0,
-            'billing_day'     => !empty($_POST['billing_day']) ? min(31, max(1, (int)$_POST['billing_day'])) : null,
+            'subscription_type' => in_array($_POST['subscription_type'] ?? '', ['mensual','anual']) ? sanitize_text_field($_POST['subscription_type']) : 'none',
+            'is_subscription'   => in_array($_POST['subscription_type'] ?? '', ['mensual','anual']) ? 1 : 0,
+            'billing_day'       => !empty($_POST['billing_day']) ? min(31, max(1, (int)$_POST['billing_day'])) : null,
             'updated_at'      => current_time('mysql'),
         ];
 
