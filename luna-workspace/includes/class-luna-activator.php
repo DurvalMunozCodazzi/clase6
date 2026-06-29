@@ -420,6 +420,9 @@ class Luna_Activator {
         self::add_column_if_missing($wpdb, "{$p}luna_clients", 'is_subscription',  "TINYINT(1) DEFAULT 0");
         self::add_column_if_missing($wpdb, "{$p}luna_clients", 'billing_day',      "TINYINT(2) DEFAULT NULL");
         self::add_column_if_missing($wpdb, "{$p}luna_clients", 'subscription_type',"VARCHAR(20) DEFAULT 'none'");
+        // Cuenta corriente: tipo de movimiento (cargo/cobro) y referencia al cargo original
+        self::add_column_if_missing($wpdb, "{$p}luna_payments", 'type',     "VARCHAR(10) NOT NULL DEFAULT 'cargo'");
+        self::add_column_if_missing($wpdb, "{$p}luna_payments", 'cargo_id', "INT DEFAULT NULL");
     }
 
     // ── Migración v2: columnas de abono/suscripción (se llama en plugins_loaded) ─
