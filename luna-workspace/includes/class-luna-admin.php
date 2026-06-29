@@ -2825,7 +2825,7 @@ class Luna_Admin {
         function fmt(n){ return parseFloat(n||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
         // ── CLIENTS TABLE ─────────────────────────────────────
-        var clientsData = [], sortCol = 'name', sortDir = 1, filterText = '';
+        var clientsData = [], sortCol = 'renewal_date', sortDir = 1, filterText = '';
 
         function renderClients() {
             if (!clientsData.length) { $('#lc-clients-wrap').html('<p class="lc-empty">Sin clientes aún. Creá el primero con el botón de arriba.</p>'); return; }
