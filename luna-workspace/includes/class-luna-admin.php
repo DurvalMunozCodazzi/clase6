@@ -2664,7 +2664,8 @@ class Luna_Admin {
                             <option>Efectivo</option>
                             <option>Cheque</option>
                             <option>Tarjeta</option>
-                            <option>Otro</option>
+                            <option>Mercado Pago</option>
+                            <option>Paypal</option>
                         </select>
                     </div>
                     <div class="lc-fg">
@@ -2740,7 +2741,8 @@ class Luna_Admin {
                             <option>Efectivo</option>
                             <option>Cheque</option>
                             <option>Tarjeta</option>
-                            <option>Otro</option>
+                            <option>Mercado Pago</option>
+                            <option>Paypal</option>
                         </select>
                     </div>
                     <div class="lc-fg" style="grid-column:1/-1">
