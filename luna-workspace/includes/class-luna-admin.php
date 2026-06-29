@@ -2928,14 +2928,22 @@ class Luna_Admin {
                 var h = '<div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;background:'+(ok?'#f0fdf4':'#fef2f2')+';border:1px solid '+(ok?'#bbf7d0':'#fca5a5')+';border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:13px">';
                 h += '<span>📋 Cargos: <strong>$'+fmt(totCargo)+'</strong></span>';
                 h += '<span style="color:#16a34a">💵 Cobros: <strong>$'+fmt(totCobro)+'</strong></span>';
-                if (saldo > 0)       h += '<span style="color:#ef4444;font-weight:700;font-size:14px">⚠ Debe: $'+fmt(saldo)+'</span>';
+                if (saldo > 0)       h += '<span style="color:#ef4444;font-weight:700;font-size:14px">⚠ Falta: $'+fmt(saldo)+'</span>';
                 else if (saldo < 0)  h += '<span style="color:#1d4ed8;font-weight:700">✓ Crédito: $'+fmt(Math.abs(saldo))+'</span>';
                 else                 h += '<span style="color:#16a34a;font-weight:700">✓ Sin saldo pendiente</span>';
                 if (totUSD) h += '<span style="color:#1d4ed8">USD: $'+fmt(totUSD)+'</span>';
                 h += '</div>';
 
                 var today = new Date(); today.setHours(0,0,0,0);
-                var running = 0;
+
+                // Mapa: cargo_id → total cobrado (para calcular Falta por cargo)
+                var cobrosMap = {};
+                rows.forEach(function(p) {
+                    if (p.type === 'cobro' && p.cargo_id) {
+                        cobrosMap[p.cargo_id] = (cobrosMap[p.cargo_id] || 0) + parseFloat(p.amount || 0);
+                    }
+                });
+
                 h += '<table class="lc-table"><thead><tr>';
                 h += '<th>Fecha</th><th>Tipo</th><th>Concepto</th>';
                 h += '<th style="text-align:right">A pagar</th><th style="text-align:right">Pagos</th>';
@@ -2946,10 +2954,8 @@ class Luna_Admin {
                     var amt     = parseFloat(p.amount||0);
                     var isCobro = p.type === 'cobro';
                     var isUSD   = p.currency === 'USD';
-                    if (!isUSD) { if (isCobro) running -= amt; else running += amt; }
                     var isOverdue = !isCobro && p.due_date && new Date(p.due_date) < today && p.status !== 'paid';
                     var rowBg = isCobro ? 'background:#f0fdf9' : (isOverdue ? 'background:#fff5f5' : '');
-                    var saldoCss = running > 0 ? 'color:#ef4444;font-weight:700' : (running < 0 ? 'color:#1d4ed8;font-weight:700' : 'color:#16a34a;font-weight:700');
                     var dateVal = p.payment_date || p.due_date || '—';
                     var typeBadgeBg    = isCobro ? '#dcfce7' : '#fef9c3';
                     var typeBadgeColor = isCobro ? '#16a34a' : '#92400e';
@@ -2965,11 +2971,16 @@ class Luna_Admin {
                     } else if (isCobro) {
                         h += '<td style="text-align:right;color:#94a3b8">—</td>';
                         h += '<td style="text-align:right;color:#16a34a;font-weight:700">$'+fmt(amt)+'</td>';
-                        h += '<td style="text-align:right;white-space:nowrap;'+saldoCss+'">$'+fmt(Math.abs(running))+(running<0?' <small>CR</small>':'')+'</td>';
-                    } else {
-                        h += '<td style="text-align:right;font-weight:700">$'+fmt(amt)+'</td>';
                         h += '<td style="text-align:right;color:#94a3b8">—</td>';
-                        h += '<td style="text-align:right;white-space:nowrap;'+saldoCss+'">$'+fmt(Math.abs(running))+(running<0?' <small>CR</small>':'')+'</td>';
+                    } else {
+                        var pagado   = cobrosMap[p.id] || 0;
+                        var faltaAmt = Math.max(0, amt - pagado);
+                        var faltaHtml = faltaAmt > 0
+                            ? '<span style="color:#ef4444;font-weight:700">$'+fmt(faltaAmt)+'</span>'
+                            : '<span style="color:#16a34a;font-weight:700">✓ Al día</span>';
+                        h += '<td style="text-align:right;font-weight:700">$'+fmt(amt)+'</td>';
+                        h += '<td style="text-align:right;color:'+(pagado>0?'#16a34a':'#94a3b8')+'">'+( pagado>0?'$'+fmt(pagado):'—')+'</td>';
+                        h += '<td style="text-align:right">'+faltaHtml+'</td>';
                     }
                     h += '<td>'+(isCobro?'<span style="color:#16a34a;font-size:12px">✓ Acreditado</span>':statusBadge(p.status))+'</td>';
                     h += '<td style="white-space:nowrap">';
