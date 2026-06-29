@@ -31,8 +31,9 @@ class Luna_Admin {
         add_action('wp_ajax_luna_save_payment',      [$this, 'ajax_save_payment']);
         add_action('wp_ajax_luna_delete_payment',    [$this, 'ajax_delete_payment']);
         add_action('wp_ajax_luna_mark_payment_paid', [$this, 'ajax_mark_payment_paid']);
-        add_action('wp_ajax_luna_estado_cuenta',     [$this, 'ajax_estado_cuenta']);
-        add_action('wp_ajax_luna_report_payments',   [$this, 'ajax_report_payments']);
+        add_action('wp_ajax_luna_estado_cuenta',        [$this, 'ajax_estado_cuenta']);
+        add_action('wp_ajax_luna_report_payments',      [$this, 'ajax_report_payments']);
+        add_action('wp_ajax_luna_send_client_reminder', [$this, 'ajax_send_client_reminder']);
     }
 
     public function show_db_diagnostic() {
@@ -2799,6 +2800,21 @@ class Luna_Admin {
             </div>
         </div>
 
+        <!-- Modal: Recordatorio email al cliente -->
+        <div class="lc-overlay" id="lc-modal-email-reminder">
+            <div class="lc-modal" style="max-width:500px">
+                <button class="lc-close" id="lc-close-email-reminder">×</button>
+                <h3>✉️ Recordatorio de pago</h3>
+                <p style="color:#64748b;font-size:13px;margin-bottom:4px">Para: <strong id="lc-reminder-client-name"></strong> — <span id="lc-reminder-client-email" style="color:#5b6af0"></span></p>
+                <div class="lc-fg" style="margin-top:12px">
+                    <label>Mensaje a enviar</label>
+                    <textarea id="lc-reminder-body" rows="7" style="width:100%;font-size:13px;line-height:1.6;padding:10px;border:1px solid #cbd5e1;border-radius:8px;resize:vertical;font-family:inherit"></textarea>
+                </div>
+                <button class="lc-submit" id="lc-submit-email-reminder" style="margin-top:12px">✉️ Enviar email</button>
+                <p class="lc-msg" id="lc-reminder-msg"></p>
+            </div>
+        </div>
+
         </div><!-- .wrap -->
         <script>
         (function($){
@@ -2846,79 +2862,112 @@ class Luna_Admin {
                 return '<th style="cursor:pointer;user-select:none" data-col="'+col+'">'+label+'<span style="color:#94a3b8;font-size:10px">'+arrow+'</span></th>';
             }
 
-            // Filtrar por texto de búsqueda
+            // Filtrar por nombre o dominio
             if (filterText) {
-                sorted = sorted.filter(function(c){ return (c.name||'').toLowerCase().indexOf(filterText) !== -1; });
+                sorted = sorted.filter(function(c){
+                    return (c.name||'').toLowerCase().indexOf(filterText) !== -1
+                        || (c.domain||'').toLowerCase().indexOf(filterText) !== -1;
+                });
             }
             if (!sorted.length) { $('#lc-clients-wrap').html('<p class="lc-empty">Sin resultados para "'+esc(filterText)+'".</p>'); return; }
 
-            var vencLabel = sortCol === 'renewal_date' ? 'Vencimiento' : 'Vencimiento <small style="color:#94a3b8;font-weight:400">(clic→agrupa por mes)</small>';
+            // ── Resumen superior ─────────────────────────────────────────────────
+            var sumAlDia = 0, sumDeben = 0, sumPendiente = 0;
+            sorted.forEach(function(c){
+                var falta = Math.max(0, parseFloat(c.total_cargo||0) - parseFloat(c.total_cobro||0));
+                if (falta > 0) { sumDeben++; sumPendiente += falta; }
+                else if (parseFloat(c.total_cargo||0) > 0) sumAlDia++;
+            });
+            var summary = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">';
+            summary += '<span style="background:#f0fdf4;border:1px solid #bbf7d0;color:#16a34a;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700">✓ Al día: '+sumAlDia+'</span>';
+            summary += '<span style="background:#fff5f5;border:1px solid #fca5a5;color:#ef4444;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700">⚠ Deben: '+sumDeben+'</span>';
+            if (sumPendiente > 0) summary += '<span style="background:#fef3c7;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700">💰 Pendiente total: $'+fmt(sumPendiente)+'</span>';
+            summary += '<span style="background:#f1f5f9;border:1px solid #e2e8f0;color:#64748b;border-radius:8px;padding:6px 14px;font-size:13px">Total: '+sorted.length+' clientes</span>';
+            summary += '</div>';
+
+            // ── Tabla ────────────────────────────────────────────────────────────
+            var vencLabel = sortCol === 'renewal_date' ? 'Vencimiento' : 'Vencimiento <small style="color:#94a3b8;font-weight:400">(clic→agrupa)</small>';
             var h = '<table class="lc-table"><thead><tr>'
-                + th('Nombre / Razón social','name')
                 + th('Dominio','domain')
                 + th(vencLabel,'renewal_date')
                 + th('Monto','renewal_amount')
-                + '<th>Estado</th><th>Email</th><th>Teléfono</th><th>Acciones</th>'
+                + th('Pagos','total_cobro')
+                + th('Faltante','total_cargo')
+                + '<th>Estado</th><th>Acciones</th>'
                 + '</tr></thead><tbody>';
 
-            var monthColors = ['#f8faff','#fffdf5']; // azul muy suave / crema — alternan por mes
+            var monthColors = ['#f8faff','#fffdf5'];
             var monthIndex = -1, lastMonth = '';
 
             sorted.forEach(function(c){
-                var subType = c.subscription_type || (parseInt(c.is_subscription,10)===1 ? 'mensual' : 'none');
+                var subType    = c.subscription_type || (parseInt(c.is_subscription,10)===1 ? 'mensual' : 'none');
                 var rd = '—';
                 if (c.renewal_date) {
-                    var p = c.renewal_date.split('-');
-                    rd = p.length === 3 ? p[2]+'/'+p[1]+'/'+p[0] : c.renewal_date;
+                    var dp = c.renewal_date.split('-');
+                    rd = dp.length === 3 ? dp[2]+'/'+dp[1]+'/'+dp[0] : c.renewal_date;
                 }
-                var ra = c.renewal_amount && parseFloat(c.renewal_amount) > 0 ? '$'+fmt(c.renewal_amount) : '—';
-                var subBadge = '';
-                if (subType === 'mensual') subBadge = '<br><span style="font-size:11px;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px">🔄 Mensual · Día '+esc(c.billing_day)+'</span>';
-                if (subType === 'anual')   subBadge = '<br><span style="font-size:11px;background:#ede9fe;color:#6d28d9;padding:1px 6px;border-radius:10px">📅 Anual · '+rd+'</span>';
                 var totalCargo = parseFloat(c.total_cargo || 0);
                 var totalCobro = parseFloat(c.total_cobro || 0);
-                var faltaClient = Math.max(0, totalCargo - totalCobro);
-                var saldoHtml = '—';
-                if (faltaClient > 0) {
-                    saldoHtml = '<span style="color:#ef4444;font-weight:700">Debe $'+fmt(faltaClient)+'</span>';
-                } else if (totalCargo > 0) {
-                    saldoHtml = '<span style="color:#16a34a;font-size:12px">✓ Al día</span>';
-                }
-                // Separador de mes (solo cuando se ordena por vencimiento)
+                var faltante   = Math.max(0, totalCargo - totalCobro);
+                var montoRef   = parseFloat(c.renewal_amount || 0);
+
+                // Badges de abono y notas
+                var subBadge = '';
+                if (subType === 'mensual') subBadge = ' <span style="font-size:10px;background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:8px">🔄 Día '+esc(c.billing_day)+'</span>';
+                if (subType === 'anual')   subBadge = ' <span style="font-size:10px;background:#ede9fe;color:#6d28d9;padding:1px 5px;border-radius:8px">📅 Anual</span>';
+
+                // Estado badge
+                var estadoHtml = '—';
+                if (faltante > 0)       estadoHtml = '<span style="background:#fee2e2;color:#ef4444;font-weight:700;font-size:12px;padding:3px 10px;border-radius:20px">⚠ Debe</span>';
+                else if (totalCargo > 0) estadoHtml = '<span style="background:#dcfce7;color:#16a34a;font-weight:700;font-size:12px;padding:3px 10px;border-radius:20px">✓ Al día</span>';
+
+                // Color de fila: prioridad financiera > color de mes
+                var rowBg;
+                if (faltante > 0)        rowBg = 'background:#fff8f8';
+                else if (totalCargo > 0) rowBg = 'background:#f8fffe';
+                else if (sortCol === 'renewal_date') rowBg = 'background:'+monthColors[monthIndex % 2];
+                else                     rowBg = '';
+
+                // Separador de mes (solo al ordenar por vencimiento)
                 if (sortCol === 'renewal_date') {
                     var curMonth = c.renewal_date ? c.renewal_date.substring(0,7) : '__sin_fecha__';
                     if (curMonth !== lastMonth) {
-                        lastMonth = curMonth;
-                        monthIndex++;
+                        lastMonth = curMonth; monthIndex++;
                         var monthLabel = c.renewal_date
                             ? new Date(c.renewal_date+'T12:00:00').toLocaleDateString('es-AR',{month:'long',year:'numeric'})
                             : 'Sin fecha de vencimiento';
-                        // Contar cuántos clientes hay en este mes
                         var monthCount = sorted.filter(function(x){ return (x.renewal_date||'').substring(0,7)===curMonth; }).length;
-                        h += '<tr><td colspan="8" style="background:#e2e8f0;font-weight:700;font-size:11px;color:#475569;padding:5px 14px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #cbd5e1">';
+                        h += '<tr><td colspan="7" style="background:#e2e8f0;font-weight:700;font-size:11px;color:#475569;padding:5px 14px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #cbd5e1">';
                         h += '📅 '+monthLabel+'<span style="font-weight:400;margin-left:8px;color:#94a3b8">('+monthCount+' cliente'+(monthCount>1?'s':'')+')</span>';
                         h += '</td></tr>';
                     }
                 }
-                var rowBg = (sortCol === 'renewal_date') ? monthColors[monthIndex % 2] : '';
 
-                h += '<tr'+(rowBg?' style="background:'+rowBg+'"':'')+'>';
-                h += '<td><strong>'+esc(c.name)+'</strong>'+subBadge+(c.notes?'<br><small style="color:'+(c.notes==='DEBE'?'#ef4444':'#16a34a')+'">'+esc(c.notes)+'</small>':'')+'</td>';
-                h += '<td>'+(c.domain?'<a href="https://'+esc(c.domain)+'" target="_blank" style="font-size:12px">'+esc(c.domain)+'</a>':'—')+'</td>';
-                h += '<td style="white-space:nowrap">'+rd+'</td>';
-                h += '<td style="white-space:nowrap;font-weight:600">'+ra+'</td>';
-                h += '<td style="white-space:nowrap">'+saldoHtml+'</td>';
-                h += '<td>'+(c.email?'<a href="mailto:'+esc(c.email)+'">'+esc(c.email)+'</a>':'—')+'</td>';
-                h += '<td>'+(c.phone||'—')+'</td>';
+                h += '<tr style="'+rowBg+'">';
+
+                // Dominio + nombre (pequeño) + badges
+                var domLink = c.domain ? '<a href="https://'+esc(c.domain)+'" target="_blank" style="font-weight:700;color:#1e293b;text-decoration:none">'+esc(c.domain)+'</a>' : '<span style="color:#94a3b8">—</span>';
+                var nameSub = c.name && c.name !== c.domain ? '<br><small style="color:#94a3b8;font-size:11px">'+esc(c.name)+'</small>' : '';
+                h += '<td>'+domLink+subBadge+nameSub+'</td>';
+                h += '<td style="white-space:nowrap;font-size:13px">'+rd+'</td>';
+                h += '<td style="text-align:right;font-weight:600">'+(montoRef > 0 ? '$'+fmt(montoRef) : '—')+'</td>';
+                h += '<td style="text-align:right;color:'+(totalCobro>0?'#16a34a':'#94a3b8')+';font-weight:600">'+(totalCobro>0?'$'+fmt(totalCobro):'—')+'</td>';
+                h += '<td style="text-align:right;font-weight:700">'+(faltante>0?'<span style="color:#ef4444">$'+fmt(faltante)+'</span>':(totalCargo>0?'<span style="color:#16a34a">✓</span>':'—'))+'</td>';
+                h += '<td>'+estadoHtml+'</td>';
+
+                // Acciones
+                var hasEmail = !!(c.email && c.email.trim());
                 h += '<td style="white-space:nowrap">';
-                h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-edit-client" data-id="'+c.id+'" style="margin-right:4px">✏️ Editar</button>';
-                h += '<button class="lc-btn lc-btn-sm lc-btn-green lc-quick-cobro" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:4px" title="Registrar cobro sin abrir el detalle">💵 Cobrar</button>';
-                h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-view-payments" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:4px" title="Ver movimientos y Estado de Cuenta">📄 Detalle</button>';
-                h += '<button class="lc-btn lc-btn-sm lc-btn-danger lc-delete-client" data-id="'+c.id+'">🗑</button>';
+                h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-edit-client" data-id="'+c.id+'" style="margin-right:3px" title="Editar cliente">✏️</button>';
+                h += '<button class="lc-btn lc-btn-sm lc-btn-green lc-quick-cobro" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:3px" title="Registrar cobro">💵 Cobrar</button>';
+                h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-view-payments" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:3px" title="Ver movimientos">📄</button>';
+                h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-print-client" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:3px" title="Imprimir informe">🖨️</button>';
+                h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-email-reminder" data-id="'+c.id+'" data-name="'+esc(c.name)+'" data-email="'+esc(c.email||'')+'" data-domain="'+esc(c.domain||'')+'" data-faltante="'+faltante+'" data-vencimiento="'+esc(rd)+'" style="margin-right:3px;'+(hasEmail?'':'opacity:.4;cursor:not-allowed')+'" title="'+(hasEmail?'Enviar recordatorio por email':'Sin email registrado')+'" '+(hasEmail?'':'disabled')+'>✉️</button>';
+                h += '<button class="lc-btn lc-btn-sm lc-btn-danger lc-delete-client" data-id="'+c.id+'" title="Eliminar">🗑</button>';
                 h += '</td></tr>';
             });
             h += '</tbody></table>';
-            $('#lc-clients-wrap').html(h);
+            $('#lc-clients-wrap').html(summary + h);
 
             // Clic en encabezado para ordenar
             $('#lc-clients-wrap thead th[data-col]').on('click', function(){
@@ -3217,6 +3266,71 @@ class Luna_Admin {
             $('#lc-cobro-notes').val('');
             $('#lc-cobro-msg').text('').removeClass('ok err');
             $('#lc-modal-cobro').addClass('open');
+        });
+
+        // ── INFORME POR CLIENTE (print directo desde la planilla) ────────────────
+        $(document).on('click', '.lc-print-client', function(){
+            var cid   = parseInt($(this).data('id'), 10);
+            var cname = $(this).data('name');
+            $.post(ajaxUrl, {action:'luna_estado_cuenta', nonce, client_id: cid,
+                from: new Date().getFullYear()+'-01-01',
+                to:   new Date().toISOString().split('T')[0]
+            }, function(r){
+                if (!r.success) { alert('Error al cargar los datos.'); return; }
+                var content = buildEstadoHtml(r.data, cname);
+                var today   = new Date().toLocaleDateString('es-AR');
+                var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Informe — '+cname+'</title>'
+                    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Segoe UI",sans-serif;font-size:12px;color:#1e1e1e;padding:32px}'
+                    +'h1{font-size:20px;font-weight:900;color:#5b6af0;margin-bottom:2px}h2{font-size:13px;color:#64748b;margin-bottom:16px}'
+                    +'table{width:100%;border-collapse:collapse}th{background:#f1f5f9;padding:8px 10px;font-size:11px;color:#475569;text-align:left}'
+                    +'td{padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:12px}'
+                    +'.lc-table thead th{font-weight:700}@media print{body{padding:16px}}</style></head><body>'
+                    +'<h1>Luna Workspace</h1><h2>Informe — '+cname+' · Emitido: '+today+'</h2>'
+                    +content
+                    +'</body></html>';
+                var w = window.open('','_blank','width=900,height=700');
+                w.document.write(html); w.document.close(); w.focus(); w.print();
+            });
+        });
+
+        // ── EMAIL RECORDATORIO AL CLIENTE ────────────────────────────────────────
+        $(document).on('click', '.lc-email-reminder', function(){
+            var $btn    = $(this);
+            if ($btn.prop('disabled')) return;
+            var cid      = $btn.data('id');
+            var cname    = $btn.data('name');
+            var cemail   = $btn.data('email');
+            var domain   = $btn.data('domain') || cname;
+            var faltante = parseFloat($btn.data('faltante') || 0);
+            var venc     = $btn.data('vencimiento') || '—';
+            var faltaStr = faltante > 0 ? '$'+fmt(faltante) : '—';
+            var template = 'Hola!\n\nTe recordamos que tenés un saldo pendiente de ' + faltaStr
+                         + ' correspondiente al servicio de ' + domain + '.\n'
+                         + 'Fecha de vencimiento: ' + venc + '.\n\n'
+                         + 'Por favor, realizá el pago a la brevedad.\n\n'
+                         + 'Ante cualquier consulta, estamos a tu disposición.\n\nSaludos!';
+            $('#lc-reminder-client-name').text(cname);
+            $('#lc-reminder-client-email').text(cemail);
+            $('#lc-reminder-body').val(template);
+            $('#lc-reminder-msg').text('').removeClass('ok err');
+            $('#lc-submit-email-reminder').data('client-id', cid).prop('disabled', false).text('✉️ Enviar email');
+            $('#lc-modal-email-reminder').addClass('open');
+        });
+        $('#lc-close-email-reminder, #lc-modal-email-reminder').on('click', function(e){ if(e.target===this) $('#lc-modal-email-reminder').removeClass('open'); });
+        $('#lc-submit-email-reminder').on('click', function(){
+            var body = $.trim($('#lc-reminder-body').val());
+            if (!body) { $('#lc-reminder-msg').text('Escribí un mensaje.').addClass('err'); return; }
+            var cid = $(this).data('client-id');
+            $(this).prop('disabled', true).text('Enviando...');
+            $.post(ajaxUrl, {action:'luna_send_client_reminder', nonce, client_id: cid, body}, function(r){
+                $('#lc-submit-email-reminder').prop('disabled', false).text('✉️ Enviar email');
+                if (r.success) {
+                    $('#lc-reminder-msg').text(r.data).addClass('ok');
+                    setTimeout(function(){ $('#lc-modal-email-reminder').removeClass('open'); }, 1800);
+                } else {
+                    $('#lc-reminder-msg').text('Error: '+r.data).addClass('err');
+                }
+            }).fail(function(){ $('#lc-submit-email-reminder').prop('disabled',false).text('✉️ Enviar email'); $('#lc-reminder-msg').text('Error de conexión').addClass('err'); });
         });
 
         $('#lc-close-cobro, #lc-modal-cobro').on('click', function(e){ if(e.target===this) $('#lc-modal-cobro').removeClass('open'); });
@@ -4129,6 +4243,71 @@ class Luna_Admin {
             $totals[$cur] += (float)$r['amount'];
         }
         wp_send_json_success(['rows' => $rows ?: [], 'totals' => $totals]);
+    }
+
+    // ── Enviar recordatorio de pago por email al cliente ─────────────────────────
+    public function ajax_send_client_reminder() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Sin permisos');
+
+        global $wpdb;
+        $p         = $wpdb->prefix . 'luna_';
+        $client_id = (int)($_POST['client_id'] ?? 0);
+        $body_text = sanitize_textarea_field($_POST['body'] ?? '');
+
+        if (!$client_id || !$body_text) wp_send_json_error('Datos incompletos');
+
+        $client = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM `{$p}clients` WHERE id = %d AND active = 1 LIMIT 1", $client_id
+        ), ARRAY_A);
+
+        if (!$client) wp_send_json_error('Cliente no encontrado');
+        if (empty($client['email'])) wp_send_json_error('El cliente no tiene email registrado');
+
+        $st  = $wpdb->get_var("SELECT meta_value FROM `{$p}app_settings` WHERE meta_key='email_settings' LIMIT 1");
+        $cfg = $st ? (json_decode($st, true) ?: []) : [];
+
+        $from_email = !empty($cfg['from_email']) ? $cfg['from_email'] : (!empty($cfg['smtp_user']) ? $cfg['smtp_user'] : get_option('admin_email'));
+        $from_name  = !empty($cfg['from_name'])  ? $cfg['from_name']  : get_bloginfo('name');
+        $to         = $client['email'];
+        $subject    = 'Recordatorio de pago — ' . ($client['domain'] ?: $client['name']);
+
+        $html = '<div style="font-family:\'Segoe UI\',sans-serif;max-width:560px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px">'
+              . '<h2 style="color:#5b6af0;margin-bottom:8px">Recordatorio de pago</h2>'
+              . '<p style="color:#334155;font-size:15px;line-height:1.6">' . nl2br(esc_html($body_text)) . '</p>'
+              . '<hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">'
+              . '<p style="color:#94a3b8;font-size:12px">Enviado por ' . esc_html($from_name) . '</p>'
+              . '</div>';
+
+        $mail_error = '';
+        add_action('phpmailer_init', function($m) use ($from_email, $from_name) {
+            $m->isSMTP();
+            $m->Host       = '127.0.0.1';
+            $m->Port       = 25;
+            $m->SMTPAuth   = false;
+            $m->SMTPSecure = '';
+            $m->Timeout    = 5;
+            $m->setFrom($from_email, $from_name);
+        });
+        add_action('wp_mail_failed', function($e) use (&$mail_error) {
+            $mail_error = $e->get_error_message();
+        });
+        add_filter('wp_mail_content_type', fn() => 'text/html');
+
+        $sent = wp_mail($to, $subject, $html);
+
+        remove_all_actions('phpmailer_init');
+        remove_all_actions('wp_mail_failed');
+        remove_all_filters('wp_mail_content_type');
+
+        if ($sent) {
+            wp_send_json_success('✅ Email enviado a ' . $to);
+        } else {
+            $headers  = "From: {$from_name} <{$from_email}>\r\nContent-Type: text/html; charset=UTF-8\r\n";
+            $fallback = @mail($to, $subject, $html, $headers);
+            if ($fallback) wp_send_json_success('✅ Email enviado a ' . $to);
+            else           wp_send_json_error('No se pudo enviar: ' . ($mail_error ?: 'Error de servidor de correo'));
+        }
     }
 
 }
