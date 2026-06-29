@@ -2955,7 +2955,7 @@ class Luna_Admin {
                     var typeBadgeColor = isCobro ? '#16a34a' : '#92400e';
                     var typeBadge = '<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:'+typeBadgeBg+';color:'+typeBadgeColor+'">'+(isCobro?'💵 Cobro':'📋 Cargo')+'</span>';
 
-                    h += '<tr'+(rowBg?' style="'+rowBg+'"':')+'>';
+                    h += '<tr'+(rowBg?' style="'+rowBg+'"':'')+'>';
                     h += '<td style="white-space:nowrap;font-size:12px;color:#64748b">'+esc(dateVal)+'</td>';
                     h += '<td>'+typeBadge+'</td>';
                     h += '<td><span style="font-size:13px">'+esc(p.concept)+'</span>'+(p.workspace_name?'<br><small style="color:#94a3b8">📋 '+esc(p.workspace_name)+'</small>':'')+'</td>';
