@@ -2072,6 +2072,8 @@ class Luna_Admin {
             'attachments', 'notifications',
             // Extras
             'workspace_labels', 'activity_log',
+            // Facturación / cobranzas
+            'clients', 'payments', 'card_payments',
         ];
     }
 
@@ -2087,7 +2089,7 @@ class Luna_Admin {
             'luna_backup'    => true,
             'schema_version' => '1.0',
             'plugin_version' => LUNA_VERSION,
-            'created_at'     => current_time('c'),
+            'created_at'     => (new DateTime('now', wp_timezone()))->format('c'),
             'wp_prefix'      => $wpdb->prefix,
             'tables'         => [],
             'counts'         => [],
@@ -2250,7 +2252,7 @@ class Luna_Admin {
         $p = $wpdb->prefix . 'luna_';
         $backup = [
             'luna_backup' => true, 'schema_version' => '1.0',
-            'plugin_version' => LUNA_VERSION, 'created_at' => current_time('c'),
+            'plugin_version' => LUNA_VERSION, 'created_at' => (new DateTime('now', wp_timezone()))->format('c'),
             'wp_prefix' => $wpdb->prefix, 'tables' => [], 'counts' => [],
         ];
         foreach ($this->luna_tables() as $table) {
