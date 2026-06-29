@@ -2858,7 +2858,7 @@ class Luna_Admin {
                 + th('Dominio','domain')
                 + th(vencLabel,'renewal_date')
                 + th('Monto','renewal_amount')
-                + '<th>Falta</th><th>Email</th><th>Teléfono</th><th>Acciones</th>'
+                + '<th>Estado</th><th>Email</th><th>Teléfono</th><th>Acciones</th>'
                 + '</tr></thead><tbody>';
 
             var monthColors = ['#f8faff','#fffdf5']; // azul muy suave / crema — alternan por mes
@@ -2912,7 +2912,8 @@ class Luna_Admin {
                 h += '<td>'+(c.phone||'—')+'</td>';
                 h += '<td style="white-space:nowrap">';
                 h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-edit-client" data-id="'+c.id+'" style="margin-right:4px">✏️ Editar</button>';
-                h += '<button class="lc-btn lc-btn-sm lc-btn-green lc-view-payments" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:4px">💰 Pagos</button>';
+                h += '<button class="lc-btn lc-btn-sm lc-btn-green lc-quick-cobro" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:4px" title="Registrar cobro sin abrir el detalle">💵 Cobrar</button>';
+                h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-view-payments" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:4px" title="Ver movimientos y Estado de Cuenta">📄 Detalle</button>';
                 h += '<button class="lc-btn lc-btn-sm lc-btn-danger lc-delete-client" data-id="'+c.id+'">🗑</button>';
                 h += '</td></tr>';
             });
@@ -2964,7 +2965,7 @@ class Luna_Admin {
                 var h = '<div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;background:'+(ok?'#f0fdf4':'#fef2f2')+';border:1px solid '+(ok?'#bbf7d0':'#fca5a5')+';border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:13px">';
                 h += '<span>📋 Cargos: <strong>$'+fmt(totCargo)+'</strong></span>';
                 h += '<span style="color:#16a34a">💵 Cobros: <strong>$'+fmt(totCobro)+'</strong></span>';
-                if (saldo > 0)       h += '<span style="color:#ef4444;font-weight:700;font-size:14px">⚠ Falta: $'+fmt(saldo)+'</span>';
+                if (saldo > 0)       h += '<span style="color:#ef4444;font-weight:700;font-size:14px">⚠ Pendiente: $'+fmt(saldo)+'</span>';
                 else if (saldo < 0)  h += '<span style="color:#1d4ed8;font-weight:700">✓ Crédito: $'+fmt(Math.abs(saldo))+'</span>';
                 else                 h += '<span style="color:#16a34a;font-weight:700">✓ Sin saldo pendiente</span>';
                 if (totUSD) h += '<span style="color:#1d4ed8">USD: $'+fmt(totUSD)+'</span>';
@@ -2996,7 +2997,7 @@ class Luna_Admin {
                 h += '<table class="lc-table"><thead><tr>';
                 h += '<th>Fecha</th><th>Tipo</th><th>Concepto</th>';
                 h += '<th style="text-align:right">A pagar</th><th style="text-align:right">Pagos</th>';
-                h += '<th style="text-align:right">Falta</th><th>Estado</th><th>Acciones</th>';
+                h += '<th style="text-align:right">Estado</th><th>Falta</th><th>Acciones</th>';
                 h += '</tr></thead><tbody>';
 
                 rows.forEach(function(p) {
@@ -3203,6 +3204,21 @@ class Luna_Admin {
             $('#lc-cobro-msg').text('').removeClass('ok err');
             $('#lc-modal-cobro').addClass('open');
         });
+        // Cobro rápido directo desde la planilla de clientes (sin abrir Detalle)
+        $(document).on('click', '.lc-quick-cobro', function(){
+            activeClientId   = parseInt($(this).data('id'), 10);
+            activeClientName = $(this).data('name');
+            $('#lc-cobro-cargo-id').val('');
+            $('#lc-cobro-concept').val('Cobro — ' + activeClientName);
+            $('#lc-cobro-amount').val('');
+            $('#lc-cobro-date').val(new Date().toISOString().split('T')[0]);
+            $('#lc-cobro-currency').val('ARS');
+            $('#lc-cobro-method').val('Transferencia');
+            $('#lc-cobro-notes').val('');
+            $('#lc-cobro-msg').text('').removeClass('ok err');
+            $('#lc-modal-cobro').addClass('open');
+        });
+
         $('#lc-close-cobro, #lc-modal-cobro').on('click', function(e){ if(e.target===this) $('#lc-modal-cobro').removeClass('open'); });
 
         $('#lc-submit-cobro').on('click', function(){
@@ -3260,7 +3276,7 @@ class Luna_Admin {
                         if(r>0){var ap=Math.min(r,unlinkedPoolE);cobrosMap[p.id]=(cobrosMap[p.id]||0)+ap;unlinkedPoolE-=ap;}
                     });
             }
-            var h = '<table class="lc-table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th style="text-align:right">A pagar</th><th style="text-align:right">Pagos</th><th style="text-align:right">Falta</th></tr></thead><tbody>';
+            var h = '<table class="lc-table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th style="text-align:right">A pagar</th><th style="text-align:right">Pagos</th><th style="text-align:right">Estado</th></tr></thead><tbody>';
             rows.forEach(function(p) {
                 if (p.currency === 'USD') return;
                 var amt = parseFloat(p.amount||0);
@@ -3288,7 +3304,7 @@ class Luna_Admin {
             h += '<div style="margin-top:14px;padding:12px 16px;background:#f8fafc;border-radius:8px;display:flex;gap:20px;font-size:13px">';
             h += '<span>A pagar: <strong>$'+fmt(totCargo)+'</strong></span>';
             h += '<span>Pagos: <strong>$'+fmt(totCobro)+'</strong></span>';
-            h += '<span style="font-weight:700;color:'+sfColor+'">Falta: $'+fmt(Math.max(0,saldoFinal))+'</span>';
+            h += '<span style="font-weight:700;color:'+sfColor+'">Pendiente: $'+fmt(Math.max(0,saldoFinal))+'</span>';
             h += '</div>';
             return h;
         }
@@ -3361,11 +3377,11 @@ class Luna_Admin {
                     +'<h1>Luna Workspace</h1>'
                     +'<h2>Estado de Cuenta — '+activeClientName+'</h2>'
                     +'<div class="meta"><span>Período: '+from+' al '+to+'</span><span>Emitido: '+today+'</span></div>'
-                    +'<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th style="text-align:right">A pagar</th><th style="text-align:right">Pagos</th><th style="text-align:right">Falta</th></tr></thead>'
+                    +'<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th style="text-align:right">A pagar</th><th style="text-align:right">Pagos</th><th style="text-align:right">Estado</th></tr></thead>'
                     +'<tbody>'+bodyRows+'</tbody></table>'
                     +'<div class="total"><span>A pagar: <strong>$'+fmt(totCargo)+'</strong></span>'
                     +'<span>Pagos: <strong>$'+fmt(totCobro)+'</strong></span>'
-                    +'<span style="color:'+sfColor+';font-weight:bold">Falta: $'+fmt(Math.max(0,saldoFinal))+'</span></div>'
+                    +'<span style="color:'+sfColor+';font-weight:bold">Pendiente: $'+fmt(Math.max(0,saldoFinal))+'</span></div>'
                     +'<div class="footer">Generado por Luna Workspace · '+today+'</div>'
                     +'</body></html>';
                 var w=window.open('','_blank','width=900,height=700');
