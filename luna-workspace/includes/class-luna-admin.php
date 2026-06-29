@@ -2529,7 +2529,10 @@ class Luna_Admin {
             </div>
         </details>
 
-        <!-- Tabla de clientes -->
+        <!-- Buscador + Tabla de clientes -->
+        <div style="margin-bottom:12px">
+            <input type="text" id="lc-search-client" placeholder="🔍  Buscar cliente por nombre..." style="width:100%;max-width:360px;border:1px solid #cbd5e1;border-radius:8px;padding:8px 12px;font-size:13px;color:#1e1e1e;outline:none;font-family:inherit" autocomplete="off">
+        </div>
         <div id="lc-clients-wrap">
             <p class="lc-empty">Cargando...</p>
         </div>
@@ -2822,7 +2825,7 @@ class Luna_Admin {
         function fmt(n){ return parseFloat(n||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
         // ── CLIENTS TABLE ─────────────────────────────────────
-        var clientsData = [], sortCol = 'name', sortDir = 1;
+        var clientsData = [], sortCol = 'name', sortDir = 1, filterText = '';
 
         function renderClients() {
             if (!clientsData.length) { $('#lc-clients-wrap').html('<p class="lc-empty">Sin clientes aún. Creá el primero con el botón de arriba.</p>'); return; }
@@ -2841,6 +2844,12 @@ class Luna_Admin {
                 return '<th style="cursor:pointer;user-select:none" data-col="'+col+'">'+label+'<span style="color:#94a3b8;font-size:10px">'+arrow+'</span></th>';
             }
 
+            // Filtrar por texto de búsqueda
+            if (filterText) {
+                sorted = sorted.filter(function(c){ return (c.name||'').toLowerCase().indexOf(filterText) !== -1; });
+            }
+            if (!sorted.length) { $('#lc-clients-wrap').html('<p class="lc-empty">Sin resultados para "'+esc(filterText)+'".</p>'); return; }
+
             var h = '<table class="lc-table"><thead><tr>'
                 + th('Nombre / Razón social','name')
                 + th('Dominio','domain')
@@ -2848,6 +2857,9 @@ class Luna_Admin {
                 + th('Monto','renewal_amount')
                 + '<th>Falta</th><th>Email</th><th>Teléfono</th><th>Acciones</th>'
                 + '</tr></thead><tbody>';
+
+            var monthColors = ['#f8faff','#fffdf5']; // azul muy suave / crema — alternan por mes
+            var monthIndex = -1, lastMonth = '';
 
             sorted.forEach(function(c){
                 var subType = c.subscription_type || (parseInt(c.is_subscription,10)===1 ? 'mensual' : 'none');
@@ -2868,7 +2880,25 @@ class Luna_Admin {
                 } else if (totalPaid > 0) {
                     saldoHtml = '<span style="color:#16a34a;font-size:12px">✓ Al día</span>';
                 }
-                h += '<tr>';
+                // Separador de mes (solo cuando se ordena por vencimiento)
+                if (sortCol === 'renewal_date') {
+                    var curMonth = c.renewal_date ? c.renewal_date.substring(0,7) : '__sin_fecha__';
+                    if (curMonth !== lastMonth) {
+                        lastMonth = curMonth;
+                        monthIndex++;
+                        var monthLabel = c.renewal_date
+                            ? new Date(c.renewal_date+'T12:00:00').toLocaleDateString('es-AR',{month:'long',year:'numeric'})
+                            : 'Sin fecha de vencimiento';
+                        // Contar cuántos clientes hay en este mes
+                        var monthCount = sorted.filter(function(x){ return (x.renewal_date||'').substring(0,7)===curMonth; }).length;
+                        h += '<tr><td colspan="8" style="background:#e2e8f0;font-weight:700;font-size:11px;color:#475569;padding:5px 14px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #cbd5e1">';
+                        h += '📅 '+monthLabel+'<span style="font-weight:400;margin-left:8px;color:#94a3b8">('+monthCount+' cliente'+(monthCount>1?'s':'')+')</span>';
+                        h += '</td></tr>';
+                    }
+                }
+                var rowBg = (sortCol === 'renewal_date') ? monthColors[monthIndex % 2] : '';
+
+                h += '<tr'+(rowBg?' style="background:'+rowBg+'"':'')+'>';
                 h += '<td><strong>'+esc(c.name)+'</strong>'+subBadge+(c.notes?'<br><small style="color:'+(c.notes==='DEBE'?'#ef4444':'#16a34a')+'">'+esc(c.notes)+'</small>':'')+'</td>';
                 h += '<td>'+(c.domain?'<a href="https://'+esc(c.domain)+'" target="_blank" style="font-size:12px">'+esc(c.domain)+'</a>':'—')+'</td>';
                 h += '<td style="white-space:nowrap">'+rd+'</td>';
@@ -3117,6 +3147,7 @@ class Luna_Admin {
 
         // ── EVENTS ───────────────────────────────────────────
         $('#lc-btn-new-client').on('click', function(){ openClientModal(null); });
+        $('#lc-search-client').on('input', function(){ filterText = $.trim($(this).val()).toLowerCase(); renderClients(); });
         $('#lc-c-subscription').on('change', function(){ $('#lc-billing-day-row').toggle($(this).val() === 'mensual'); });
 
         // Tipo cargo/cobro: ajustar formulario
