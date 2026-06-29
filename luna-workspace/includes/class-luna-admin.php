@@ -2938,7 +2938,7 @@ class Luna_Admin {
                 var running = 0;
                 h += '<table class="lc-table"><thead><tr>';
                 h += '<th>Fecha</th><th>Tipo</th><th>Concepto</th>';
-                h += '<th style="text-align:right">Débito</th><th style="text-align:right">Crédito</th>';
+                h += '<th style="text-align:right">A pagar</th><th style="text-align:right">Pagos</th>';
                 h += '<th style="text-align:right">Falta</th><th>Estado</th><th>Acciones</th>';
                 h += '</tr></thead><tbody>';
 
@@ -3183,7 +3183,7 @@ class Luna_Admin {
                 return da.localeCompare(db);
             });
             var running = 0, totCargo = 0, totCobro = 0;
-            var h = '<table class="lc-table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th style="text-align:right">Débito</th><th style="text-align:right">Crédito</th><th style="text-align:right">Falta</th></tr></thead><tbody>';
+            var h = '<table class="lc-table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th style="text-align:right">A pagar</th><th style="text-align:right">Pagos</th><th style="text-align:right">Falta</th></tr></thead><tbody>';
             rows.forEach(function(p) {
                 if (p.currency === 'USD') return;
                 var amt = parseFloat(p.amount||0);
@@ -3273,7 +3273,7 @@ class Luna_Admin {
                     +'<h1>Luna Workspace</h1>'
                     +'<h2>Estado de Cuenta — '+activeClientName+'</h2>'
                     +'<div class="meta"><span>Período: '+from+' al '+to+'</span><span>Emitido: '+today+'</span></div>'
-                    +'<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th style="text-align:right">Débito</th><th style="text-align:right">Crédito</th><th style="text-align:right">Falta</th></tr></thead>'
+                    +'<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th style="text-align:right">A pagar</th><th style="text-align:right">Pagos</th><th style="text-align:right">Falta</th></tr></thead>'
                     +'<tbody>'+bodyRows+'</tbody></table>'
                     +'<div class="total"><span>Cargos: <strong>$'+fmt(totCargo)+'</strong></span>'
                     +'<span>Cobros: <strong>$'+fmt(totCobro)+'</strong></span>'
