@@ -2844,7 +2844,7 @@ class Luna_Admin {
                 + th('Dominio','domain')
                 + th('Vencimiento','renewal_date')
                 + th('Monto','renewal_amount')
-                + '<th>Saldo</th><th>Email</th><th>Teléfono</th><th>Acciones</th>'
+                + '<th>Falta</th><th>Email</th><th>Teléfono</th><th>Acciones</th>'
                 + '</tr></thead><tbody>';
 
             sorted.forEach(function(c){
@@ -2939,7 +2939,7 @@ class Luna_Admin {
                 h += '<table class="lc-table"><thead><tr>';
                 h += '<th>Fecha</th><th>Tipo</th><th>Concepto</th>';
                 h += '<th style="text-align:right">Débito</th><th style="text-align:right">Crédito</th>';
-                h += '<th style="text-align:right">Saldo</th><th>Estado</th><th>Acciones</th>';
+                h += '<th style="text-align:right">Falta</th><th>Estado</th><th>Acciones</th>';
                 h += '</tr></thead><tbody>';
 
                 rows.forEach(function(p) {
@@ -3183,7 +3183,7 @@ class Luna_Admin {
                 return da.localeCompare(db);
             });
             var running = 0, totCargo = 0, totCobro = 0;
-            var h = '<table class="lc-table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th style="text-align:right">Débito</th><th style="text-align:right">Crédito</th><th style="text-align:right">Saldo</th></tr></thead><tbody>';
+            var h = '<table class="lc-table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th style="text-align:right">Débito</th><th style="text-align:right">Crédito</th><th style="text-align:right">Falta</th></tr></thead><tbody>';
             rows.forEach(function(p) {
                 if (p.currency === 'USD') return;
                 var amt = parseFloat(p.amount||0);
@@ -3208,7 +3208,7 @@ class Luna_Admin {
             h += '<div style="margin-top:14px;padding:12px 16px;background:#f8fafc;border-radius:8px;display:flex;gap:20px;font-size:13px">';
             h += '<span>Cargos: <strong>$'+fmt(totCargo)+'</strong></span>';
             h += '<span>Cobros: <strong>$'+fmt(totCobro)+'</strong></span>';
-            h += '<span style="font-weight:700;color:'+sfColor+'">Saldo: $'+fmt(Math.abs(saldoFinal))+(saldoFinal<0?' CR':'')+'</span>';
+            h += '<span style="font-weight:700;color:'+sfColor+'">'+(saldoFinal>0?'Falta':'Saldo')+': $'+fmt(Math.abs(saldoFinal))+(saldoFinal<0?' CR':'')+'</span>';
             h += '</div>';
             return h;
         }
@@ -3273,11 +3273,11 @@ class Luna_Admin {
                     +'<h1>Luna Workspace</h1>'
                     +'<h2>Estado de Cuenta — '+activeClientName+'</h2>'
                     +'<div class="meta"><span>Período: '+from+' al '+to+'</span><span>Emitido: '+today+'</span></div>'
-                    +'<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th style="text-align:right">Débito</th><th style="text-align:right">Crédito</th><th style="text-align:right">Saldo</th></tr></thead>'
+                    +'<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th style="text-align:right">Débito</th><th style="text-align:right">Crédito</th><th style="text-align:right">Falta</th></tr></thead>'
                     +'<tbody>'+bodyRows+'</tbody></table>'
                     +'<div class="total"><span>Cargos: <strong>$'+fmt(totCargo)+'</strong></span>'
                     +'<span>Cobros: <strong>$'+fmt(totCobro)+'</strong></span>'
-                    +'<span style="color:'+sfColor+';font-weight:bold">Saldo: $'+fmt(Math.abs(saldoFinal))+(saldoFinal<0?' CR':'')+'</span></div>'
+                    +'<span style="color:'+sfColor+';font-weight:bold">'+(saldoFinal>0?'Falta':'Saldo')+': $'+fmt(Math.abs(saldoFinal))+(saldoFinal<0?' CR':'')+'</span></div>'
                     +'<div class="footer">Generado por Luna Workspace · '+today+'</div>'
                     +'</body></html>';
                 var w=window.open('','_blank','width=900,height=700');
