@@ -2850,10 +2850,11 @@ class Luna_Admin {
             }
             if (!sorted.length) { $('#lc-clients-wrap').html('<p class="lc-empty">Sin resultados para "'+esc(filterText)+'".</p>'); return; }
 
+            var vencLabel = sortCol === 'renewal_date' ? 'Vencimiento' : 'Vencimiento <small style="color:#94a3b8;font-weight:400">(clic→agrupa por mes)</small>';
             var h = '<table class="lc-table"><thead><tr>'
                 + th('Nombre / Razón social','name')
                 + th('Dominio','domain')
-                + th('Vencimiento','renewal_date')
+                + th(vencLabel,'renewal_date')
                 + th('Monto','renewal_amount')
                 + '<th>Falta</th><th>Email</th><th>Teléfono</th><th>Acciones</th>'
                 + '</tr></thead><tbody>';
@@ -2872,12 +2873,13 @@ class Luna_Admin {
                 var subBadge = '';
                 if (subType === 'mensual') subBadge = '<br><span style="font-size:11px;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px">🔄 Mensual · Día '+esc(c.billing_day)+'</span>';
                 if (subType === 'anual')   subBadge = '<br><span style="font-size:11px;background:#ede9fe;color:#6d28d9;padding:1px 6px;border-radius:10px">📅 Anual · '+rd+'</span>';
-                var totalPending = parseFloat(c.total_pending || 0);
-                var totalPaid    = parseFloat(c.total_paid    || 0);
+                var totalCargo = parseFloat(c.total_cargo || 0);
+                var totalCobro = parseFloat(c.total_cobro || 0);
+                var faltaClient = Math.max(0, totalCargo - totalCobro);
                 var saldoHtml = '—';
-                if (totalPending > 0) {
-                    saldoHtml = '<span style="color:#ef4444;font-weight:700">Debe $'+fmt(totalPending)+'</span>';
-                } else if (totalPaid > 0) {
+                if (faltaClient > 0) {
+                    saldoHtml = '<span style="color:#ef4444;font-weight:700">Debe $'+fmt(faltaClient)+'</span>';
+                } else if (totalCargo > 0) {
                     saldoHtml = '<span style="color:#16a34a;font-size:12px">✓ Al día</span>';
                 }
                 // Separador de mes (solo cuando se ordena por vencimiento)
@@ -2968,13 +2970,26 @@ class Luna_Admin {
 
                 var today = new Date(); today.setHours(0,0,0,0);
 
-                // Mapa: cargo_id → total cobrado (para calcular Falta por cargo)
+                // Mapa: cargo_id → total cobrado.
+                // Cobros vinculados (cargo_id set) se asignan directo.
+                // Cobros sin cargo_id se distribuyen FIFO contra cargos pendientes.
                 var cobrosMap = {};
+                var unlinkedPool = 0;
                 rows.forEach(function(p) {
-                    if (p.type === 'cobro' && p.cargo_id) {
-                        cobrosMap[p.cargo_id] = (cobrosMap[p.cargo_id] || 0) + parseFloat(p.amount || 0);
+                    if (p.type === 'cobro' && p.currency !== 'USD') {
+                        if (p.cargo_id) cobrosMap[p.cargo_id] = (cobrosMap[p.cargo_id] || 0) + parseFloat(p.amount || 0);
+                        else unlinkedPool += parseFloat(p.amount || 0);
                     }
                 });
+                if (unlinkedPool > 0) {
+                    var cargosOrdenados = rows.filter(function(p){ return p.type !== 'cobro' && p.currency !== 'USD'; })
+                        .slice().sort(function(a,b){ return (a.due_date||a.created_at||'').localeCompare(b.due_date||b.created_at||''); });
+                    cargosOrdenados.forEach(function(p) {
+                        if (unlinkedPool <= 0) return;
+                        var restante = Math.max(0, parseFloat(p.amount||0) - (cobrosMap[p.id]||0));
+                        if (restante > 0) { var aplicar = Math.min(restante, unlinkedPool); cobrosMap[p.id] = (cobrosMap[p.id]||0) + aplicar; unlinkedPool -= aplicar; }
+                    });
+                }
 
                 h += '<table class="lc-table"><thead><tr>';
                 h += '<th>Fecha</th><th>Tipo</th><th>Concepto</th>';
@@ -3227,10 +3242,22 @@ class Luna_Admin {
                 return da.localeCompare(db);
             });
             var totCargo = 0, totCobro = 0;
-            var cobrosMap = {};
+            var cobrosMap = {}, unlinkedPoolE = 0;
             rows.forEach(function(p) {
-                if (p.type === 'cobro' && p.cargo_id) cobrosMap[p.cargo_id] = (cobrosMap[p.cargo_id]||0) + parseFloat(p.amount||0);
+                if (p.type === 'cobro' && p.currency !== 'USD') {
+                    if (p.cargo_id) cobrosMap[p.cargo_id] = (cobrosMap[p.cargo_id]||0) + parseFloat(p.amount||0);
+                    else unlinkedPoolE += parseFloat(p.amount||0);
+                }
             });
+            if (unlinkedPoolE > 0) {
+                rows.filter(function(p){ return p.type!=='cobro'&&p.currency!=='USD'; })
+                    .slice().sort(function(a,b){ return (a.due_date||a.created_at||'').localeCompare(b.due_date||b.created_at||''); })
+                    .forEach(function(p) {
+                        if (unlinkedPoolE<=0) return;
+                        var r=Math.max(0,parseFloat(p.amount||0)-(cobrosMap[p.id]||0));
+                        if(r>0){var ap=Math.min(r,unlinkedPoolE);cobrosMap[p.id]=(cobrosMap[p.id]||0)+ap;unlinkedPoolE-=ap;}
+                    });
+            }
             var h = '<table class="lc-table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th style="text-align:right">A pagar</th><th style="text-align:right">Pagos</th><th style="text-align:right">Falta</th></tr></thead><tbody>';
             rows.forEach(function(p) {
                 if (p.currency === 'USD') return;
@@ -3293,8 +3320,9 @@ class Luna_Admin {
                     return da.localeCompare(db);
                 });
                 var totCargo=0, totCobro=0;
-                var cobrosMapP={};
-                rows.forEach(function(p){ if(p.type==='cobro'&&p.cargo_id) cobrosMapP[p.cargo_id]=(cobrosMapP[p.cargo_id]||0)+parseFloat(p.amount||0); });
+                var cobrosMapP={}, unlinkedPoolP=0;
+                rows.forEach(function(p){ if(p.type==='cobro'&&p.currency!=='USD'){if(p.cargo_id)cobrosMapP[p.cargo_id]=(cobrosMapP[p.cargo_id]||0)+parseFloat(p.amount||0);else unlinkedPoolP+=parseFloat(p.amount||0);}});
+                if(unlinkedPoolP>0){rows.filter(function(p){return p.type!=='cobro'&&p.currency!=='USD';}).slice().sort(function(a,b){return(a.due_date||a.created_at||'').localeCompare(b.due_date||b.created_at||'');}).forEach(function(p){if(unlinkedPoolP<=0)return;var r=Math.max(0,parseFloat(p.amount||0)-(cobrosMapP[p.id]||0));if(r>0){var ap=Math.min(r,unlinkedPoolP);cobrosMapP[p.id]=(cobrosMapP[p.id]||0)+ap;unlinkedPoolP-=ap;}});}
                 var bodyRows = '';
                 rows.forEach(function(p){
                     if(p.currency==='USD') return;
@@ -3687,8 +3715,8 @@ class Luna_Admin {
         } else {
             $rows = $wpdb->get_results(
                 "SELECT c.*,
-                    COALESCE(SUM(CASE WHEN pm.status='paid'    THEN pm.amount ELSE 0 END),0) AS total_paid,
-                    COALESCE(SUM(CASE WHEN pm.status='pending' THEN pm.amount ELSE 0 END),0) AS total_pending
+                    COALESCE(SUM(CASE WHEN pm.type='cargo' THEN pm.amount ELSE 0 END),0) AS total_cargo,
+                    COALESCE(SUM(CASE WHEN pm.type='cobro' THEN pm.amount ELSE 0 END),0) AS total_cobro
                  FROM `{$p}clients` c
                  LEFT JOIN `{$p}payments` pm ON pm.client_id = c.id AND pm.currency = 'ARS'
                  WHERE c.active = 1
