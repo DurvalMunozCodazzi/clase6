@@ -23,14 +23,15 @@ class Luna_Admin {
         add_action('wp_ajax_luna_backup_delete',      [$this, 'ajax_backup_delete']);
         add_action('wp_ajax_luna_backup_download',    [$this, 'ajax_backup_download']);
         add_action('wp_ajax_luna_backup_restore',     [$this, 'ajax_backup_restore']);
-        add_action('wp_ajax_luna_list_clients',    [$this, 'ajax_list_clients']);
-        add_action('wp_ajax_luna_save_client',     [$this, 'ajax_save_client']);
-        add_action('wp_ajax_luna_delete_client',   [$this, 'ajax_delete_client']);
-        add_action('wp_ajax_luna_import_clients',  [$this, 'ajax_import_clients']);
-        add_action('wp_ajax_luna_list_payments',   [$this, 'ajax_list_payments']);
-        add_action('wp_ajax_luna_save_payment',    [$this, 'ajax_save_payment']);
-        add_action('wp_ajax_luna_delete_payment',  [$this, 'ajax_delete_payment']);
-        add_action('wp_ajax_luna_report_payments', [$this, 'ajax_report_payments']);
+        add_action('wp_ajax_luna_list_clients',      [$this, 'ajax_list_clients']);
+        add_action('wp_ajax_luna_save_client',       [$this, 'ajax_save_client']);
+        add_action('wp_ajax_luna_delete_client',     [$this, 'ajax_delete_client']);
+        add_action('wp_ajax_luna_import_clients',    [$this, 'ajax_import_clients']);
+        add_action('wp_ajax_luna_list_payments',     [$this, 'ajax_list_payments']);
+        add_action('wp_ajax_luna_save_payment',      [$this, 'ajax_save_payment']);
+        add_action('wp_ajax_luna_delete_payment',    [$this, 'ajax_delete_payment']);
+        add_action('wp_ajax_luna_mark_payment_paid', [$this, 'ajax_mark_payment_paid']);
+        add_action('wp_ajax_luna_report_payments',   [$this, 'ajax_report_payments']);
     }
 
     public function show_db_diagnostic() {
@@ -2828,32 +2829,50 @@ class Luna_Admin {
                 if (!r.success) { $('#lc-payments-wrap').html('<p class="lc-empty">Error.</p>'); return; }
                 var rows = r.data;
                 if (!rows.length) { $('#lc-payments-wrap').html('<p class="lc-empty">Sin pagos registrados para este cliente.</p>'); return; }
-                var total_ars = 0, total_usd = 0;
-                var h = '<table class="lc-table"><thead><tr><th>Concepto</th><th>Monto</th><th>Emisión</th><th>Vence</th><th>Método</th><th>Estado</th><th>N° Pres.</th><th>Acciones</th></tr></thead><tbody>';
+                var total_ars = 0, paid_ars = 0, pending_ars = 0, total_usd = 0;
                 rows.forEach(function(p){
-                    if(p.currency==='USD') total_usd += parseFloat(p.amount||0);
-                    else total_ars += parseFloat(p.amount||0);
-                    h += '<tr>';
+                    var amt = parseFloat(p.amount||0);
+                    if (p.currency==='USD') { total_usd += amt; }
+                    else {
+                        total_ars += amt;
+                        if (p.status==='paid') paid_ars += amt; else pending_ars += amt;
+                    }
+                });
+
+                // ── Resumen cuenta corriente ──
+                var today = new Date(); today.setHours(0,0,0,0);
+                var summaryBg = pending_ars > 0 ? '#fef2f2' : '#f0fdf4';
+                var summaryBorder = pending_ars > 0 ? '#fca5a5' : '#bbf7d0';
+                var h = '<div style="display:flex;gap:16px;flex-wrap:wrap;background:'+summaryBg+';border:1px solid '+summaryBorder+';border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:13px">';
+                h += '<span>📋 Facturado: <strong>$'+fmt(total_ars)+'</strong></span>';
+                h += '<span style="color:#16a34a">✓ Cobrado: <strong>$'+fmt(paid_ars)+'</strong></span>';
+                if (pending_ars > 0) h += '<span style="color:#ef4444">⚠ Saldo: <strong>$'+fmt(pending_ars)+'</strong></span>';
+                else h += '<span style="color:#16a34a;font-weight:700">✓ Al día</span>';
+                if (total_usd) h += '<span style="color:#1d4ed8">USD: <strong>U$S '+fmt(total_usd)+'</strong></span>';
+                h += '</div>';
+
+                h += '<table class="lc-table"><thead><tr><th>Concepto</th><th>Monto</th><th>Emisión</th><th>Vence</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>';
+                rows.forEach(function(p){
+                    var amt = parseFloat(p.amount||0);
+                    var isOverdue = p.due_date && new Date(p.due_date) < today && p.status !== 'paid';
+                    var dueCss = isOverdue ? 'color:#ef4444;font-weight:700' : 'color:#334155';
+                    var rowBg  = p.status==='paid' ? '' : (isOverdue ? 'background:#fff5f5' : '');
+                    h += '<tr'+(rowBg?' style="'+rowBg+'"':')+'>';
                     h += '<td><strong>'+esc(p.concept)+'</strong>'+(p.workspace_name?'<br><small style="color:#94a3b8">📋 '+esc(p.workspace_name)+'</small>':'')+'</td>';
-                    h += '<td style="font-weight:700">'+p.currency+' '+fmt(p.amount)+'</td>';
-                    h += '<td>'+(p.payment_date||'—')+'</td>';
-                    h += '<td>'+(p.due_date?'<span style="color:'+(new Date(p.due_date)<new Date()&&p.status!=='paid'?'#ef4444':'#334155')+'">'+p.due_date+'</span>':'—')+'</td>';
-                    h += '<td>'+(p.method||'—')+'</td>';
+                    h += '<td style="font-weight:700;white-space:nowrap">'+p.currency+' $'+fmt(amt)+'</td>';
+                    h += '<td style="white-space:nowrap">'+(p.payment_date||'—')+'</td>';
+                    h += '<td style="white-space:nowrap;'+dueCss+'">'+(p.due_date||'—')+'</td>';
                     h += '<td>'+statusBadge(p.status)+'</td>';
-                    h += '<td>'+(p.invoice_number||'—')+'</td>';
                     h += '<td style="white-space:nowrap">';
+                    if (p.status !== 'paid') {
+                        h += '<button class="lc-btn lc-btn-sm lc-btn-green lc-mark-paid" data-id="'+p.id+'" style="margin-right:4px" title="Marcar como cobrado">✓ Cobrado</button>';
+                    }
                     h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-edit-payment" data-id="'+p.id+'" style="margin-right:4px">✏️</button>';
-                    h += '<button class="lc-btn lc-btn-sm" style="background:#0ea5e9;margin-right:4px" data-id="'+p.id+'" class="lc-print-payment" onclick="lcPrintPayment('+p.id+')">🖨️</button>';
+                    h += '<button class="lc-btn lc-btn-sm" style="background:#0ea5e9;margin-right:4px" onclick="lcPrintPayment('+p.id+')">🖨️</button>';
                     h += '<button class="lc-btn lc-btn-sm lc-btn-danger lc-delete-payment" data-id="'+p.id+'">🗑</button>';
                     h += '</td></tr>';
                 });
                 h += '</tbody></table>';
-                if(total_ars||total_usd){
-                    h += '<div style="text-align:right;margin-top:10px;font-size:13px;color:#475569">';
-                    if(total_ars) h += '<strong>Total ARS: $'+fmt(total_ars)+'</strong>&nbsp;&nbsp;';
-                    if(total_usd) h += '<strong>Total USD: U$S'+fmt(total_usd)+'</strong>';
-                    h += '</div>';
-                }
                 $('#lc-payments-wrap').html(h);
             });
         }
@@ -3063,35 +3082,69 @@ class Luna_Admin {
                     return String(s || '').replace(/[$,\s"]/g, '');
                 }
 
-                // Detectar cabecera: si alguna celda de la primera fila contiene texto no numérico típico de encabezado
+                // ── Detectar formato del CSV ──────────────────────
                 var firstCols = parseLine(lines[0]);
-                var start = /nombre|razon|dominio|domain|vencimiento|abonado|cobrar|costo|name|date/i.test(firstCols.join(',')) ? 1 : 0;
+                var headerStr = firstCols.join(',');
+                // Formato nuevo: col[0] vacío, header tiene CONTADO/CUOTAS/monto
+                // Formato viejo: col[0]=nombre, col[3]=ABONADO, col[4]=A COBRAR
+                var isNewFmt = /contado|cuotas/i.test(headerStr);
+                var start = (firstCols[0] === '' || /nombre|razon|dominio|vencimiento|contado|cuotas|pago/i.test(headerStr)) ? 1 : 0;
 
-                // Formato del CSV:
-                // col[0]=nombre/razón social  col[1]=dominio  col[2]=Vencimiento(DD/M o "abonado")
-                // col[3]=ABONADO(SI/-)  col[4]=A COBRAR(SI/NO)  col[5]=monto (opcional, legado)
                 var rows = [];
                 for (var i = start; i < lines.length; i++) {
                     var cols = parseLine(lines[i]);
                     var name = cols[0] || '';
                     if (!name) continue;
-                    var isSub = (cols[3] || '').toUpperCase() === 'SI';
-                    var dateStr = cols[2] || '';
-                    var dateIsText = /abonado|mensual|anual/i.test(dateStr);
-                    // A COBRAR: SI → DEBE (pendiente de cobro); NO → PAGO
-                    // También acepta el formato legado PAGO/DEBE directamente
-                    var col4 = (cols[4] || '').toUpperCase();
-                    var aCobrar = (col4 === 'SI' || col4 === 'DEBE');
-                    rows.push({
-                        name:            name,
-                        domain:          cols[1] || '',
-                        renewal_date:    dateIsText ? '' : toIsoDate(dateStr),
-                        is_subscription: isSub ? '1' : '0',
-                        billing_day:     (isSub && !dateIsText) ? toDay(dateStr) : '',
-                        notes:           aCobrar ? 'DEBE' : 'PAGO',
-                        renewal_amount:  toAmount(cols[5] || ''),
-                        a_cobrar:        aCobrar ? '1' : '0',
-                    });
+
+                    if (isNewFmt) {
+                        // FORMATO NUEVO
+                        // col[0]=nombre  col[1]=Vencimiento(DD/M)  col[2]=pago(SI/NO)
+                        // col[3]=CONTADO(si/no)  col[4]=CUOTAS(SI)  col[5]=cant_cuotas
+                        // col[6]=monto_cuota  col[7]=monto_total
+                        var dateStr2 = cols[1] || '';
+                        var pagado   = (cols[2] || '').toUpperCase() === 'SI';
+                        var hasCuotas = (cols[4] || '').toUpperCase() === 'SI';
+                        var nCuotas  = hasCuotas ? Math.max(1, parseInt(cols[5], 10) || 1) : 1;
+                        var mCuota   = toAmount(cols[6] || '');
+                        var total    = toAmount(cols[7] || '');
+                        rows.push({
+                            name:            name,
+                            domain:          '',
+                            renewal_date:    toIsoDate(dateStr2),
+                            is_subscription: '0',
+                            billing_day:     '',
+                            notes:           pagado ? 'PAGO' : 'DEBE',
+                            renewal_amount:  total,
+                            a_cobrar:        pagado ? '0' : '1',
+                            pago_status:     pagado ? 'paid' : 'pending',
+                            cuotas:          hasCuotas ? '1' : '0',
+                            num_cuotas:      String(nCuotas),
+                            monto_cuota:     mCuota,
+                            total_amount:    total,
+                        });
+                    } else {
+                        // FORMATO VIEJO (con dominio, ABONADO, A COBRAR)
+                        var dateStr3  = cols[2] || '';
+                        var dateIsTxt = /abonado|mensual|anual/i.test(dateStr3);
+                        var isSub     = (cols[3] || '').toUpperCase() === 'SI';
+                        var col4      = (cols[4] || '').toUpperCase();
+                        var aCobrar   = (col4 === 'SI' || col4 === 'DEBE');
+                        rows.push({
+                            name:            name,
+                            domain:          cols[1] || '',
+                            renewal_date:    dateIsTxt ? '' : toIsoDate(dateStr3),
+                            is_subscription: isSub ? '1' : '0',
+                            billing_day:     (isSub && !dateIsTxt) ? toDay(dateStr3) : '',
+                            notes:           aCobrar ? 'DEBE' : 'PAGO',
+                            renewal_amount:  toAmount(cols[5] || ''),
+                            a_cobrar:        aCobrar ? '1' : '0',
+                            pago_status:     aCobrar ? 'pending' : 'paid',
+                            cuotas:          '0',
+                            num_cuotas:      '1',
+                            monto_cuota:     '',
+                            total_amount:    toAmount(cols[5] || ''),
+                        });
+                    }
                 }
                 if (!rows.length) return;
                 var $msg = $('#lc-import-msg');
@@ -3163,6 +3216,16 @@ class Luna_Admin {
             if(!confirm('¿Eliminar este pago?')) return;
             $.post(ajaxUrl, {action:'luna_delete_payment', nonce, id: $(this).data('id')}, function(r){
                 if(r.success) loadPayments(activeClientId);
+                else alert('Error: ' + r.data);
+            });
+        });
+
+        // Marcar como cobrado (acción rápida)
+        $(document).on('click', '.lc-mark-paid', function(){
+            var id = $(this).data('id');
+            $(this).prop('disabled', true).text('...');
+            $.post(ajaxUrl, {action:'luna_mark_payment_paid', nonce, id}, function(r){
+                if(r.success) { loadPayments(activeClientId); loadClients(); }
                 else alert('Error: ' + r.data);
             });
         });
@@ -3392,26 +3455,61 @@ class Luna_Admin {
                 $client_id = (int)$wpdb->insert_id;
             }
 
-            // Crear registro de pago pendiente si A COBRAR = SI y hay fecha de vencimiento
-            if ($a_cobrar && $rd && $client_id) {
-                // Usar el monto del CSV; si no viene, buscarlo en la BD del cliente
-                $ra_val = ($ra !== null) ? $ra : (float)$wpdb->get_var(
-                    $wpdb->prepare("SELECT renewal_amount FROM `{$table}` WHERE id=%d", $client_id)
-                );
-                if ($ra_val > 0) {
+            // ── Crear registro(s) de pago ─────────────────────────────────────────
+            $pago_status  = sanitize_text_field($row['pago_status']  ?? ($a_cobrar ? 'pending' : 'paid'));
+            $has_cuotas   = !empty($row['cuotas']) && $row['cuotas'] === '1';
+            $num_cuotas   = max(1, (int)($row['num_cuotas'] ?? 1));
+            $monto_cuota  = strlen($row['monto_cuota'] ?? '') ? (float)preg_replace('/[^0-9.]/', '', $row['monto_cuota']) : 0;
+
+            // Monto a usar: del CSV o del cliente en BD
+            $ra_val = ($ra !== null && $ra > 0) ? $ra : (float)$wpdb->get_var(
+                $wpdb->prepare("SELECT renewal_amount FROM `{$table}` WHERE id=%d", $client_id)
+            );
+
+            if ($rd && $client_id && $ra_val > 0 && ($a_cobrar || $pago_status === 'paid')) {
+                $label = sanitize_text_field($row['domain'] ?? '') ?: $name;
+
+                if ($has_cuotas && $num_cuotas > 1 && $monto_cuota > 0) {
+                    // Crear N cuotas con fechas mensuales
+                    $base_due = new DateTime($rd);
+                    for ($qi = 0; $qi < $num_cuotas; $qi++) {
+                        $due_i = clone $base_due;
+                        if ($qi > 0) $due_i->modify("+{$qi} month");
+                        $due_str = $due_i->format('Y-m-d');
+                        $concept_i = 'Renovación — ' . $label . ' (Cuota ' . ($qi+1) . '/' . $num_cuotas . ')';
+                        $exists_i  = $wpdb->get_var($wpdb->prepare(
+                            "SELECT id FROM `{$pay_table}` WHERE client_id=%d AND due_date=%s AND concept=%s LIMIT 1",
+                            $client_id, $due_str, $concept_i
+                        ));
+                        if (!$exists_i) {
+                            $wpdb->insert($pay_table, [
+                                'client_id'  => $client_id,
+                                'concept'    => $concept_i,
+                                'amount'     => $monto_cuota,
+                                'currency'   => 'ARS',
+                                'due_date'   => $due_str,
+                                'status'     => $pago_status,
+                                'method'     => 'Transferencia',
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                            ]);
+                            $payments_created++;
+                        }
+                    }
+                } else {
+                    // Pago único
                     $pay_exists = $wpdb->get_var($wpdb->prepare(
                         "SELECT id FROM `{$pay_table}` WHERE client_id=%d AND due_date=%s LIMIT 1",
                         $client_id, $rd
                     ));
                     if (!$pay_exists) {
-                        $domain_val = sanitize_text_field($row['domain'] ?? '') ?: $name;
                         $wpdb->insert($pay_table, [
                             'client_id'  => $client_id,
-                            'concept'    => 'Renovación — ' . $domain_val,
+                            'concept'    => 'Renovación — ' . $label,
                             'amount'     => $ra_val,
                             'currency'   => 'ARS',
                             'due_date'   => $rd,
-                            'status'     => 'pending',
+                            'status'     => $pago_status,
                             'method'     => 'Transferencia',
                             'created_at' => $now,
                             'updated_at' => $now,
@@ -3537,6 +3635,22 @@ class Luna_Admin {
         $id = (int)($_POST['id'] ?? 0);
         if (!$id) wp_send_json_error('ID inválido.');
         $wpdb->delete("{$p}payments", ['id' => $id]);
+        wp_send_json_success();
+    }
+
+    // ── AJAX: marcar pago como cobrado ────────────────────────────────────────
+    public function ajax_mark_payment_paid() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+        global $wpdb;
+        $p  = $wpdb->prefix . 'luna_';
+        $id = (int)($_POST['id'] ?? 0);
+        if (!$id) wp_send_json_error('ID inválido.');
+        $wpdb->update("{$p}payments", [
+            'status'       => 'paid',
+            'payment_date' => current_time('Y-m-d'),
+            'updated_at'   => current_time('mysql'),
+        ], ['id' => $id]);
         wp_send_json_success();
     }
 
