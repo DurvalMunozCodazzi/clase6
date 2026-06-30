@@ -3320,20 +3320,15 @@ class Luna_Admin {
         }
         function openPaymentModal(data, forGlobal) {
             $('#lc-payment-id').val(data ? data.id : '');
-            var editingOtherClient = data && data.client_id && parseInt(data.client_id, 10) !== activeClientId;
-            var showClientPicker = !!forGlobal || editingOtherClient;
-            $('#lc-p-client-row').toggle(showClientPicker);
-            if (data && data.client_id) {
-                $('#lc-payment-client-id').val(data.client_id);
-                if (showClientPicker) {
-                    var ownerClient = clientsData.find(function(x){ return x.id == data.client_id; });
-                    $('#lc-p-client-search').val(ownerClient ? (ownerClient.domain || ownerClient.name) : '');
-                }
-            } else if (forGlobal) {
-                $('#lc-p-client-search').val('');
-                $('#lc-payment-client-id').val('');
+            // El buscador de cliente se muestra siempre, arriba de todo el formulario.
+            $('#lc-p-client-row').show();
+            var ownerId = (data && data.client_id) ? data.client_id : (!forGlobal ? activeClientId : '');
+            $('#lc-payment-client-id').val(ownerId || '');
+            if (ownerId) {
+                var ownerClient = clientsData.find(function(x){ return x.id == ownerId; });
+                $('#lc-p-client-search').val(ownerClient ? (ownerClient.domain || ownerClient.name) : (activeClientName || ''));
             } else {
-                $('#lc-payment-client-id').val(activeClientId);
+                $('#lc-p-client-search').val('');
             }
             $('#lc-p-concept').val(data ? data.concept : '');
             $('#lc-p-amount').val(data ? data.amount : '');
