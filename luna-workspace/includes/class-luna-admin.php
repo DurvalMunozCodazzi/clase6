@@ -2960,8 +2960,7 @@ class Luna_Admin {
                 h += '<td style="white-space:nowrap">';
                 h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-edit-client" data-id="'+c.id+'" style="margin-right:3px" title="Editar cliente">✏️</button>';
                 h += '<button class="lc-btn lc-btn-sm lc-btn-green lc-quick-cobro" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:3px" title="Registrar cobro">💵 Cobrar</button>';
-                h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-view-payments" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:3px" title="Ver movimientos">📄</button>';
-                h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-print-client" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:3px" title="Imprimir informe">🖨️</button>';
+                h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-print-client" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:3px" title="Ver e imprimir movimientos">💰 Pagos</button>';
                 h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-email-reminder" data-id="'+c.id+'" data-name="'+esc(c.name)+'" data-email="'+esc(c.email||'')+'" data-domain="'+esc(c.domain||'')+'" data-faltante="'+faltante+'" data-vencimiento="'+esc(rd)+'" style="margin-right:3px;'+(hasEmail?'':'opacity:.4;cursor:not-allowed')+'" title="'+(hasEmail?'Enviar recordatorio por email':'Sin email registrado')+'" '+(hasEmail?'':'disabled')+'>✉️</button>';
                 h += '<button class="lc-btn lc-btn-sm lc-btn-danger lc-delete-client" data-id="'+c.id+'" title="Eliminar">🗑</button>';
                 h += '</td></tr>';
