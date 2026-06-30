@@ -3704,21 +3704,28 @@ class Luna_Admin {
                 if (!r.success) { $('#lc-informe-result').html('<p style="color:#ef4444">'+r.data+'</p>'); return; }
                 var rows = r.data.rows, totals = r.data.totals;
                 if (!rows.length) { $('#lc-informe-result').html('<p class="lc-empty">Sin registros para ese período.</p>'); return; }
-                var h = '<table class="lc-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Concepto</th><th>Monto</th><th>Moneda</th><th>Estado</th></tr></thead><tbody>';
+                var h = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">';
+                if (totals.facturado.ARS) h += '<span style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700">🧾 Facturado ARS: $'+fmt(totals.facturado.ARS)+'</span>';
+                if (totals.cobrado.ARS) h += '<span style="background:#f0fdf9;border:1px solid #99f6e4;color:#0f766e;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700">💵 Cobrado ARS: $'+fmt(totals.cobrado.ARS)+'</span>';
+                if (totals.facturado.USD) h += '<span style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700">🧾 Facturado USD: U$S '+fmt(totals.facturado.USD)+'</span>';
+                if (totals.cobrado.USD) h += '<span style="background:#f0fdf9;border:1px solid #99f6e4;color:#0f766e;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700">💵 Cobrado USD: U$S '+fmt(totals.cobrado.USD)+'</span>';
+                h += '</div>';
+                h += '<table class="lc-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Concepto</th><th>Tipo</th><th>Monto</th><th>Moneda</th><th>Estado</th></tr></thead><tbody>';
                 rows.forEach(function(p){
                     h += '<tr>';
                     h += '<td style="white-space:nowrap">'+(p.payment_date||p.due_date||'—')+'</td>';
                     h += '<td>'+esc(p.client_name)+'</td>';
                     h += '<td>'+esc(p.concept)+'</td>';
+                    h += '<td>'+(p.type === 'cobro' ? '<span style="color:#0f766e;font-weight:700">💵 Cobro</span>' : '<span style="color:#1d4ed8;font-weight:700">🧾 Cargo</span>')+'</td>';
                     h += '<td style="font-weight:700">'+fmt(p.amount)+'</td>';
                     h += '<td>'+esc(p.currency)+'</td>';
                     h += '<td>'+statusBadge(p.status)+'</td>';
                     h += '</tr>';
                 });
                 h += '</tbody></table>';
-                h += '<div style="margin-top:12px;text-align:right;font-size:13px">';
-                if (totals.ARS) h += '<strong>Total ARS: $'+fmt(totals.ARS)+'</strong>&nbsp;&nbsp;';
-                if (totals.USD) h += '<strong>Total USD: U$S '+fmt(totals.USD)+'</strong>';
+                h += '<div style="margin-top:12px;text-align:right;font-size:13px;color:#64748b">';
+                if (totals.ARS) h += 'Suma bruta ARS (cargos+cobros): $'+fmt(totals.ARS)+'&nbsp;&nbsp;';
+                if (totals.USD) h += 'Suma bruta USD (cargos+cobros): U$S '+fmt(totals.USD);
                 h += '</div>';
                 $('#lc-informe-result').html(h);
             });
@@ -4443,10 +4450,20 @@ class Luna_Admin {
             $from, $to, $from, $to
         ), ARRAY_A);
 
-        $totals = ['ARS' => 0.0, 'USD' => 0.0];
+        $totals = [
+            'ARS'        => 0.0,
+            'USD'        => 0.0,
+            'facturado'  => ['ARS' => 0.0, 'USD' => 0.0],
+            'cobrado'    => ['ARS' => 0.0, 'USD' => 0.0],
+        ];
         foreach (($rows ?: []) as $r) {
             $cur = ($r['currency'] === 'USD') ? 'USD' : 'ARS';
             $totals[$cur] += (float)$r['amount'];
+            if ($r['type'] === 'cobro') {
+                $totals['cobrado'][$cur] += (float)$r['amount'];
+            } else {
+                $totals['facturado'][$cur] += (float)$r['amount'];
+            }
         }
         wp_send_json_success(['rows' => $rows ?: [], 'totals' => $totals]);
     }
