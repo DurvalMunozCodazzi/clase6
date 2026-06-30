@@ -2078,6 +2078,30 @@ class Luna_Admin {
         ];
     }
 
+    // ── Motivos de pago frecuentes (lista editable sin pantalla de ABM) ────────
+    private function luna_payment_reasons_defaults() {
+        return ['Renovación anual dominio', 'Rediseño web', 'Abono publicidad'];
+    }
+
+    private function luna_get_payment_reasons() {
+        $saved = get_option('luna_payment_reasons', []);
+        if (!is_array($saved)) $saved = [];
+        return array_values(array_unique(array_merge($this->luna_payment_reasons_defaults(), $saved)));
+    }
+
+    private function luna_remember_payment_reason($concept) {
+        $concept = trim($concept);
+        if ($concept === '') return;
+        $saved = get_option('luna_payment_reasons', []);
+        if (!is_array($saved)) $saved = [];
+        foreach (array_merge($this->luna_payment_reasons_defaults(), $saved) as $existing) {
+            if (mb_strtolower($existing) === mb_strtolower($concept)) return;
+        }
+        $saved[] = $concept;
+        if (count($saved) > 40) $saved = array_slice($saved, -40);
+        update_option('luna_payment_reasons', $saved);
+    }
+
     // ── Crear backup ──────────────────────────────────────────────────────────
     public function ajax_backup_create() {
         check_ajax_referer('luna_admin_nonce', 'nonce');
@@ -2446,6 +2470,8 @@ class Luna_Admin {
         $p = $wpdb->prefix . 'luna_';
         // Pizarras disponibles para vincular
         $workspaces = $wpdb->get_results("SELECT id, name FROM `{$p}workspaces` ORDER BY name", ARRAY_A) ?: [];
+        // Motivos de pago frecuentes (se amplía solo al escribir uno nuevo)
+        $payment_reasons = $this->luna_get_payment_reasons();
         // Datos del prestador para el encabezado del presupuesto
         $provider_name  = get_option('luna_provider_name',  get_bloginfo('name'));
         $provider_cuit  = get_option('luna_provider_cuit',  '');
@@ -2649,6 +2675,13 @@ class Luna_Admin {
                     </div>
                     <div class="lc-fg" style="grid-column:1/-1">
                         <label>Concepto *</label>
+                        <select id="lc-p-concept-select" style="margin-bottom:6px">
+                            <option value="">— Elegí un motivo frecuente —</option>
+                            <?php foreach ($payment_reasons as $reason): ?>
+                            <option value="<?php echo esc_attr($reason) ?>"><?php echo esc_html($reason) ?></option>
+                            <?php endforeach; ?>
+                            <option value="__custom__">✏️ Otro (escribir)</option>
+                        </select>
                         <input type="text" id="lc-p-concept" placeholder="Diseño web, consultoría, renovación...">
                     </div>
                     <div class="lc-fg">
@@ -3196,7 +3229,11 @@ class Luna_Admin {
             } else {
                 $('#lc-payment-client-id').val(activeClientId);
             }
-            $('#lc-p-concept').val(data ? data.concept : '');
+            $('#lc-p-concept').val(data ? data.concept : '').prop('readonly', false);
+            var conceptOpt = data && data.concept && $('#lc-p-concept-select option[value="'+data.concept.replace(/"/g,'\\"')+'"]').length
+                ? data.concept : '';
+            $('#lc-p-concept-select').val(conceptOpt);
+            if (conceptOpt) $('#lc-p-concept').prop('readonly', true);
             $('#lc-p-amount').val(data ? data.amount : '');
             $('#lc-p-currency').val(data ? data.currency : 'ARS');
             $('#lc-p-date').val(data ? data.payment_date : '');
@@ -3227,6 +3264,14 @@ class Luna_Admin {
         $('#lc-btn-new-client').on('click', function(){ openClientModal(null); });
         $('#lc-btn-new-invoice').on('click', function(){ openPaymentModal(null, true); });
         $(document).on('change', '#lc-p-client-select', function(){ $('#lc-payment-client-id').val($(this).val()); });
+
+        // Motivo de pago: elegir de la lista frecuente o escribir uno nuevo
+        $(document).on('change', '#lc-p-concept-select', function(){
+            var v = $(this).val();
+            if (v === '__custom__') { $('#lc-p-concept').val('').prop('readonly', false).focus(); }
+            else if (v) { $('#lc-p-concept').val(v).prop('readonly', true); }
+            else { $('#lc-p-concept').prop('readonly', false); }
+        });
         $('#lc-search-client').on('input', function(){ filterText = $.trim($(this).val()).toLowerCase(); renderClients(); });
         $('#lc-c-subscription').on('change', function(){ $('#lc-billing-day-row').toggle($(this).val() === 'mensual'); });
 
@@ -3776,6 +3821,9 @@ class Luna_Admin {
                 if(r.success){
                     var msg = installments > 1 ? '✓ '+installments+' cuotas creadas' : '✓ Guardado';
                     $('#lc-payment-msg').text(msg).addClass('ok');
+                    if (pType === 'cargo' && !$('#lc-p-concept-select option[value="'+concept.replace(/"/g,'\\"')+'"]').length) {
+                        $('<option>').val(concept).text(concept).insertBefore('#lc-p-concept-select option[value="__custom__"]');
+                    }
                     setTimeout(function(){
                         $('#lc-modal-payment').removeClass('open');
                         loadClients();
@@ -4057,6 +4105,7 @@ class Luna_Admin {
 
         $wsid  = (int)($_POST['workspace_id'] ?? 0);
         $type  = in_array($_POST['type'] ?? 'cargo', ['cargo','cobro']) ? sanitize_text_field($_POST['type']) : 'cargo';
+        if ($type === 'cargo') $this->luna_remember_payment_reason($concept);
         $cargo_id = !empty($_POST['cargo_id']) ? (int)$_POST['cargo_id'] : null;
         $total_amount = (float)($_POST['amount'] ?? 0);
         $data = [
