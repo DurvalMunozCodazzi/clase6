@@ -2664,14 +2664,10 @@ class Luna_Admin {
                         <input type="date" id="lc-p-due">
                     </div>
                     <div class="lc-fg">
-                        <label>Método de pago</label>
+                        <label>Medio de pago</label>
                         <select id="lc-p-method">
                             <option>Transferencia</option>
-                            <option>Efectivo</option>
-                            <option>Cheque</option>
-                            <option>Tarjeta</option>
                             <option>Mercado Pago</option>
-                            <option>Paypal</option>
                         </select>
                     </div>
                     <div class="lc-fg">
@@ -2700,10 +2696,10 @@ class Luna_Admin {
                         <textarea id="lc-p-notes" placeholder="Observaciones adicionales..."></textarea>
                     </div>
                     <div class="lc-fg" style="grid-column:1/-1" id="lc-p-installments-row">
-                        <label>Dividir en cuotas <small style="color:#94a3b8;font-weight:normal">(solo para pagos nuevos)</small></label>
+                        <label>Forma de pago <small style="color:#94a3b8;font-weight:normal">(solo para pagos nuevos)</small></label>
                         <div style="display:flex;align-items:center;gap:16px;margin-top:4px">
-                            <label style="font-weight:normal;display:flex;align-items:center;gap:4px"><input type="radio" name="lc-p-inst-type" value="1" checked> Pago único</label>
-                            <label style="font-weight:normal;display:flex;align-items:center;gap:4px"><input type="radio" name="lc-p-inst-type" value="n"> En cuotas</label>
+                            <label style="font-weight:normal;display:flex;align-items:center;gap:4px"><input type="radio" name="lc-p-inst-type" value="1" checked> Contado</label>
+                            <label style="font-weight:normal;display:flex;align-items:center;gap:4px"><input type="radio" name="lc-p-inst-type" value="n"> Cuotas</label>
                             <input type="number" id="lc-p-inst-n" min="2" max="24" value="2" style="width:70px;display:none" placeholder="N cuotas">
                         </div>
                     </div>
@@ -2741,14 +2737,10 @@ class Luna_Admin {
                         <input type="date" id="lc-cobro-date">
                     </div>
                     <div class="lc-fg">
-                        <label>Método</label>
+                        <label>Medio de pago</label>
                         <select id="lc-cobro-method">
                             <option>Transferencia</option>
-                            <option>Efectivo</option>
-                            <option>Cheque</option>
-                            <option>Tarjeta</option>
                             <option>Mercado Pago</option>
-                            <option>Paypal</option>
                         </select>
                     </div>
                     <div class="lc-fg" style="grid-column:1/-1">
@@ -2909,7 +2901,6 @@ class Luna_Admin {
                 var totalCargo = parseFloat(c.total_cargo || 0);
                 var totalCobro = parseFloat(c.total_cobro || 0);
                 var faltante   = Math.max(0, totalCargo - totalCobro);
-                var montoRef   = parseFloat(c.renewal_amount || 0);
 
                 // Badges de abono y notas
                 var subBadge = '';
@@ -2950,7 +2941,7 @@ class Luna_Admin {
                 var nameSub = c.name && c.name !== c.domain ? '<br><small style="color:#94a3b8;font-size:11px">'+esc(c.name)+'</small>' : '';
                 h += '<td>'+domLink+subBadge+nameSub+'</td>';
                 h += '<td style="white-space:nowrap;font-size:13px">'+rd+'</td>';
-                h += '<td style="text-align:right;font-weight:600">'+(montoRef > 0 ? '$'+fmt(montoRef) : '—')+'</td>';
+                h += '<td style="text-align:right;font-weight:600">'+(totalCargo > 0 ? '$'+fmt(totalCargo) : '—')+'</td>';
                 h += '<td style="text-align:right;color:'+(totalCobro>0?'#16a34a':'#94a3b8')+';font-weight:600">'+(totalCobro>0?'$'+fmt(totalCobro):'—')+'</td>';
                 h += '<td style="text-align:right;font-weight:700">'+(faltante>0?'<span style="color:#ef4444">$'+fmt(faltante)+'</span>':(totalCargo>0?'<span style="color:#16a34a">✓</span>':'—'))+'</td>';
                 h += '<td>'+estadoHtml+'</td>';
@@ -2959,8 +2950,7 @@ class Luna_Admin {
                 var hasEmail = !!(c.email && c.email.trim());
                 h += '<td style="white-space:nowrap">';
                 h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-edit-client" data-id="'+c.id+'" style="margin-right:3px" title="Editar cliente">✏️</button>';
-                h += '<button class="lc-btn lc-btn-sm lc-btn-green lc-quick-cobro" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:3px" title="Registrar cobro">💵 Cobrar</button>';
-                h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-print-client" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:3px" title="Ver e imprimir movimientos">💰 Pagos</button>';
+                h += '<button class="lc-btn lc-btn-sm lc-btn-green lc-view-payments" data-id="'+c.id+'" data-name="'+esc(c.name)+'" style="margin-right:3px" title="Cuenta corriente / Registrar pago">💰 Pagos</button>';
                 h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-email-reminder" data-id="'+c.id+'" data-name="'+esc(c.name)+'" data-email="'+esc(c.email||'')+'" data-domain="'+esc(c.domain||'')+'" data-faltante="'+faltante+'" data-vencimiento="'+esc(rd)+'" style="margin-right:3px;'+(hasEmail?'':'opacity:.4;cursor:not-allowed')+'" title="'+(hasEmail?'Enviar recordatorio por email':'Sin email registrado')+'" '+(hasEmail?'':'disabled')+'>✉️</button>';
                 h += '<button class="lc-btn lc-btn-sm lc-btn-danger lc-delete-client" data-id="'+c.id+'" title="Eliminar">🗑</button>';
                 h += '</td></tr>';
@@ -3252,46 +3242,6 @@ class Luna_Admin {
             $('#lc-cobro-msg').text('').removeClass('ok err');
             $('#lc-modal-cobro').addClass('open');
         });
-        // Cobro rápido directo desde la planilla de clientes (sin abrir Detalle)
-        $(document).on('click', '.lc-quick-cobro', function(){
-            activeClientId   = parseInt($(this).data('id'), 10);
-            activeClientName = $(this).data('name');
-            $('#lc-cobro-cargo-id').val('');
-            $('#lc-cobro-concept').val('Cobro — ' + activeClientName);
-            $('#lc-cobro-amount').val('');
-            $('#lc-cobro-date').val(new Date().toISOString().split('T')[0]);
-            $('#lc-cobro-currency').val('ARS');
-            $('#lc-cobro-method').val('Transferencia');
-            $('#lc-cobro-notes').val('');
-            $('#lc-cobro-msg').text('').removeClass('ok err');
-            $('#lc-modal-cobro').addClass('open');
-        });
-
-        // ── INFORME POR CLIENTE (print directo desde la planilla) ────────────────
-        $(document).on('click', '.lc-print-client', function(){
-            var cid   = parseInt($(this).data('id'), 10);
-            var cname = $(this).data('name');
-            $.post(ajaxUrl, {action:'luna_estado_cuenta', nonce, client_id: cid,
-                from: new Date().getFullYear()+'-01-01',
-                to:   new Date().toISOString().split('T')[0]
-            }, function(r){
-                if (!r.success) { alert('Error al cargar los datos.'); return; }
-                var content = buildEstadoHtml(r.data, cname);
-                var today   = new Date().toLocaleDateString('es-AR');
-                var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Informe — '+cname+'</title>'
-                    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Segoe UI",sans-serif;font-size:12px;color:#1e1e1e;padding:32px}'
-                    +'h1{font-size:20px;font-weight:900;color:#5b6af0;margin-bottom:2px}h2{font-size:13px;color:#64748b;margin-bottom:16px}'
-                    +'table{width:100%;border-collapse:collapse}th{background:#f1f5f9;padding:8px 10px;font-size:11px;color:#475569;text-align:left}'
-                    +'td{padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:12px}'
-                    +'.lc-table thead th{font-weight:700}@media print{body{padding:16px}}</style></head><body>'
-                    +'<h1>Luna Workspace</h1><h2>Informe — '+cname+' · Emitido: '+today+'</h2>'
-                    +content
-                    +'</body></html>';
-                var w = window.open('','_blank','width=900,height=700');
-                w.document.write(html); w.document.close(); w.focus(); w.print();
-            });
-        });
-
         // ── EMAIL RECORDATORIO AL CLIENTE ────────────────────────────────────────
         $(document).on('click', '.lc-email-reminder', function(){
             var $btn    = $(this);
