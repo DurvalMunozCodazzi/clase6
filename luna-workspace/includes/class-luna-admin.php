@@ -2568,14 +2568,14 @@ class Luna_Admin {
         <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
             <input type="text" id="lc-search-client" placeholder="🔍  Buscar cliente por nombre..." style="width:100%;max-width:360px;border:1px solid #cbd5e1;border-radius:8px;padding:8px 12px;font-size:13px;color:#1e1e1e;outline:none;font-family:inherit" autocomplete="off">
             <div style="display:flex;gap:4px;background:#f1f5f9;border-radius:8px;padding:4px">
-                <button class="lc-btn lc-btn-sm lc-view-tab active" id="lc-tab-clients" data-view="clients" style="background:#5b6af0;color:#fff">👥 Clientes</button>
-                <button class="lc-btn lc-btn-sm lc-view-tab" id="lc-tab-invoices" data-view="invoices" style="background:transparent;color:#475569">🧾 Facturas</button>
+                <button class="lc-btn lc-btn-sm lc-view-tab active" id="lc-tab-invoices" data-view="invoices" style="background:#5b6af0;color:#fff">🧾 Facturas (cada factura por separado)</button>
+                <button class="lc-btn lc-btn-sm lc-view-tab" id="lc-tab-clients" data-view="clients" style="background:transparent;color:#475569">👥 Clientes (cuenta corriente)</button>
             </div>
         </div>
-        <div id="lc-clients-wrap">
+        <div id="lc-invoices-wrap">
             <p class="lc-empty">Cargando...</p>
         </div>
-        <div id="lc-invoices-wrap" style="display:none">
+        <div id="lc-clients-wrap" style="display:none">
             <p class="lc-empty">Cargando...</p>
         </div>
 
@@ -3401,7 +3401,7 @@ class Luna_Admin {
         });
 
         // ── Tabs Clientes / Facturas ───────────────────────────
-        var activeView = 'clients';
+        var activeView = 'invoices';
         $('.lc-view-tab').on('click', function(){
             activeView = $(this).data('view');
             $('.lc-view-tab').css({background:'transparent',color:'#475569'}).removeClass('active');
