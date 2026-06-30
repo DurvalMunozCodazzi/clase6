@@ -28,6 +28,7 @@ class Luna_Admin {
         add_action('wp_ajax_luna_delete_client',     [$this, 'ajax_delete_client']);
         add_action('wp_ajax_luna_import_clients',    [$this, 'ajax_import_clients']);
         add_action('wp_ajax_luna_list_payments',     [$this, 'ajax_list_payments']);
+        add_action('wp_ajax_luna_list_invoices',     [$this, 'ajax_list_invoices']);
         add_action('wp_ajax_luna_save_payment',      [$this, 'ajax_save_payment']);
         add_action('wp_ajax_luna_delete_payment',    [$this, 'ajax_delete_payment']);
         add_action('wp_ajax_luna_mark_payment_paid', [$this, 'ajax_mark_payment_paid']);
@@ -2564,10 +2565,17 @@ class Luna_Admin {
         </details>
 
         <!-- Buscador + Tabla de clientes -->
-        <div style="margin-bottom:12px">
+        <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
             <input type="text" id="lc-search-client" placeholder="🔍  Buscar cliente por nombre..." style="width:100%;max-width:360px;border:1px solid #cbd5e1;border-radius:8px;padding:8px 12px;font-size:13px;color:#1e1e1e;outline:none;font-family:inherit" autocomplete="off">
+            <div style="display:flex;gap:4px;background:#f1f5f9;border-radius:8px;padding:4px">
+                <button class="lc-btn lc-btn-sm lc-view-tab active" id="lc-tab-clients" data-view="clients" style="background:#5b6af0;color:#fff">👥 Clientes</button>
+                <button class="lc-btn lc-btn-sm lc-view-tab" id="lc-tab-invoices" data-view="invoices" style="background:transparent;color:#475569">🧾 Facturas</button>
+            </div>
         </div>
         <div id="lc-clients-wrap">
+            <p class="lc-empty">Cargando...</p>
+        </div>
+        <div id="lc-invoices-wrap" style="display:none">
             <p class="lc-empty">Cargando...</p>
         </div>
 
@@ -2753,6 +2761,7 @@ class Luna_Admin {
                 <h3>💵 Registrar cobro</h3>
                 <p style="color:#64748b;font-size:13px;margin-bottom:12px">Acreditá un pago recibido del cliente. Se registra como movimiento crédito en la cuenta corriente.</p>
                 <input type="hidden" id="lc-cobro-cargo-id">
+                <input type="hidden" id="lc-cobro-client-id">
                 <div class="lc-form-row">
                     <div class="lc-fg" style="grid-column:1/-1">
                         <label>Concepto del cobro</label>
@@ -3016,6 +3025,100 @@ class Luna_Admin {
                 clientsData = r.data;
                 renderClients();
             });
+            loadInvoices();
+        }
+
+        // ── FACTURAS (todas, de todos los clientes, una fila por factura) ──
+        var invoicesData = [];
+        function loadInvoices() {
+            $.post(ajaxUrl, {action:'luna_list_invoices', nonce}, function(r) {
+                if (!r.success) { $('#lc-invoices-wrap').html('<p class="lc-empty">Error al cargar.</p>'); return; }
+                invoicesData = r.data;
+                renderInvoices();
+            });
+        }
+
+        function renderInvoices() {
+            if (!invoicesData.length) { $('#lc-invoices-wrap').html('<p class="lc-empty">Sin facturas aún. Registrá la primera con "🧾 Nueva factura".</p>'); return; }
+
+            // FIFO por cliente: cobros vinculados van directo a su cargo; cobros sueltos
+            // se reparten entre los cargos pendientes de ESE MISMO cliente, por antigüedad.
+            var cobrosMap = {};
+            var byClient = {};
+            invoicesData.forEach(function(p){ (byClient[p.client_id] = byClient[p.client_id] || []).push(p); });
+            Object.keys(byClient).forEach(function(cid){
+                var rows = byClient[cid];
+                var unlinkedPool = 0;
+                rows.forEach(function(p){
+                    if (p.type === 'cobro' && p.currency !== 'USD') {
+                        if (p.cargo_id) cobrosMap[p.cargo_id] = (cobrosMap[p.cargo_id] || 0) + parseFloat(p.amount || 0);
+                        else unlinkedPool += parseFloat(p.amount || 0);
+                    }
+                });
+                if (unlinkedPool > 0) {
+                    var cargosOrdenados = rows.filter(function(p){ return p.type !== 'cobro' && p.currency !== 'USD'; })
+                        .slice().sort(function(a,b){ return (a.due_date||a.created_at||'').localeCompare(b.due_date||b.created_at||''); });
+                    cargosOrdenados.forEach(function(p){
+                        if (unlinkedPool <= 0) return;
+                        var restante = Math.max(0, parseFloat(p.amount||0) - (cobrosMap[p.id]||0));
+                        if (restante > 0) { var aplicar = Math.min(restante, unlinkedPool); cobrosMap[p.id] = (cobrosMap[p.id]||0) + aplicar; unlinkedPool -= aplicar; }
+                    });
+                }
+            });
+
+            var facturas = invoicesData.filter(function(p){ return p.type !== 'cobro'; });
+            if (filterText) {
+                facturas = facturas.filter(function(p){
+                    return (p.client_name||'').toLowerCase().indexOf(filterText) !== -1
+                        || (p.client_domain||'').toLowerCase().indexOf(filterText) !== -1;
+                });
+            }
+            if (!facturas.length) { $('#lc-invoices-wrap').html('<p class="lc-empty">Sin resultados para "'+esc(filterText)+'".</p>'); return; }
+
+            facturas.sort(function(a,b){
+                var da = a.due_date || a.payment_date || a.created_at || '';
+                var db = b.due_date || b.payment_date || b.created_at || '';
+                return db.localeCompare(da);
+            });
+
+            var h = '<table class="lc-table"><thead><tr>'
+                + '<th>Cliente</th><th>Fecha</th><th>Concepto</th>'
+                + '<th style="text-align:right">Monto</th><th style="text-align:right">Pagado</th>'
+                + '<th style="text-align:right">Falta</th><th>Estado</th><th>Acciones</th>'
+                + '</tr></thead><tbody>';
+
+            facturas.forEach(function(p){
+                var amt     = parseFloat(p.amount||0);
+                var isUSD   = p.currency === 'USD';
+                var pagado  = cobrosMap[p.id] || 0;
+                var falta   = Math.max(0, amt - pagado);
+                var rowBg   = falta > 0 ? 'background:#fff8f8' : 'background:#f8fffe';
+                var dateVal = p.due_date || p.payment_date || '—';
+                var clienteLabel = p.client_domain || p.client_name || '—';
+
+                h += '<tr style="'+rowBg+'">';
+                h += '<td><strong>'+esc(clienteLabel)+'</strong>'+(p.client_name && p.client_name!==clienteLabel?'<br><small style="color:#94a3b8">'+esc(p.client_name)+'</small>':'')+'</td>';
+                h += '<td style="white-space:nowrap;font-size:12px;color:#64748b">'+esc(dateVal)+'</td>';
+                h += '<td><span style="font-size:13px">'+esc(p.concept)+'</span></td>';
+                if (isUSD) {
+                    h += '<td colspan="3" style="text-align:right;font-weight:700;color:#1d4ed8">USD $'+fmt(amt)+'</td>';
+                } else {
+                    h += '<td style="text-align:right;font-weight:700">$'+fmt(amt)+'</td>';
+                    h += '<td style="text-align:right;color:'+(pagado>0?'#16a34a':'#94a3b8')+'">'+(pagado>0?'$'+fmt(pagado):'—')+'</td>';
+                    h += '<td style="text-align:right">'+(falta>0?'<span style="color:#ef4444;font-weight:700">$'+fmt(falta)+'</span>':'<span style="color:#16a34a;font-weight:700">✓ Al día</span>')+'</td>';
+                }
+                h += '<td>'+statusBadge(p.status)+'</td>';
+                h += '<td style="white-space:nowrap">';
+                if (p.status !== 'paid') {
+                    h += '<button class="lc-btn lc-btn-sm lc-btn-green lc-btn-cobro" data-id="'+p.id+'" data-amount="'+amt+'" data-concept="'+esc(p.concept)+'" data-client-id="'+p.client_id+'" style="margin-right:4px;font-size:11px" title="Registrar cobro de esta factura">💵 Cobrar</button>';
+                }
+                h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-edit-payment" data-id="'+p.id+'" data-client-id="'+p.client_id+'" style="margin-right:4px" title="Editar">✏️</button>';
+                h += '<button class="lc-btn lc-btn-sm" style="background:#0ea5e9;margin-right:4px" onclick="lcPrintPayment('+p.id+','+p.client_id+')">🖨️</button>';
+                h += '<button class="lc-btn lc-btn-sm lc-btn-danger lc-delete-payment" data-id="'+p.id+'" data-client-id="'+p.client_id+'" title="Eliminar">🗑</button>';
+                h += '</td></tr>';
+            });
+            h += '</tbody></table>';
+            $('#lc-invoices-wrap').html(h);
         }
 
         // ── CUENTA CORRIENTE ──────────────────────────────────
@@ -3130,8 +3233,8 @@ class Luna_Admin {
         }
 
         // ── PRINT ─────────────────────────────────────────────
-        window.lcPrintPayment = function(paymentId) {
-            $.post(ajaxUrl, {action:'luna_list_payments', nonce, client_id: activeClientId}, function(r) {
+        window.lcPrintPayment = function(paymentId, clientId) {
+            $.post(ajaxUrl, {action:'luna_list_payments', nonce, client_id: clientId || activeClientId}, function(r) {
                 if(!r.success) return;
                 var p = r.data.find(function(x){return x.id==paymentId});
                 if(!p) return;
@@ -3217,8 +3320,16 @@ class Luna_Admin {
         }
         function openPaymentModal(data, forGlobal) {
             $('#lc-payment-id').val(data ? data.id : '');
-            $('#lc-p-client-row').toggle(!!forGlobal);
-            if (forGlobal) {
+            var editingOtherClient = data && data.client_id && parseInt(data.client_id, 10) !== activeClientId;
+            var showClientPicker = !!forGlobal || editingOtherClient;
+            $('#lc-p-client-row').toggle(showClientPicker);
+            if (data && data.client_id) {
+                $('#lc-payment-client-id').val(data.client_id);
+                if (showClientPicker) {
+                    var ownerClient = clientsData.find(function(x){ return x.id == data.client_id; });
+                    $('#lc-p-client-search').val(ownerClient ? (ownerClient.domain || ownerClient.name) : '');
+                }
+            } else if (forGlobal) {
                 $('#lc-p-client-search').val('');
                 $('#lc-payment-client-id').val('');
             } else {
@@ -3289,7 +3400,20 @@ class Luna_Admin {
             function(r){ $('#lc-p-concept').val(r); }
         );
         $(document).on('input', '#lc-p-client-search', function(){ $('#lc-payment-client-id').val(''); });
-        $('#lc-search-client').on('input', function(){ filterText = $.trim($(this).val()).toLowerCase(); renderClients(); });
+        $('#lc-search-client').on('input', function(){
+            filterText = $.trim($(this).val()).toLowerCase();
+            if (activeView === 'invoices') renderInvoices(); else renderClients();
+        });
+
+        // ── Tabs Clientes / Facturas ───────────────────────────
+        var activeView = 'clients';
+        $('.lc-view-tab').on('click', function(){
+            activeView = $(this).data('view');
+            $('.lc-view-tab').css({background:'transparent',color:'#475569'}).removeClass('active');
+            $(this).css({background:'#5b6af0',color:'#fff'}).addClass('active');
+            if (activeView === 'invoices') { $('#lc-clients-wrap').hide(); $('#lc-invoices-wrap').show(); renderInvoices(); }
+            else { $('#lc-invoices-wrap').hide(); $('#lc-clients-wrap').show(); renderClients(); }
+        });
         $('#lc-c-subscription').on('change', function(){ $('#lc-billing-day-row').toggle($(this).val() === 'mensual'); });
 
         // Tipo cargo/cobro: ajustar formulario
@@ -3318,7 +3442,9 @@ class Luna_Admin {
             var cargoId  = $(this).data('id');
             var amount   = $(this).data('amount');
             var concept  = $(this).data('concept');
+            var clientId = $(this).data('client-id') || activeClientId;
             $('#lc-cobro-cargo-id').val(cargoId);
+            $('#lc-cobro-client-id').val(clientId);
             $('#lc-cobro-amount').val(amount);
             $('#lc-cobro-concept').val('Cobro — ' + concept);
             $('#lc-cobro-date').val(new Date().toISOString().split('T')[0]);
@@ -3379,7 +3505,7 @@ class Luna_Admin {
                 action:       'luna_save_payment',
                 nonce:        nonce,
                 id:           '',
-                client_id:    activeClientId,
+                client_id:    $('#lc-cobro-client-id').val() || activeClientId,
                 cargo_id:     $('#lc-cobro-cargo-id').val(),
                 type:         'cobro',
                 concept:      concept,
@@ -3394,7 +3520,11 @@ class Luna_Admin {
                 $('#lc-submit-cobro').prop('disabled', false).text('Registrar cobro');
                 if (r.success) {
                     $('#lc-cobro-msg').text('✓ Cobro registrado').addClass('ok');
-                    setTimeout(function(){ $('#lc-modal-cobro').removeClass('open'); loadPayments(activeClientId); loadClients(); }, 700);
+                    setTimeout(function(){
+                        $('#lc-modal-cobro').removeClass('open');
+                        if (activeClientId) loadPayments(activeClientId);
+                        loadClients();
+                    }, 700);
                 } else {
                     $('#lc-cobro-msg').text('Error: ' + r.data).addClass('err');
                 }
@@ -3749,8 +3879,9 @@ class Luna_Admin {
 
         // Edit payment
         $(document).on('click', '.lc-edit-payment', function(){
-            var id = $(this).data('id');
-            $.post(ajaxUrl, {action:'luna_list_payments', nonce, client_id: activeClientId}, function(r){
+            var id       = $(this).data('id');
+            var clientId = $(this).data('client-id') || activeClientId;
+            $.post(ajaxUrl, {action:'luna_list_payments', nonce, client_id: clientId}, function(r){
                 if(r.success){ var p = r.data.find(function(x){return x.id==id}); if(p) openPaymentModal(p); }
             });
         });
@@ -3759,7 +3890,7 @@ class Luna_Admin {
         $(document).on('click', '.lc-delete-payment', function(){
             if(!confirm('¿Eliminar este pago?')) return;
             $.post(ajaxUrl, {action:'luna_delete_payment', nonce, id: $(this).data('id')}, function(r){
-                if(r.success) loadPayments(activeClientId);
+                if(r.success) { if (activeClientId) loadPayments(activeClientId); loadClients(); }
                 else alert('Error: ' + r.data);
             });
         });
@@ -4106,6 +4237,23 @@ class Luna_Admin {
              WHERE p.client_id = %d ORDER BY p.created_at DESC",
             $cid
         ), ARRAY_A);
+        wp_send_json_success($rows ?: []);
+    }
+
+    // ── AJAX: list invoices (todos los movimientos, de todos los clientes) ───
+    public function ajax_list_invoices() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+        global $wpdb;
+        $p = $wpdb->prefix . 'luna_';
+        $rows = $wpdb->get_results(
+            "SELECT p.*, w.name AS workspace_name, c.name AS client_name, c.domain AS client_domain
+             FROM `{$p}payments` p
+             INNER JOIN `{$p}clients` c ON c.id = p.client_id AND c.active = 1
+             LEFT JOIN `{$p}workspaces` w ON w.id = p.workspace_id
+             ORDER BY p.created_at DESC",
+            ARRAY_A
+        );
         wp_send_json_success($rows ?: []);
     }
 
