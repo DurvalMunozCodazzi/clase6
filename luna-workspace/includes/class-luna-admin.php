@@ -2514,6 +2514,7 @@ class Luna_Admin {
                 <button class="lc-btn lc-btn-ghost" id="lc-btn-informe" style="font-size:12px">📊 Informe</button>
                 <button class="lc-btn lc-btn-ghost" id="lc-btn-import-csv" style="font-size:12px">📥 Importar CSV</button>
                 <input type="file" id="lc-csv-file" accept=".csv" style="display:none">
+                <button class="lc-btn lc-btn-green" id="lc-btn-new-invoice">🧾 Nueva factura</button>
                 <button class="lc-btn" id="lc-btn-new-client">+ Nuevo cliente</button>
             </div>
         </div>
@@ -2627,6 +2628,12 @@ class Luna_Admin {
                 <input type="hidden" id="lc-payment-id" value="">
                 <input type="hidden" id="lc-payment-client-id" value="">
                 <div class="lc-form-row">
+                    <div class="lc-fg" style="grid-column:1/-1" id="lc-p-client-row">
+                        <label>Cliente *</label>
+                        <select id="lc-p-client-select">
+                            <option value="">— Seleccioná un cliente —</option>
+                        </select>
+                    </div>
                     <div class="lc-fg" style="grid-column:1/-1">
                         <label>Tipo de movimiento</label>
                         <div style="display:flex;gap:20px;margin-top:4px;padding:10px 14px;background:#f8fafc;border-radius:8px">
@@ -2814,6 +2821,7 @@ class Luna_Admin {
         var nonce   = <?php echo json_encode(wp_create_nonce('luna_admin_nonce')) ?>;
         var activeClientId = 0;
         var activeClientName = '';
+        var defaultWorkspaceId = $('#lc-p-workspace option').eq(1).val() || '';
         // Provider data for print
         var providerData = {
             name:  <?php echo json_encode($provider_name) ?>,
@@ -3176,9 +3184,18 @@ class Luna_Admin {
             $('#lc-client-msg').text('').removeClass('ok err');
             $('#lc-modal-client').addClass('open');
         }
-        function openPaymentModal(data) {
+        function openPaymentModal(data, forGlobal) {
             $('#lc-payment-id').val(data ? data.id : '');
-            $('#lc-payment-client-id').val(activeClientId);
+            $('#lc-p-client-row').toggle(!!forGlobal);
+            if (forGlobal) {
+                var opts = '<option value="">— Seleccioná un cliente —</option>';
+                clientsData.slice().sort(function(a,b){ return (a.domain||a.name||'').localeCompare(b.domain||b.name||''); })
+                    .forEach(function(c){ opts += '<option value="'+c.id+'">'+esc(c.domain||c.name)+'</option>'; });
+                $('#lc-p-client-select').html(opts).val('');
+                $('#lc-payment-client-id').val('');
+            } else {
+                $('#lc-payment-client-id').val(activeClientId);
+            }
             $('#lc-p-concept').val(data ? data.concept : '');
             $('#lc-p-amount').val(data ? data.amount : '');
             $('#lc-p-currency').val(data ? data.currency : 'ARS');
@@ -3187,7 +3204,7 @@ class Luna_Admin {
             $('#lc-p-method').val(data ? data.method : 'Transferencia');
             $('#lc-p-status').val(data ? data.status : 'pending');
             $('#lc-p-invoice').val(data ? data.invoice_number : '');
-            $('#lc-p-workspace').val(data ? (data.workspace_id||'') : '');
+            $('#lc-p-workspace').val(data ? (data.workspace_id||'') : defaultWorkspaceId);
             $('#lc-p-notes').val(data ? data.notes : '');
             // Tipo cargo/cobro
             var pType = data ? (data.type || 'cargo') : 'cargo';
@@ -3208,6 +3225,8 @@ class Luna_Admin {
 
         // ── EVENTS ───────────────────────────────────────────
         $('#lc-btn-new-client').on('click', function(){ openClientModal(null); });
+        $('#lc-btn-new-invoice').on('click', function(){ openPaymentModal(null, true); });
+        $(document).on('change', '#lc-p-client-select', function(){ $('#lc-payment-client-id').val($(this).val()); });
         $('#lc-search-client').on('input', function(){ filterText = $.trim($(this).val()).toLowerCase(); renderClients(); });
         $('#lc-c-subscription').on('change', function(){ $('#lc-billing-day-row').toggle($(this).val() === 'mensual'); });
 
@@ -3724,8 +3743,10 @@ class Luna_Admin {
 
         // Submit payment form
         $('#lc-submit-payment').on('click', function(){
-            var concept = $.trim($('#lc-p-concept').val());
-            var amount  = parseFloat($('#lc-p-amount').val());
+            var clientId = parseInt($('#lc-payment-client-id').val(), 10) || 0;
+            var concept  = $.trim($('#lc-p-concept').val());
+            var amount   = parseFloat($('#lc-p-amount').val());
+            if(!clientId){ $('#lc-payment-msg').text('Seleccioná un cliente.').addClass('err'); return; }
             if(!concept){ $('#lc-payment-msg').text('El concepto es obligatorio.').addClass('err'); return; }
             if(isNaN(amount)||amount<0){ $('#lc-payment-msg').text('Ingresá un monto válido.').addClass('err'); return; }
             var installments = 1;
@@ -3737,7 +3758,7 @@ class Luna_Admin {
             var data = {
                 action:'luna_save_payment', nonce,
                 id:             $('#lc-payment-id').val(),
-                client_id:      activeClientId,
+                client_id:      clientId,
                 type:           pType,
                 concept:        concept,
                 amount:         amount,
@@ -3755,7 +3776,11 @@ class Luna_Admin {
                 if(r.success){
                     var msg = installments > 1 ? '✓ '+installments+' cuotas creadas' : '✓ Guardado';
                     $('#lc-payment-msg').text(msg).addClass('ok');
-                    setTimeout(function(){ $('#lc-modal-payment').removeClass('open'); loadPayments(activeClientId); }, 800);
+                    setTimeout(function(){
+                        $('#lc-modal-payment').removeClass('open');
+                        loadClients();
+                        if ($('#lc-payments-panel').is(':visible') && activeClientId === clientId) loadPayments(activeClientId);
+                    }, 800);
                 } else {
                     $('#lc-payment-msg').text('Error: '+r.data).addClass('err');
                 }
