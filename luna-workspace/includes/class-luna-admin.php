@@ -3081,6 +3081,23 @@ class Luna_Admin {
                 return db.localeCompare(da);
             });
 
+            // ── Resumen superior (totales de las facturas listadas) ──────────────
+            var sumFacturado = 0, sumPagado = 0, sumPendiente = 0;
+            facturas.forEach(function(p){
+                if (p.currency === 'USD') return;
+                var amt    = parseFloat(p.amount||0);
+                var pagado = cobrosMap[p.id] || 0;
+                sumFacturado += amt;
+                sumPagado    += Math.min(pagado, amt);
+                sumPendiente += Math.max(0, amt - pagado);
+            });
+            var summary = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">';
+            summary += '<span style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700">🧾 Total Facturado: $'+fmt(sumFacturado)+'</span>';
+            summary += '<span style="background:#f0fdf9;border:1px solid #99f6e4;color:#0f766e;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700">💵 Total Cobrado: $'+fmt(sumPagado)+'</span>';
+            if (sumPendiente > 0) summary += '<span style="background:#fef3c7;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700">⚠ Pendiente: $'+fmt(sumPendiente)+'</span>';
+            summary += '<span style="background:#f1f5f9;border:1px solid #e2e8f0;color:#64748b;border-radius:8px;padding:6px 14px;font-size:13px">Total: '+facturas.length+' facturas</span>';
+            summary += '</div>';
+
             var h = '<table class="lc-table"><thead><tr>'
                 + '<th>Cliente</th><th>Fecha</th><th>Concepto</th>'
                 + '<th style="text-align:right">Monto</th><th style="text-align:right">Pagado</th>'
@@ -3119,7 +3136,7 @@ class Luna_Admin {
                 h += '</td></tr>';
             });
             h += '</tbody></table>';
-            $('#lc-invoices-wrap').html(h);
+            $('#lc-invoices-wrap').html(summary + h);
         }
 
         // ── CUENTA CORRIENTE ──────────────────────────────────
