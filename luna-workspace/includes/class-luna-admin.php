@@ -2519,6 +2519,10 @@ class Luna_Admin {
         .lc-fg label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
         .lc-fg input,.lc-fg select,.lc-fg textarea{width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;font-size:13px;color:#1e1e1e;outline:none;font-family:inherit}
         .lc-fg input:focus,.lc-fg select:focus,.lc-fg textarea:focus{border-color:#5b6af0;box-shadow:0 0 0 2px rgba(91,106,240,.15)}
+        .lc-suggest-box{position:absolute;left:0;right:0;z-index:200001;background:#fff;border:1px solid #cbd5e1;border-radius:8px;margin-top:2px;max-height:190px;overflow-y:auto;box-shadow:0 6px 16px rgba(0,0,0,.12)}
+        .lc-suggest-item{padding:8px 12px;font-size:13px;color:#1e1e1e;cursor:pointer}
+        .lc-suggest-item:hover,.lc-suggest-item.active{background:#f1f5f9}
+        .lc-suggest-empty{padding:8px 12px;font-size:12px;color:#94a3b8}
         .lc-fg textarea{resize:vertical;min-height:72px}
         .lc-submit{width:100%;background:#5b6af0;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px}
         .lc-submit:hover{background:#4a59d0}
@@ -2654,11 +2658,10 @@ class Luna_Admin {
                 <input type="hidden" id="lc-payment-id" value="">
                 <input type="hidden" id="lc-payment-client-id" value="">
                 <div class="lc-form-row">
-                    <div class="lc-fg" style="grid-column:1/-1" id="lc-p-client-row">
+                    <div class="lc-fg" style="grid-column:1/-1;position:relative" id="lc-p-client-row">
                         <label>Cliente *</label>
-                        <select id="lc-p-client-select">
-                            <option value="">— Seleccioná un cliente —</option>
-                        </select>
+                        <input type="text" id="lc-p-client-search" autocomplete="off" placeholder="Escribí para buscar un cliente...">
+                        <div class="lc-suggest-box" id="lc-p-client-suggest" style="display:none"></div>
                     </div>
                     <div class="lc-fg" style="grid-column:1/-1">
                         <label>Tipo de movimiento</label>
@@ -2673,14 +2676,10 @@ class Luna_Admin {
                             </label>
                         </div>
                     </div>
-                    <div class="lc-fg" style="grid-column:1/-1">
+                    <div class="lc-fg" style="grid-column:1/-1;position:relative">
                         <label>Concepto *</label>
-                        <input type="text" id="lc-p-concept" list="lc-p-concept-options" placeholder="Escribí para buscar un motivo frecuente o ingresá uno nuevo...">
-                        <datalist id="lc-p-concept-options">
-                            <?php foreach ($payment_reasons as $reason): ?>
-                            <option value="<?php echo esc_attr($reason) ?>"></option>
-                            <?php endforeach; ?>
-                        </datalist>
+                        <input type="text" id="lc-p-concept" autocomplete="off" placeholder="Escribí para buscar un motivo frecuente o ingresá uno nuevo...">
+                        <div class="lc-suggest-box" id="lc-p-concept-suggest" style="display:none"></div>
                     </div>
                     <div class="lc-fg">
                         <label>Monto *</label>
@@ -2853,6 +2852,7 @@ class Luna_Admin {
         var activeClientId = 0;
         var activeClientName = '';
         var defaultWorkspaceId = $('#lc-p-workspace option').eq(1).val() || '';
+        var paymentReasons = <?php echo wp_json_encode($payment_reasons) ?>;
         // Provider data for print
         var providerData = {
             name:  <?php echo json_encode($provider_name) ?>,
@@ -3219,10 +3219,7 @@ class Luna_Admin {
             $('#lc-payment-id').val(data ? data.id : '');
             $('#lc-p-client-row').toggle(!!forGlobal);
             if (forGlobal) {
-                var opts = '<option value="">— Seleccioná un cliente —</option>';
-                clientsData.slice().sort(function(a,b){ return (a.domain||a.name||'').localeCompare(b.domain||b.name||''); })
-                    .forEach(function(c){ opts += '<option value="'+c.id+'">'+esc(c.domain||c.name)+'</option>'; });
-                $('#lc-p-client-select').html(opts).val('');
+                $('#lc-p-client-search').val('');
                 $('#lc-payment-client-id').val('');
             } else {
                 $('#lc-payment-client-id').val(activeClientId);
@@ -3257,7 +3254,41 @@ class Luna_Admin {
         // ── EVENTS ───────────────────────────────────────────
         $('#lc-btn-new-client').on('click', function(){ openClientModal(null); });
         $('#lc-btn-new-invoice').on('click', function(){ openPaymentModal(null, true); });
-        $(document).on('change', '#lc-p-client-select', function(){ $('#lc-payment-client-id').val($(this).val()); });
+
+        // ── Buscador genérico (input + lista de sugerencias) ──────────────────
+        function attachSearchSuggest(inputSel, boxSel, itemsFn, labelFn, onPick) {
+            function render() {
+                var filter = $.trim($(inputSel).val()).toLowerCase();
+                var items = itemsFn().filter(function(it){ return labelFn(it).toLowerCase().indexOf(filter) !== -1; }).slice(0, 30);
+                var $box = $(boxSel);
+                if (!items.length) { $box.html('<div class="lc-suggest-empty">Sin resultados</div>').show(); return; }
+                $box.html(items.map(function(it, i){
+                    return '<div class="lc-suggest-item" data-i="'+i+'">'+esc(labelFn(it))+'</div>';
+                }).join('')).show();
+                $box.data('items', items);
+            }
+            $(document).on('focus input', inputSel, render);
+            $(document).on('click', boxSel + ' .lc-suggest-item', function(){
+                var items = $(boxSel).data('items') || [];
+                var item  = items[$(this).data('i')];
+                if (item) onPick(item);
+                $(boxSel).hide();
+            });
+            $(document).on('click', function(e){
+                if (!$(e.target).closest(inputSel + ', ' + boxSel).length) $(boxSel).hide();
+            });
+        }
+        attachSearchSuggest('#lc-p-client-search', '#lc-p-client-suggest',
+            function(){ return clientsData.slice().sort(function(a,b){ return (a.domain||a.name||'').localeCompare(b.domain||b.name||''); }); },
+            function(c){ return c.domain || c.name; },
+            function(c){ $('#lc-p-client-search').val(c.domain || c.name); $('#lc-payment-client-id').val(c.id); }
+        );
+        attachSearchSuggest('#lc-p-concept', '#lc-p-concept-suggest',
+            function(){ return paymentReasons; },
+            function(r){ return r; },
+            function(r){ $('#lc-p-concept').val(r); }
+        );
+        $(document).on('input', '#lc-p-client-search', function(){ $('#lc-payment-client-id').val(''); });
         $('#lc-search-client').on('input', function(){ filterText = $.trim($(this).val()).toLowerCase(); renderClients(); });
         $('#lc-c-subscription').on('change', function(){ $('#lc-billing-day-row').toggle($(this).val() === 'mensual'); });
 
@@ -3807,8 +3838,8 @@ class Luna_Admin {
                 if(r.success){
                     var msg = installments > 1 ? '✓ '+installments+' cuotas creadas' : '✓ Guardado';
                     $('#lc-payment-msg').text(msg).addClass('ok');
-                    if (pType === 'cargo' && !$('#lc-p-concept-options option[value="'+concept.replace(/"/g,'\\"')+'"]').length) {
-                        $('<option>').val(concept).appendTo('#lc-p-concept-options');
+                    if (pType === 'cargo' && paymentReasons.indexOf(concept) === -1) {
+                        paymentReasons.push(concept);
                     }
                     setTimeout(function(){
                         $('#lc-modal-payment').removeClass('open');
