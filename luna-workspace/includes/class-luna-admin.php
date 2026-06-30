@@ -2675,14 +2675,12 @@ class Luna_Admin {
                     </div>
                     <div class="lc-fg" style="grid-column:1/-1">
                         <label>Concepto *</label>
-                        <select id="lc-p-concept-select" style="margin-bottom:6px">
-                            <option value="">— Elegí un motivo frecuente —</option>
+                        <input type="text" id="lc-p-concept" list="lc-p-concept-options" placeholder="Escribí para buscar un motivo frecuente o ingresá uno nuevo...">
+                        <datalist id="lc-p-concept-options">
                             <?php foreach ($payment_reasons as $reason): ?>
-                            <option value="<?php echo esc_attr($reason) ?>"><?php echo esc_html($reason) ?></option>
+                            <option value="<?php echo esc_attr($reason) ?>"></option>
                             <?php endforeach; ?>
-                            <option value="__custom__">✏️ Otro (escribir)</option>
-                        </select>
-                        <input type="text" id="lc-p-concept" placeholder="Diseño web, consultoría, renovación...">
+                        </datalist>
                     </div>
                     <div class="lc-fg">
                         <label>Monto *</label>
@@ -3229,11 +3227,7 @@ class Luna_Admin {
             } else {
                 $('#lc-payment-client-id').val(activeClientId);
             }
-            $('#lc-p-concept').val(data ? data.concept : '').prop('readonly', false);
-            var conceptOpt = data && data.concept && $('#lc-p-concept-select option[value="'+data.concept.replace(/"/g,'\\"')+'"]').length
-                ? data.concept : '';
-            $('#lc-p-concept-select').val(conceptOpt);
-            if (conceptOpt) $('#lc-p-concept').prop('readonly', true);
+            $('#lc-p-concept').val(data ? data.concept : '');
             $('#lc-p-amount').val(data ? data.amount : '');
             $('#lc-p-currency').val(data ? data.currency : 'ARS');
             $('#lc-p-date').val(data ? data.payment_date : '');
@@ -3264,14 +3258,6 @@ class Luna_Admin {
         $('#lc-btn-new-client').on('click', function(){ openClientModal(null); });
         $('#lc-btn-new-invoice').on('click', function(){ openPaymentModal(null, true); });
         $(document).on('change', '#lc-p-client-select', function(){ $('#lc-payment-client-id').val($(this).val()); });
-
-        // Motivo de pago: elegir de la lista frecuente o escribir uno nuevo
-        $(document).on('change', '#lc-p-concept-select', function(){
-            var v = $(this).val();
-            if (v === '__custom__') { $('#lc-p-concept').val('').prop('readonly', false).focus(); }
-            else if (v) { $('#lc-p-concept').val(v).prop('readonly', true); }
-            else { $('#lc-p-concept').prop('readonly', false); }
-        });
         $('#lc-search-client').on('input', function(){ filterText = $.trim($(this).val()).toLowerCase(); renderClients(); });
         $('#lc-c-subscription').on('change', function(){ $('#lc-billing-day-row').toggle($(this).val() === 'mensual'); });
 
@@ -3821,8 +3807,8 @@ class Luna_Admin {
                 if(r.success){
                     var msg = installments > 1 ? '✓ '+installments+' cuotas creadas' : '✓ Guardado';
                     $('#lc-payment-msg').text(msg).addClass('ok');
-                    if (pType === 'cargo' && !$('#lc-p-concept-select option[value="'+concept.replace(/"/g,'\\"')+'"]').length) {
-                        $('<option>').val(concept).text(concept).insertBefore('#lc-p-concept-select option[value="__custom__"]');
+                    if (pType === 'cargo' && !$('#lc-p-concept-options option[value="'+concept.replace(/"/g,'\\"')+'"]').length) {
+                        $('<option>').val(concept).appendTo('#lc-p-concept-options');
                     }
                     setTimeout(function(){
                         $('#lc-modal-payment').removeClass('open');
