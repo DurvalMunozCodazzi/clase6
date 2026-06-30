@@ -3130,8 +3130,8 @@ class Luna_Admin {
                 if (effectiveStatus !== 'paid') {
                     h += '<button class="lc-btn lc-btn-sm lc-btn-green lc-btn-cobro" data-id="'+p.id+'" data-amount="'+amt+'" data-concept="'+esc(p.concept)+'" data-client-id="'+p.client_id+'" style="margin-right:4px;font-size:11px" title="Registrar cobro de esta factura">💵 Cobrar</button>';
                 }
-                h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-edit-payment" data-id="'+p.id+'" data-client-id="'+p.client_id+'" style="margin-right:4px" title="Editar">✏️</button>';
-                h += '<button class="lc-btn lc-btn-sm" style="background:#0ea5e9;margin-right:4px" onclick="lcPrintPayment('+p.id+','+p.client_id+')">🖨️</button>';
+                h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-edit-payment" data-id="'+p.id+'" data-client-id="'+p.client_id+'" style="margin-right:4px" title="Editar esta factura">✏️ Editar</button>';
+                h += '<button class="lc-btn lc-btn-sm" style="background:#0ea5e9;margin-right:4px" onclick="lcPrintPayment('+p.id+','+p.client_id+')" title="Imprimir">🖨️</button>';
                 h += '<button class="lc-btn lc-btn-sm lc-btn-danger lc-delete-payment" data-id="'+p.id+'" data-client-id="'+p.client_id+'" title="Eliminar">🗑</button>';
                 h += '</td></tr>';
             });
@@ -3240,7 +3240,7 @@ class Luna_Admin {
                     if (!isCobro && p.status !== 'paid') {
                         h += '<button class="lc-btn lc-btn-sm lc-btn-green lc-btn-cobro" data-id="'+p.id+'" data-amount="'+amt+'" data-concept="'+esc(p.concept)+'" style="margin-right:4px;font-size:11px" title="Registrar cobro de este cargo">💵 Cobrar</button>';
                     }
-                    h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-edit-payment" data-id="'+p.id+'" style="margin-right:4px" title="Editar">✏️</button>';
+                    h += '<button class="lc-btn lc-btn-sm lc-btn-ghost lc-edit-payment" data-id="'+p.id+'" style="margin-right:4px" title="Editar este movimiento">✏️ Editar</button>';
                     if (!isCobro) h += '<button class="lc-btn lc-btn-sm" style="background:#0ea5e9;margin-right:4px" onclick="lcPrintPayment('+p.id+')">🖨️</button>';
                     h += '<button class="lc-btn lc-btn-sm lc-btn-danger lc-delete-payment" data-id="'+p.id+'" title="Eliminar">🗑</button>';
                     h += '</td></tr>';
