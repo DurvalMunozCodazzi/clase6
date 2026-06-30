@@ -3041,28 +3041,13 @@ class Luna_Admin {
         function renderInvoices() {
             if (!invoicesData.length) { $('#lc-invoices-wrap').html('<p class="lc-empty">Sin facturas aún. Registrá la primera con "🧾 Nueva factura".</p>'); return; }
 
-            // FIFO por cliente: cobros vinculados van directo a su cargo; cobros sueltos
-            // se reparten entre los cargos pendientes de ESE MISMO cliente, por antigüedad.
+            // Pagado de cada factura = SOLO cobros vinculados explícitamente a ese cargo
+            // (cargo_id). Nunca se reparte un cobro "suelto" contra otra factura del
+            // mismo cliente: cada factura es independiente, como pediste.
             var cobrosMap = {};
-            var byClient = {};
-            invoicesData.forEach(function(p){ (byClient[p.client_id] = byClient[p.client_id] || []).push(p); });
-            Object.keys(byClient).forEach(function(cid){
-                var rows = byClient[cid];
-                var unlinkedPool = 0;
-                rows.forEach(function(p){
-                    if (p.type === 'cobro' && p.currency !== 'USD') {
-                        if (p.cargo_id) cobrosMap[p.cargo_id] = (cobrosMap[p.cargo_id] || 0) + parseFloat(p.amount || 0);
-                        else unlinkedPool += parseFloat(p.amount || 0);
-                    }
-                });
-                if (unlinkedPool > 0) {
-                    var cargosOrdenados = rows.filter(function(p){ return p.type !== 'cobro' && p.currency !== 'USD'; })
-                        .slice().sort(function(a,b){ return (a.due_date||a.created_at||'').localeCompare(b.due_date||b.created_at||''); });
-                    cargosOrdenados.forEach(function(p){
-                        if (unlinkedPool <= 0) return;
-                        var restante = Math.max(0, parseFloat(p.amount||0) - (cobrosMap[p.id]||0));
-                        if (restante > 0) { var aplicar = Math.min(restante, unlinkedPool); cobrosMap[p.id] = (cobrosMap[p.id]||0) + aplicar; unlinkedPool -= aplicar; }
-                    });
+            invoicesData.forEach(function(p){
+                if (p.type === 'cobro' && p.currency !== 'USD' && p.cargo_id) {
+                    cobrosMap[p.cargo_id] = (cobrosMap[p.cargo_id] || 0) + parseFloat(p.amount || 0);
                 }
             });
 
@@ -3110,7 +3095,7 @@ class Luna_Admin {
                 var pagado  = cobrosMap[p.id] || 0;
                 var falta   = Math.max(0, amt - pagado);
                 var rowBg   = falta > 0 ? 'background:#fff8f8' : 'background:#f8fffe';
-                var dateVal = p.due_date || p.payment_date || '—';
+                var dateVal = p.due_date || p.payment_date || (p.created_at ? p.created_at.split(' ')[0] : '') || '—';
                 var clienteLabel = p.client_domain || p.client_name || '—';
 
                 h += '<tr style="'+rowBg+'">';
@@ -3124,7 +3109,7 @@ class Luna_Admin {
                     h += '<td style="text-align:right;color:'+(pagado>0?'#16a34a':'#94a3b8')+'">'+(pagado>0?'$'+fmt(pagado):'—')+'</td>';
                     h += '<td style="text-align:right">'+(falta>0?'<span style="color:#ef4444;font-weight:700">$'+fmt(falta)+'</span>':'<span style="color:#16a34a;font-weight:700">✓ Al día</span>')+'</td>';
                 }
-                var effectiveStatus = isUSD ? p.status : (falta <= 0 ? 'paid' : (pagado > 0 ? 'partial' : 'pending'));
+                var effectiveStatus = isUSD ? p.status : ((falta <= 0 && pagado > 0) ? 'paid' : (pagado > 0 ? 'partial' : p.status));
                 h += '<td>'+statusBadge(effectiveStatus)+'</td>';
                 h += '<td style="white-space:nowrap">';
                 if (effectiveStatus !== 'paid') {
@@ -3139,7 +3124,10 @@ class Luna_Admin {
             $('#lc-invoices-wrap').html(summary + h);
         }
 
-        // ── CUENTA CORRIENTE ──────────────────────────────────
+        // ── LIBRO DE REGISTRO (Debe / Haber / Saldo) ───────────
+        // Cada movimiento es una fila independiente. El Saldo es un acumulado
+        // cronológico simple (Debe - Haber), sin intentar "emparejar" cada cobro
+        // con una factura vieja. Una factura nueva nunca le come el pago a otra.
         function loadPayments(clientId) {
             $('#lc-payments-wrap').html('<p class="lc-empty">Cargando...</p>');
             $.post(ajaxUrl, {action:'luna_list_payments', nonce, client_id: clientId}, function(r) {
@@ -3147,94 +3135,61 @@ class Luna_Admin {
                 var rows = r.data;
                 if (!rows.length) { $('#lc-payments-wrap').html('<p class="lc-empty">Sin movimientos. Registrá el primer cargo con "+ Nuevo cargo".</p>'); return; }
 
-                // Ordenar cronológicamente para saldo corriente
-                rows.sort(function(a, b) {
-                    var da = a.payment_date || a.due_date || a.created_at || '';
-                    var db = b.payment_date || b.due_date || b.created_at || '';
-                    return da.localeCompare(db);
+                // Fecha efectiva de cada fila: fecha de emisión/pago > vencimiento > fecha de creación.
+                // Así una fila nunca queda sin fecha.
+                rows.forEach(function(p) {
+                    p._fecha = p.payment_date || p.due_date || (p.created_at ? p.created_at.split(' ')[0] : '') || '';
                 });
 
-                // Totales
+                // Orden cronológico ascendente (más viejo primero), como un libro diario
+                rows.sort(function(a, b) {
+                    if (a._fecha !== b._fecha) return a._fecha.localeCompare(b._fecha);
+                    return (a.id||0) - (b.id||0);
+                });
+
+                // Totales (ARS: Debe/Haber acumulados; USD aparte, no se mezcla en el saldo)
                 var totCargo = 0, totCobro = 0, totUSD = 0;
                 rows.forEach(function(p) {
                     var amt = parseFloat(p.amount||0);
                     if (p.currency === 'USD') { totUSD += amt; return; }
                     if (p.type === 'cobro') totCobro += amt; else totCargo += amt;
                 });
-                var saldo = totCargo - totCobro;
+                var saldoFinal = totCargo - totCobro;
 
                 // Barra de resumen
-                var ok = saldo <= 0;
+                var ok = saldoFinal <= 0;
                 var h = '<div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;background:'+(ok?'#f0fdf4':'#fef2f2')+';border:1px solid '+(ok?'#bbf7d0':'#fca5a5')+';border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:13px">';
-                h += '<span>📋 Cargos: <strong>$'+fmt(totCargo)+'</strong></span>';
-                h += '<span style="color:#16a34a">💵 Cobros: <strong>$'+fmt(totCobro)+'</strong></span>';
-                if (saldo > 0)       h += '<span style="color:#ef4444;font-weight:700;font-size:14px">⚠ Pendiente: $'+fmt(saldo)+'</span>';
-                else if (saldo < 0)  h += '<span style="color:#1d4ed8;font-weight:700">✓ Crédito: $'+fmt(Math.abs(saldo))+'</span>';
-                else                 h += '<span style="color:#16a34a;font-weight:700">✓ Sin saldo pendiente</span>';
+                h += '<span>📋 Debe (cargos): <strong>$'+fmt(totCargo)+'</strong></span>';
+                h += '<span style="color:#16a34a">💵 Haber (cobros): <strong>$'+fmt(totCobro)+'</strong></span>';
+                if (saldoFinal > 0)       h += '<span style="color:#ef4444;font-weight:700;font-size:14px">⚠ Saldo deudor: $'+fmt(saldoFinal)+'</span>';
+                else if (saldoFinal < 0)  h += '<span style="color:#1d4ed8;font-weight:700">✓ Saldo a favor: $'+fmt(Math.abs(saldoFinal))+'</span>';
+                else                      h += '<span style="color:#16a34a;font-weight:700">✓ Saldo $0 — al día</span>';
                 if (totUSD) h += '<span style="color:#1d4ed8">USD: $'+fmt(totUSD)+'</span>';
                 h += '</div>';
 
-                var today = new Date(); today.setHours(0,0,0,0);
-
-                // Mapa: cargo_id → total cobrado.
-                // Cobros vinculados (cargo_id set) se asignan directo.
-                // Cobros sin cargo_id se distribuyen FIFO contra cargos pendientes.
-                var cobrosMap = {};
-                var unlinkedPool = 0;
-                rows.forEach(function(p) {
-                    if (p.type === 'cobro' && p.currency !== 'USD') {
-                        if (p.cargo_id) cobrosMap[p.cargo_id] = (cobrosMap[p.cargo_id] || 0) + parseFloat(p.amount || 0);
-                        else unlinkedPool += parseFloat(p.amount || 0);
-                    }
-                });
-                if (unlinkedPool > 0) {
-                    var cargosOrdenados = rows.filter(function(p){ return p.type !== 'cobro' && p.currency !== 'USD'; })
-                        .slice().sort(function(a,b){ return (a.due_date||a.created_at||'').localeCompare(b.due_date||b.created_at||''); });
-                    cargosOrdenados.forEach(function(p) {
-                        if (unlinkedPool <= 0) return;
-                        var restante = Math.max(0, parseFloat(p.amount||0) - (cobrosMap[p.id]||0));
-                        if (restante > 0) { var aplicar = Math.min(restante, unlinkedPool); cobrosMap[p.id] = (cobrosMap[p.id]||0) + aplicar; unlinkedPool -= aplicar; }
-                    });
-                }
-
                 h += '<table class="lc-table"><thead><tr>';
-                h += '<th>Fecha</th><th>Tipo</th><th>Concepto</th>';
-                h += '<th style="text-align:right">A pagar</th><th style="text-align:right">Pagos</th>';
-                h += '<th style="text-align:right">Estado</th><th>Falta</th><th>Acciones</th>';
+                h += '<th>Fecha</th><th>Concepto</th>';
+                h += '<th style="text-align:right">Debe</th><th style="text-align:right">Haber</th>';
+                h += '<th>Forma de pago</th><th style="text-align:right">Saldo</th>';
+                h += '<th>Estado</th><th>Acciones</th>';
                 h += '</tr></thead><tbody>';
 
+                var saldoCorrido = 0;
                 rows.forEach(function(p) {
                     var amt     = parseFloat(p.amount||0);
                     var isCobro = p.type === 'cobro';
                     var isUSD   = p.currency === 'USD';
-                    var isOverdue = !isCobro && p.due_date && new Date(p.due_date) < today && p.status !== 'paid';
-                    var rowBg = isCobro ? 'background:#f0fdf9' : (isOverdue ? 'background:#fff5f5' : '');
-                    var dateVal = p.payment_date || p.due_date || '—';
-                    var typeBadgeBg    = isCobro ? '#dcfce7' : '#fef9c3';
-                    var typeBadgeColor = isCobro ? '#16a34a' : '#92400e';
-                    var typeBadge = '<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:'+typeBadgeBg+';color:'+typeBadgeColor+'">'+(isCobro?'💵 Cobro':'📋 Cargo')+'</span>';
+                    if (!isUSD) saldoCorrido += isCobro ? -amt : amt;
+                    var rowBg = isCobro ? 'background:#f0fdf9' : '';
 
                     h += '<tr'+(rowBg?' style="'+rowBg+'"':'')+'>';
-                    h += '<td style="white-space:nowrap;font-size:12px;color:#64748b">'+esc(dateVal)+'</td>';
-                    h += '<td>'+typeBadge+'</td>';
-                    h += '<td><span style="font-size:13px">'+esc(p.concept)+'</span>'+(p.workspace_name?'<br><small style="color:#94a3b8">📋 '+esc(p.workspace_name)+'</small>':'')+'</td>';
-
-                    if (isUSD) {
-                        h += '<td colspan="3" style="text-align:right;font-weight:700;color:#1d4ed8">USD $'+fmt(amt)+'</td>';
-                    } else if (isCobro) {
-                        h += '<td style="text-align:right;color:#94a3b8">—</td>';
-                        h += '<td style="text-align:right;color:#16a34a;font-weight:700">$'+fmt(amt)+'</td>';
-                        h += '<td style="text-align:right;color:#94a3b8">—</td>';
-                    } else {
-                        var pagado   = cobrosMap[p.id] || 0;
-                        var faltaAmt = Math.max(0, amt - pagado);
-                        var faltaHtml = faltaAmt > 0
-                            ? '<span style="color:#ef4444;font-weight:700">$'+fmt(faltaAmt)+'</span>'
-                            : '<span style="color:#16a34a;font-weight:700">✓ Al día</span>';
-                        h += '<td style="text-align:right;font-weight:700">$'+fmt(amt)+'</td>';
-                        h += '<td style="text-align:right;color:'+(pagado>0?'#16a34a':'#94a3b8')+'">'+( pagado>0?'$'+fmt(pagado):'—')+'</td>';
-                        h += '<td style="text-align:right">'+faltaHtml+'</td>';
-                    }
+                    h += '<td style="white-space:nowrap;font-size:12px;color:#64748b">'+esc(p._fecha||'—')+'</td>';
+                    h += '<td><span style="font-size:13px">'+esc(p.concept)+'</span>'+(p.workspace_name?'<br><small style="color:#94a3b8">📋 '+esc(p.workspace_name)+'</small>':'')+(isUSD?' <small style="color:#1d4ed8">(USD)</small>':'')+'</td>';
+                    h += '<td style="text-align:right;font-weight:700">'+(!isCobro?'$'+fmt(amt):'<span style="color:#94a3b8">—</span>')+'</td>';
+                    h += '<td style="text-align:right;font-weight:700;color:#16a34a">'+(isCobro?'$'+fmt(amt):'<span style="color:#94a3b8">—</span>')+'</td>';
+                    h += '<td style="font-size:12px;color:#64748b">'+(isCobro?esc(p.method||'—'):'—')+'</td>';
+                    h += '<td style="text-align:right;font-weight:700">'+(isUSD?'<span style="color:#94a3b8">—</span>':('<span style="color:'+(saldoCorrido>0?'#ef4444':(saldoCorrido<0?'#1d4ed8':'#16a34a'))+'">$'+fmt(saldoCorrido)+'</span>'));
+                    h += '</td>';
                     h += '<td>'+(isCobro?'<span style="color:#16a34a;font-size:12px">✓ Acreditado</span>':statusBadge(p.status))+'</td>';
                     h += '<td style="white-space:nowrap">';
                     if (!isCobro && p.status !== 'paid') {
@@ -3362,9 +3317,9 @@ class Luna_Admin {
             var pType = data ? (data.type || 'cargo') : 'cargo';
             $('input[name=lc-p-type][value='+pType+']').prop('checked', true);
             $('#lc-p-due').closest('.lc-fg').toggle(pType !== 'cobro');
+            if (!data && !$('#lc-p-date').val()) $('#lc-p-date').val(new Date().toISOString().split('T')[0]);
             if (pType === 'cobro' && !data) {
                 $('#lc-p-status').val('paid');
-                if (!$('#lc-p-date').val()) $('#lc-p-date').val(new Date().toISOString().split('T')[0]);
             }
             // Cuotas: solo disponible en nuevos cargos
             $('input[name=lc-p-inst-type][value=1]').prop('checked', true);
@@ -3547,56 +3502,37 @@ class Luna_Admin {
         // ── ESTADO DE CUENTA ──────────────────────────────────
         function buildEstadoHtml(rows, clientName) {
             if (!rows.length) return '<p class="lc-empty">Sin movimientos en ese período.</p>';
+            rows.forEach(function(p) {
+                p._fecha = p.payment_date || p.due_date || (p.created_at ? p.created_at.split(' ')[0] : '') || '';
+            });
             rows.sort(function(a,b){
-                var da = a.payment_date||a.due_date||''; var db = b.payment_date||b.due_date||'';
-                return da.localeCompare(db);
+                if (a._fecha !== b._fecha) return a._fecha.localeCompare(b._fecha);
+                return (a.id||0) - (b.id||0);
             });
             var totCargo = 0, totCobro = 0;
-            var cobrosMap = {}, unlinkedPoolE = 0;
-            rows.forEach(function(p) {
-                if (p.type === 'cobro' && p.currency !== 'USD') {
-                    if (p.cargo_id) cobrosMap[p.cargo_id] = (cobrosMap[p.cargo_id]||0) + parseFloat(p.amount||0);
-                    else unlinkedPoolE += parseFloat(p.amount||0);
-                }
-            });
-            if (unlinkedPoolE > 0) {
-                rows.filter(function(p){ return p.type!=='cobro'&&p.currency!=='USD'; })
-                    .slice().sort(function(a,b){ return (a.due_date||a.created_at||'').localeCompare(b.due_date||b.created_at||''); })
-                    .forEach(function(p) {
-                        if (unlinkedPoolE<=0) return;
-                        var r=Math.max(0,parseFloat(p.amount||0)-(cobrosMap[p.id]||0));
-                        if(r>0){var ap=Math.min(r,unlinkedPoolE);cobrosMap[p.id]=(cobrosMap[p.id]||0)+ap;unlinkedPoolE-=ap;}
-                    });
-            }
-            var h = '<table class="lc-table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th style="text-align:right">A pagar</th><th style="text-align:right">Pagos</th><th style="text-align:right">Estado</th></tr></thead><tbody>';
+            var h = '<table class="lc-table"><thead><tr><th>Fecha</th><th>Concepto</th><th style="text-align:right">Debe</th><th style="text-align:right">Haber</th><th style="text-align:right">Saldo</th></tr></thead><tbody>';
+            var saldoCorrido = 0;
             rows.forEach(function(p) {
                 if (p.currency === 'USD') return;
                 var amt = parseFloat(p.amount||0);
                 var isCobro = p.type === 'cobro';
                 if (isCobro) totCobro += amt; else totCargo += amt;
+                saldoCorrido += isCobro ? -amt : amt;
                 h += '<tr>';
-                h += '<td style="font-size:12px;white-space:nowrap">'+(p.payment_date||p.due_date||'—')+'</td>';
-                h += '<td><span style="font-size:11px;padding:1px 7px;border-radius:8px;background:'+(isCobro?'#dcfce7':'#fef9c3')+';color:'+(isCobro?'#16a34a':'#92400e')+'">'+(isCobro?'Cobro':'Cargo')+'</span></td>';
+                h += '<td style="font-size:12px;white-space:nowrap">'+esc(p._fecha||'—')+'</td>';
                 h += '<td style="font-size:13px">'+esc(p.concept)+'</td>';
-                if (isCobro) {
-                    h += '<td style="text-align:right;color:#94a3b8">—</td><td style="text-align:right;color:#16a34a;font-weight:700">$'+fmt(amt)+'</td><td style="text-align:right;color:#94a3b8">—</td>';
-                } else {
-                    var pagado = cobrosMap[p.id] || 0;
-                    var faltaAmt = Math.max(0, amt - pagado);
-                    var faltaHtml = faltaAmt > 0 ? '<span style="color:#ef4444;font-weight:700">$'+fmt(faltaAmt)+'</span>' : '<span style="color:#16a34a;font-weight:700">✓ Al día</span>';
-                    h += '<td style="text-align:right;font-weight:700">$'+fmt(amt)+'</td>';
-                    h += '<td style="text-align:right;color:'+(pagado>0?'#16a34a':'#94a3b8')+'">'+(pagado>0?'$'+fmt(pagado):'—')+'</td>';
-                    h += '<td style="text-align:right">'+faltaHtml+'</td>';
-                }
+                h += '<td style="text-align:right;font-weight:700">'+(!isCobro?'$'+fmt(amt):'<span style="color:#94a3b8">—</span>')+'</td>';
+                h += '<td style="text-align:right;font-weight:700;color:#16a34a">'+(isCobro?'$'+fmt(amt):'<span style="color:#94a3b8">—</span>')+'</td>';
+                h += '<td style="text-align:right;font-weight:700;color:'+(saldoCorrido>0?'#ef4444':(saldoCorrido<0?'#1d4ed8':'#16a34a'))+'">$'+fmt(saldoCorrido)+'</td>';
                 h += '</tr>';
             });
             h += '</tbody></table>';
             var saldoFinal = totCargo - totCobro;
             var sfColor = saldoFinal > 0 ? '#ef4444' : '#16a34a';
             h += '<div style="margin-top:14px;padding:12px 16px;background:#f8fafc;border-radius:8px;display:flex;gap:20px;font-size:13px">';
-            h += '<span>A pagar: <strong>$'+fmt(totCargo)+'</strong></span>';
-            h += '<span>Pagos: <strong>$'+fmt(totCobro)+'</strong></span>';
-            h += '<span style="font-weight:700;color:'+sfColor+'">Pendiente: $'+fmt(Math.max(0,saldoFinal))+'</span>';
+            h += '<span>Debe: <strong>$'+fmt(totCargo)+'</strong></span>';
+            h += '<span>Haber: <strong>$'+fmt(totCobro)+'</strong></span>';
+            h += '<span style="font-weight:700;color:'+sfColor+'">Saldo: $'+fmt(saldoFinal)+'</span>';
             h += '</div>';
             return h;
         }
@@ -3625,32 +3561,27 @@ class Luna_Admin {
             $.post(ajaxUrl, {action:'luna_estado_cuenta', nonce, client_id: activeClientId, from, to}, function(r){
                 if (!r.success) return;
                 var rows = r.data;
+                rows.forEach(function(p){
+                    p._fecha = p.payment_date || p.due_date || (p.created_at ? p.created_at.split(' ')[0] : '') || '';
+                });
                 rows.sort(function(a,b){
-                    var da = a.payment_date||a.due_date||''; var db = b.payment_date||b.due_date||'';
-                    return da.localeCompare(db);
+                    if (a._fecha !== b._fecha) return a._fecha.localeCompare(b._fecha);
+                    return (a.id||0) - (b.id||0);
                 });
                 var totCargo=0, totCobro=0;
-                var cobrosMapP={}, unlinkedPoolP=0;
-                rows.forEach(function(p){ if(p.type==='cobro'&&p.currency!=='USD'){if(p.cargo_id)cobrosMapP[p.cargo_id]=(cobrosMapP[p.cargo_id]||0)+parseFloat(p.amount||0);else unlinkedPoolP+=parseFloat(p.amount||0);}});
-                if(unlinkedPoolP>0){rows.filter(function(p){return p.type!=='cobro'&&p.currency!=='USD';}).slice().sort(function(a,b){return(a.due_date||a.created_at||'').localeCompare(b.due_date||b.created_at||'');}).forEach(function(p){if(unlinkedPoolP<=0)return;var r=Math.max(0,parseFloat(p.amount||0)-(cobrosMapP[p.id]||0));if(r>0){var ap=Math.min(r,unlinkedPoolP);cobrosMapP[p.id]=(cobrosMapP[p.id]||0)+ap;unlinkedPoolP-=ap;}});}
                 var bodyRows = '';
+                var saldoCorridoP = 0;
                 rows.forEach(function(p){
                     if(p.currency==='USD') return;
                     var amt=parseFloat(p.amount||0); var isCobro=p.type==='cobro';
                     if(isCobro) totCobro+=amt; else totCargo+=amt;
+                    saldoCorridoP += isCobro ? -amt : amt;
                     bodyRows+='<tr>';
-                    bodyRows+='<td>'+(p.payment_date||p.due_date||'—')+'</td>';
-                    bodyRows+='<td><span style="font-size:11px;padding:1px 7px;border-radius:6px;background:'+(isCobro?'#dcfce7':'#fef9c3')+'">'+(isCobro?'Cobro':'Cargo')+'</span></td>';
+                    bodyRows+='<td>'+esc(p._fecha||'—')+'</td>';
                     bodyRows+='<td>'+p.concept+'</td>';
-                    if(isCobro){
-                        bodyRows+='<td style="text-align:right;color:#aaa">—</td><td style="text-align:right;color:#16a34a;font-weight:bold">$'+fmt(amt)+'</td><td style="text-align:right;color:#aaa">—</td>';
-                    } else {
-                        var pagadoP=cobrosMapP[p.id]||0;
-                        var faltaP=Math.max(0,amt-pagadoP);
-                        bodyRows+='<td style="text-align:right;font-weight:bold">$'+fmt(amt)+'</td>';
-                        bodyRows+='<td style="text-align:right;color:'+(pagadoP>0?'#16a34a':'#aaa')+'">'+(pagadoP>0?'$'+fmt(pagadoP):'—')+'</td>';
-                        bodyRows+='<td style="text-align:right;color:'+(faltaP>0?'#ef4444':'#16a34a')+';font-weight:bold">'+(faltaP>0?'$'+fmt(faltaP):'✓ Al día')+'</td>';
-                    }
+                    bodyRows+='<td style="text-align:right;font-weight:bold">'+(!isCobro?'$'+fmt(amt):'<span style="color:#aaa">—</span>')+'</td>';
+                    bodyRows+='<td style="text-align:right;color:#16a34a;font-weight:bold">'+(isCobro?'$'+fmt(amt):'<span style="color:#aaa">—</span>')+'</td>';
+                    bodyRows+='<td style="text-align:right;font-weight:bold;color:'+(saldoCorridoP>0?'#ef4444':(saldoCorridoP<0?'#1d4ed8':'#16a34a'))+'">$'+fmt(saldoCorridoP)+'</td>';
                     bodyRows+='</tr>';
                 });
                 var saldoFinal=totCargo-totCobro;
@@ -3669,11 +3600,11 @@ class Luna_Admin {
                     +'<h1>Luna Workspace</h1>'
                     +'<h2>Estado de Cuenta — '+activeClientName+'</h2>'
                     +'<div class="meta"><span>Período: '+from+' al '+to+'</span><span>Emitido: '+today+'</span></div>'
-                    +'<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th style="text-align:right">A pagar</th><th style="text-align:right">Pagos</th><th style="text-align:right">Estado</th></tr></thead>'
+                    +'<table><thead><tr><th>Fecha</th><th>Concepto</th><th style="text-align:right">Debe</th><th style="text-align:right">Haber</th><th style="text-align:right">Saldo</th></tr></thead>'
                     +'<tbody>'+bodyRows+'</tbody></table>'
-                    +'<div class="total"><span>A pagar: <strong>$'+fmt(totCargo)+'</strong></span>'
-                    +'<span>Pagos: <strong>$'+fmt(totCobro)+'</strong></span>'
-                    +'<span style="color:'+sfColor+';font-weight:bold">Pendiente: $'+fmt(Math.max(0,saldoFinal))+'</span></div>'
+                    +'<div class="total"><span>Debe: <strong>$'+fmt(totCargo)+'</strong></span>'
+                    +'<span>Haber: <strong>$'+fmt(totCobro)+'</strong></span>'
+                    +'<span style="color:'+sfColor+';font-weight:bold">Saldo: $'+fmt(saldoFinal)+'</span></div>'
                     +'<div class="footer">Generado por Luna Workspace · '+today+'</div>'
                     +'</body></html>';
                 var w=window.open('','_blank','width=900,height=700');
