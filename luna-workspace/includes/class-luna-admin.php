@@ -2864,16 +2864,21 @@ class Luna_Admin {
             if (!sorted.length) { $('#lc-clients-wrap').html('<p class="lc-empty">Sin resultados para "'+esc(filterText)+'".</p>'); return; }
 
             // ── Resumen superior ─────────────────────────────────────────────────
-            var sumAlDia = 0, sumDeben = 0, sumPendiente = 0;
+            var sumAlDia = 0, sumDeben = 0, sumPendiente = 0, sumFacturado = 0, sumCobrado = 0;
             sorted.forEach(function(c){
-                var falta = Math.max(0, parseFloat(c.total_cargo||0) - parseFloat(c.total_cobro||0));
+                var cargo = parseFloat(c.total_cargo||0), cobro = parseFloat(c.total_cobro||0);
+                var falta = Math.max(0, cargo - cobro);
                 if (falta > 0) { sumDeben++; sumPendiente += falta; }
-                else if (parseFloat(c.total_cargo||0) > 0) sumAlDia++;
+                else if (cargo > 0) sumAlDia++;
+                sumFacturado += cargo;
+                sumCobrado   += cobro;
             });
             var summary = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">';
             summary += '<span style="background:#f0fdf4;border:1px solid #bbf7d0;color:#16a34a;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700">✓ Al día: '+sumAlDia+'</span>';
             summary += '<span style="background:#fff5f5;border:1px solid #fca5a5;color:#ef4444;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700">⚠ Deben: '+sumDeben+'</span>';
             if (sumPendiente > 0) summary += '<span style="background:#fef3c7;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700">💰 Pendiente total: $'+fmt(sumPendiente)+'</span>';
+            summary += '<span style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700">🧾 Total a Facturar (12 meses): $'+fmt(sumFacturado)+'</span>';
+            summary += '<span style="background:#f0fdf9;border:1px solid #99f6e4;color:#0f766e;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700">💵 Total Cobrado (12 meses): $'+fmt(sumCobrado)+'</span>';
             summary += '<span style="background:#f1f5f9;border:1px solid #e2e8f0;color:#64748b;border-radius:8px;padding:6px 14px;font-size:13px">Total: '+sorted.length+' clientes</span>';
             summary += '</div>';
 
