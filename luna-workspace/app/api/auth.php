@@ -35,9 +35,15 @@ if ($method === 'POST' && $action === 'login') {
     } catch (Exception $e) { $rateData = null; } // Si la tabla no existe, omitir rate limiting
     // ────────────────────────────────────────────────────────────────────────
 
-    $st = $db->prepare("SELECT * FROM ".tb('users')." WHERE (username=? OR email=?) AND active=1");
-    $st->execute([$login, $login]);
-    $user = $st->fetch();
+    try {
+        $st = $db->prepare("SELECT * FROM ".tb('users')." WHERE (username=? OR email=?) AND active=1");
+        $st->execute([$login, $login]);
+        $user = $st->fetch();
+    } catch (Exception $e) {
+        // Tabla users inexistente con este prefijo → mensaje claro en vez de 500 mudo
+        jsonErr('No se pudo leer la tabla de usuarios (prefijo "' . LUNA_TB_PREFIX . '"). '
+              . 'Desactivá y reactivá el plugin Luna Workspace en WordPress para regenerar la configuración.', 500);
+    }
 
     if (!$user || !password_verify($pass, $user['password'])) {
         // Incrementar contador de intentos fallidos

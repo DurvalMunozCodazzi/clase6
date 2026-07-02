@@ -563,6 +563,19 @@ class Luna_Activator {
                     self::regenerate_app_config();
                     return;
                 }
+                // Si el prefijo configurado apunta a una tabla users inexistente
+                // (login roto con 500), regenerar para re-detectar el correcto.
+                // Solo aplica cuando la app usa la BD de WordPress (sin credenciales
+                // manuales): con BD externa no podemos verificar desde $wpdb.
+                $manual_db = get_option( 'luna_manual_db', [] );
+                if ( empty( $manual_db['db_name'] ) && preg_match( "/define\('LUNA_TB_PREFIX',\s*'([^']+)'\)/", $content, $pm ) ) {
+                    global $wpdb;
+                    $users_tbl = $pm[1] . 'users';
+                    if ( ! $wpdb->get_var( "SHOW TABLES LIKE " . $wpdb->prepare( '%s', $users_tbl ) ) ) {
+                        self::regenerate_app_config();
+                        return;
+                    }
+                }
                 // Solo actualizar valores no sensibles: licencia, URL, cron secret
                 self::patch_app_config();
                 return;
@@ -643,16 +656,28 @@ class Luna_Activator {
             '',                        // sin prefijo
         ];
         if ($tb_prefix === null) {
+            // Detectar por la tabla `users` (la que necesita el login), no por
+            // `workspaces`: el reset de contraseña del admin WP escribe SIEMPRE
+            // en {$wpdb->prefix}luna_users, así que la app tiene que apuntar a
+            // un prefijo cuya tabla users exista — si no, login roto (500).
             $best_count = -1;
             $tb_prefix  = $wpdb->prefix . 'luna_'; // default
-            foreach ($candidates as $candidate) {
-                $tbl = $candidate . 'workspaces';
-                $exists = $wpdb->get_var("SHOW TABLES LIKE " . $wpdb->prepare('%s', $tbl));
-                if ($exists) {
-                    $count = (int) $wpdb->get_var("SELECT COUNT(*) FROM `{$tbl}`");
-                    if ($count > $best_count) {
-                        $best_count = $count;
-                        $tb_prefix  = $candidate;
+            $wp_users   = $wpdb->prefix . 'luna_users';
+            if ($wpdb->get_var("SHOW TABLES LIKE " . $wpdb->prepare('%s', $wp_users))
+                && (int) $wpdb->get_var("SELECT COUNT(*) FROM `{$wp_users}`") > 0) {
+                // El prefijo del WP actual tiene usuarios → gana siempre
+                // (es donde escriben el reset de contraseña y todo el admin WP)
+            } else {
+                foreach ($candidates as $candidate) {
+                    $tbl = $candidate . 'users';
+                    $exists = $wpdb->get_var("SHOW TABLES LIKE " . $wpdb->prepare('%s', $tbl));
+                    if ($exists) {
+                        $count = (int) $wpdb->get_var("SELECT COUNT(*) FROM `{$tbl}`");
+                        // Empate → gana el primero de la lista (prefijo WP actual)
+                        if ($count > $best_count) {
+                            $best_count = $count;
+                            $tb_prefix  = $candidate;
+                        }
                     }
                 }
             }
