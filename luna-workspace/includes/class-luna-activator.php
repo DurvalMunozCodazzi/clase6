@@ -556,8 +556,13 @@ class Luna_Activator {
         $cfg_path = LUNA_APP_DIR . 'luna-wp-config.php';
         if ( file_exists( $cfg_path ) ) {
             $content = file_get_contents( $cfg_path );
-            // Si ya tiene una DB_NAME real (no vacía), no tocar
+            // Si ya tiene una DB_NAME real (no vacía), verificar que LUNA_TB_PREFIX tampoco esté vacío
             if ( preg_match( "/define\('DB_NAME',\s*'[^']+'\)/", $content ) ) {
+                // Si el prefijo quedó vacío (bug tras update ZIP), forzar regeneración completa
+                if ( preg_match( "/define\('LUNA_TB_PREFIX',\s*''\)/", $content ) ) {
+                    self::regenerate_app_config();
+                    return;
+                }
                 // Solo actualizar valores no sensibles: licencia, URL, cron secret
                 self::patch_app_config();
                 return;
@@ -610,7 +615,9 @@ class Luna_Activator {
             $db_name = $manual_db['db_name'];
             $db_user = $manual_db['db_user'] ?? DB_USER;
             $db_pass = $manual_db['db_pass'] ?? DB_PASSWORD;
-            $tb_prefix = $manual_db['tb_prefix'] ?? '';
+            // tb_prefix vacío → auto-detectar igual que si fuera null
+            $raw_prefix = isset($manual_db['tb_prefix']) ? trim($manual_db['tb_prefix']) : '';
+            $tb_prefix = ($raw_prefix !== '') ? $raw_prefix : null;
         } else {
             $db_host = DB_HOST;
             $db_name = DB_NAME;
