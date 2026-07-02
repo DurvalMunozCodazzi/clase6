@@ -1262,11 +1262,34 @@ class Luna_Admin {
         if (!current_user_can('manage_options')) wp_send_json_error('Sin permisos');
 
         global $wpdb;
-        // Usar el mismo prefijo que la app (luna-wp-config.php); si no hay
-        // config, caer al prefijo WP actual. Así la contraseña se escribe en
-        // la MISMA tabla que consulta el login de la app.
+
+        // Camino preferido: escribir en la MISMA base y tabla que consulta el
+        // login de la app (puede ser una BD externa distinta de la de WP).
+        $pdo    = $this->get_app_db();
         $appPfx = $this->get_app_prefix();
-        $p = ($appPfx !== null && $appPfx !== '') ? $appPfx : $wpdb->prefix . 'luna_';
+        if ($pdo !== null && $appPfx !== null) {
+            try {
+                $pdo->query("SELECT 1 FROM `{$appPfx}users` LIMIT 1");
+                $new_pass = bin2hex(random_bytes(8)); // 16 chars, legible
+                $hash     = password_hash($new_pass, PASSWORD_BCRYPT);
+                $st = $pdo->prepare("UPDATE `{$appPfx}users` SET password=? WHERE role='admin' AND active=1");
+                $st->execute([$hash]);
+                if ($st->rowCount() > 0) {
+                    // Invalidar sesiones del admin para forzar re-login
+                    try {
+                        $admin = $pdo->query("SELECT id FROM `{$appPfx}users` WHERE role='admin' AND active=1 ORDER BY id LIMIT 1")->fetch();
+                        if ($admin) $pdo->prepare("DELETE FROM `{$appPfx}sessions` WHERE user_id=?")->execute([$admin['id']]);
+                    } catch (Exception $e) {}
+                    wp_send_json_success(['password' => $new_pass]);
+                }
+                // 0 filas → no hay admin activo en la BD de la app: seguir al camino WP
+            } catch (Exception $e) {
+                // La tabla no existe en la BD de la app → seguir al camino WP
+            }
+        }
+
+        // Camino de respaldo: BD de WordPress con el prefijo WP actual
+        $p = $wpdb->prefix . 'luna_';
 
         // Verificar que existe la tabla
         $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$p}users'");

@@ -555,33 +555,86 @@ class Luna_Activator {
     public static function write_app_config() {
         $cfg_path = LUNA_APP_DIR . 'luna-wp-config.php';
         if ( file_exists( $cfg_path ) ) {
-            $content = file_get_contents( $cfg_path );
-            // Si ya tiene una DB_NAME real (no vacía), verificar que LUNA_TB_PREFIX tampoco esté vacío
-            if ( preg_match( "/define\('DB_NAME',\s*'[^']+'\)/", $content ) ) {
-                // Si el prefijo quedó vacío (bug tras update ZIP), forzar regeneración completa
-                if ( preg_match( "/define\('LUNA_TB_PREFIX',\s*''\)/", $content ) ) {
-                    self::regenerate_app_config();
+            $defs = self::parse_app_config( file_get_contents( $cfg_path ) );
+            if ( ! empty( $defs['DB_NAME'] ) ) {
+                // Validar la conexión REAL del config existente conectándose.
+                // OJO: el prefijo '' es VÁLIDO (producción puede usar una BD
+                // externa con tablas sin prefijo: users, workspaces…). Nunca
+                // juzgar el config por el texto — solo por si conecta y tiene
+                // la tabla users.
+                if ( self::test_db_config(
+                        $defs['DB_HOST'] ?? 'localhost', $defs['DB_NAME'],
+                        $defs['DB_USER'] ?? '', $defs['DB_PASS'] ?? '',
+                        $defs['LUNA_TB_PREFIX'] ?? '' ) ) {
+                    // Config funciona → respaldar credenciales en wp_options
+                    // (sobrevive a updates por ZIP) y solo parchear lo no sensible
+                    self::backup_db_config( $defs );
+                    self::patch_app_config();
                     return;
                 }
-                // Si el prefijo configurado apunta a una tabla users inexistente
-                // (login roto con 500), regenerar para re-detectar el correcto.
-                // Solo aplica cuando la app usa la BD de WordPress (sin credenciales
-                // manuales): con BD externa no podemos verificar desde $wpdb.
-                $manual_db = get_option( 'luna_manual_db', [] );
-                if ( empty( $manual_db['db_name'] ) && preg_match( "/define\('LUNA_TB_PREFIX',\s*'([^']+)'\)/", $content, $pm ) ) {
-                    global $wpdb;
-                    $users_tbl = $pm[1] . 'users';
-                    if ( ! $wpdb->get_var( "SHOW TABLES LIKE " . $wpdb->prepare( '%s', $users_tbl ) ) ) {
-                        self::regenerate_app_config();
-                        return;
-                    }
-                }
-                // Solo actualizar valores no sensibles: licencia, URL, cron secret
-                self::patch_app_config();
-                return;
+                // Config roto (no conecta o no tiene tabla users) → regenerar
             }
         }
         self::regenerate_app_config();
+    }
+
+    // Extrae los define('X','y') de un luna-wp-config.php
+    public static function parse_app_config( $content ) {
+        $defs = [];
+        preg_match_all( "/define\('([^']+)',\s*'([^']*)'\)/", $content, $m, PREG_SET_ORDER );
+        foreach ( $m as $row ) $defs[ $row[1] ] = $row[2];
+        return $defs;
+    }
+
+    // ¿Estas credenciales conectan y tienen la tabla {prefijo}users?
+    public static function test_db_config( $db_host, $db_name, $db_user, $db_pass, $tb_prefix ) {
+        $host = $db_host; $port = null; $socket = null;
+        if ( strpos( $host, ':/' ) !== false ) {
+            list( $host, $socket ) = explode( ':', $host, 2 );
+        } elseif ( strpos( $host, ':' ) !== false ) {
+            list( $host, $port ) = explode( ':', $host, 2 );
+            $port = (int) $port;
+        }
+        // PHP 8.1+ lanza excepciones por defecto en mysqli — desactivar y capturar
+        if ( function_exists( 'mysqli_report' ) ) mysqli_report( MYSQLI_REPORT_OFF );
+        try {
+            $my = @mysqli_connect( $host, $db_user, $db_pass, $db_name, $port, $socket );
+        } catch ( \Throwable $e ) { return false; }
+        if ( ! $my ) return false;
+        $tbl = mysqli_real_escape_string( $my, $tb_prefix . 'users' );
+        $res = mysqli_query( $my, "SHOW TABLES LIKE '{$tbl}'" );
+        $ok  = ( $res && mysqli_fetch_row( $res ) );
+        mysqli_close( $my );
+        return (bool) $ok;
+    }
+
+    // Respalda credenciales VALIDADAS en wp_options — sobrevive a los updates
+    // por ZIP (que borran luna-wp-config.php) y permite regenerarlo bien.
+    public static function backup_db_config( $defs ) {
+        update_option( 'luna_db_backup', [
+            'db_host'   => $defs['DB_HOST'] ?? 'localhost',
+            'db_name'   => $defs['DB_NAME'] ?? '',
+            'db_user'   => $defs['DB_USER'] ?? '',
+            'db_pass'   => $defs['DB_PASS'] ?? '',
+            'tb_prefix' => $defs['LUNA_TB_PREFIX'] ?? '',
+        ], false );
+    }
+
+    // Captura única: si hay un config funcionando y todavía no hay respaldo
+    // en wp_options, guardarlo. Se llama en plugins_loaded (barato: solo corre
+    // si falta la opción).
+    public static function maybe_backup_current_config() {
+        if ( get_option( 'luna_db_backup' ) ) return;
+        $cfg_path = LUNA_APP_DIR . 'luna-wp-config.php';
+        if ( ! file_exists( $cfg_path ) ) return;
+        $defs = self::parse_app_config( file_get_contents( $cfg_path ) );
+        if ( empty( $defs['DB_NAME'] ) ) return;
+        if ( self::test_db_config(
+                $defs['DB_HOST'] ?? 'localhost', $defs['DB_NAME'],
+                $defs['DB_USER'] ?? '', $defs['DB_PASS'] ?? '',
+                $defs['LUNA_TB_PREFIX'] ?? '' ) ) {
+            self::backup_db_config( $defs );
+        }
     }
 
     // Actualiza solo los valores no-credenciales del config existente
@@ -641,7 +694,11 @@ class Luna_Activator {
             if (strpos($host, ':') !== false && strpos($host, ':/') === false) {
                 list($host, $port) = explode(':', $host, 2);
             }
-            $my = @mysqli_connect($host, $db_user, $db_pass, $db_name, $port ? (int)$port : null);
+            // PHP 8.1+ lanza excepciones por defecto en mysqli — desactivar y capturar
+            if (function_exists('mysqli_report')) mysqli_report(MYSQLI_REPORT_OFF);
+            try {
+                $my = @mysqli_connect($host, $db_user, $db_pass, $db_name, $port ? (int)$port : null);
+            } catch (\Throwable $e) { $my = false; }
             if ($my) {
                 $rows = [];
                 $res = mysqli_query($my, "SHOW TABLES LIKE '%luna\\_users'");
@@ -675,8 +732,13 @@ class Luna_Activator {
     public static function regenerate_app_config() {
         global $wpdb;
 
-        // Si hay credenciales manuales guardadas, usarlas en lugar de las de WordPress
+        // Prioridad de credenciales:
+        // 1. Manuales (luna_manual_db) — configuración explícita
+        // 2. Respaldo validado (luna_db_backup) — última config que funcionó,
+        //    guardada en wp_options: sobrevive a updates por ZIP
+        // 3. Credenciales de WordPress + auto-detección de prefijo
         $manual_db = get_option('luna_manual_db', []);
+        $backup_db = get_option('luna_db_backup', []);
         if (!empty($manual_db['db_name'])) {
             $db_host = $manual_db['db_host'] ?? 'localhost';
             $db_name = $manual_db['db_name'];
@@ -685,6 +747,17 @@ class Luna_Activator {
             // tb_prefix vacío → auto-detectar igual que si fuera null
             $raw_prefix = isset($manual_db['tb_prefix']) ? trim($manual_db['tb_prefix']) : '';
             $tb_prefix = ($raw_prefix !== '') ? $raw_prefix : null;
+        } elseif (!empty($backup_db['db_name']) && self::test_db_config(
+                    $backup_db['db_host'] ?? 'localhost', $backup_db['db_name'],
+                    $backup_db['db_user'] ?? '', $backup_db['db_pass'] ?? '',
+                    $backup_db['tb_prefix'] ?? '')) {
+            // El respaldo sigue funcionando → reusarlo tal cual (prefijo incluido;
+            // '' es un prefijo válido en instalaciones con BD externa sin prefijo)
+            $db_host   = $backup_db['db_host'] ?? 'localhost';
+            $db_name   = $backup_db['db_name'];
+            $db_user   = $backup_db['db_user'] ?? '';
+            $db_pass   = $backup_db['db_pass'] ?? '';
+            $tb_prefix = $backup_db['tb_prefix'] ?? '';
         } else {
             $db_host = DB_HOST;
             $db_name = DB_NAME;
@@ -729,6 +802,15 @@ class Luna_Activator {
             add_action('admin_notices', function() {
                 echo '<div class="notice notice-error"><p><strong>Luna Workspace:</strong> No se pudo escribir <code>app/luna-wp-config.php</code>. Verificá los permisos de escritura en la carpeta del plugin.</p></div>';
             });
+        }
+
+        // Si lo generado realmente funciona, respaldarlo en wp_options
+        if (self::test_db_config($db_host, $db_name, $db_user, $db_pass, $tb_prefix)) {
+            self::backup_db_config([
+                'DB_HOST' => $db_host, 'DB_NAME' => $db_name,
+                'DB_USER' => $db_user, 'DB_PASS' => $db_pass,
+                'LUNA_TB_PREFIX' => $tb_prefix,
+            ]);
         }
         return $tb_prefix; // retorna el prefijo detectado
     }

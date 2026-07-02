@@ -3,7 +3,7 @@
  * Plugin Name:       Luna Workspace
  * Plugin URI:        https://websobreruedas.com
  * Description:       Pizarra Colaborativa, gestión de tareas, equipos y proyectos. Versión 11.1.53 | Por Web Sobre Ruedas | 2026 | websobreruedas.com
- * Version:           11.1.57
+ * Version:           11.1.58
  * Author:            Web Sobre Ruedas
  * License:           Proprietary
  * Text Domain:       luna-workspace
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('LUNA_VERSION',     '11.1.57');
+define('LUNA_VERSION',     '11.1.58');
 define('LUNA_PLUGIN_DIR',  plugin_dir_path(__FILE__));
 define('LUNA_PLUGIN_URL',  plugin_dir_url(__FILE__));
 define('LUNA_APP_DIR',     LUNA_PLUGIN_DIR . 'app/');
@@ -40,6 +40,9 @@ function luna_init() {
     if (!file_exists(LUNA_APP_DIR . 'luna-wp-config.php')) {
         Luna_Activator::regenerate_app_config();
     }
+    // Si el config actual funciona y aún no hay respaldo en wp_options,
+    // guardarlo (solo corre si falta la opción — barato)
+    Luna_Activator::maybe_backup_current_config();
 
     Luna_Activator::ensure_client_tables();
     Luna_Activator::migrate_cobros_tables();
