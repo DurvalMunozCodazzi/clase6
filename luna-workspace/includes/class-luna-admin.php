@@ -1262,12 +1262,16 @@ class Luna_Admin {
         if (!current_user_can('manage_options')) wp_send_json_error('Sin permisos');
 
         global $wpdb;
-        $p = $wpdb->prefix . 'luna_';
+        // Usar el mismo prefijo que la app (luna-wp-config.php); si no hay
+        // config, caer al prefijo WP actual. Así la contraseña se escribe en
+        // la MISMA tabla que consulta el login de la app.
+        $appPfx = $this->get_app_prefix();
+        $p = ($appPfx !== null && $appPfx !== '') ? $appPfx : $wpdb->prefix . 'luna_';
 
         // Verificar que existe la tabla
         $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$p}users'");
         if (!$table_exists) {
-            wp_send_json_error('Las tablas de Luna no están instaladas. Desactivá y reactivá el plugin.');
+            wp_send_json_error('Las tablas de Luna no están instaladas (prefijo "' . esc_html($p) . '"). Desactivá y reactivá el plugin.');
         }
 
         $new_pass = bin2hex(random_bytes(8)); // 16 chars, legible
