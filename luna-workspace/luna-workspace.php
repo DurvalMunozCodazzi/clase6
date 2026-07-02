@@ -3,7 +3,7 @@
  * Plugin Name:       Luna Workspace
  * Plugin URI:        https://websobreruedas.com
  * Description:       Pizarra Colaborativa, gestión de tareas, equipos y proyectos. Versión 11.1.53 | Por Web Sobre Ruedas | 2026 | websobreruedas.com
- * Version:           11.1.54
+ * Version:           11.1.55
  * Author:            Web Sobre Ruedas
  * License:           Proprietary
  * Text Domain:       luna-workspace
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('LUNA_VERSION',     '11.1.54');
+define('LUNA_VERSION',     '11.1.55');
 define('LUNA_PLUGIN_DIR',  plugin_dir_path(__FILE__));
 define('LUNA_PLUGIN_URL',  plugin_dir_url(__FILE__));
 define('LUNA_APP_DIR',     LUNA_PLUGIN_DIR . 'app/');
@@ -209,12 +209,24 @@ function luna_serve_app() {
         . ',nonce:'     . json_encode(wp_create_nonce('luna_nonce'))
         . ',showGantt:' . (get_option('luna_show_gantt', 1) ? 'true' : 'false')
         . '};</script>';
-    $content = str_replace('</head>', $inject . '</head>', $content);
+    // Usar la PRIMERA ocurrencia de </head> y la ÚLTIMA de </body>: el archivo
+    // contiene literales "</head>" y "</body>" dentro de un template literal JS
+    // (función printInforme), y un str_replace global ahí corta el <script>
+    // principal de la página por la mitad (el navegador cierra el script en el
+    // primer "</script>" que encuentra como texto, sin entender que está dentro
+    // de un string), dejando doLogin sin definir.
+    $headPos = strpos($content, '</head>');
+    if ($headPos !== false) {
+        $content = substr_replace($content, $inject . '</head>', $headPos, strlen('</head>'));
+    }
     // Fix relative API paths to absolute plugin paths
     $content = str_replace('src="api/', 'src="' . LUNA_APP_URL . 'api/', $content);
     $content = str_replace("src='api/", "src='" . LUNA_APP_URL . "api/", $content);
     // Inject permanent branding bar — always visible on all plans
-    $content = str_replace('</body>', luna_branding_bar() . '</body>', $content);
+    $bodyPos = strrpos($content, '</body>');
+    if ($bodyPos !== false) {
+        $content = substr_replace($content, luna_branding_bar() . '</body>', $bodyPos, strlen('</body>'));
+    }
     header('Content-Type: text/html; charset=utf-8');
     echo $content;
 }
