@@ -4,3 +4,4 @@ package-lock.json
 package.json
 laboratorio-workspace/
 *.zip
+luna-workspace/app/luna-wp-config.php
