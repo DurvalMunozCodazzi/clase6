@@ -3,7 +3,7 @@
  * Plugin Name:       Luna Workspace
  * Plugin URI:        https://websobreruedas.com
  * Description:       Pizarra Colaborativa, gestión de tareas, equipos y proyectos. Versión 11.1.53 | Por Web Sobre Ruedas | 2026 | websobreruedas.com
- * Version:           11.1.58
+ * Version:           11.1.59
  * Author:            Web Sobre Ruedas
  * License:           Proprietary
  * Text Domain:       luna-workspace
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('LUNA_VERSION',     '11.1.58');
+define('LUNA_VERSION',     '11.1.59');
 define('LUNA_PLUGIN_DIR',  plugin_dir_path(__FILE__));
 define('LUNA_PLUGIN_URL',  plugin_dir_url(__FILE__));
 define('LUNA_APP_DIR',     LUNA_PLUGIN_DIR . 'app/');
@@ -520,31 +520,52 @@ function luna_ajax_cobros() {
             break;
 
         case 'report':
+            // Libro contable de pagos (cuenta corriente real): usa luna_payments,
+            // agrupado por cliente y ordenado cronológicamente dentro de cada uno,
+            // con Debe/Haber/Saldo calculados en el servidor — igual que en el
+            // panel "Clientes" de wp-admin, pero consultable desde la pizarra.
             $from      = sanitize_text_field($_POST['from'] ?? '');
             $to        = sanitize_text_field($_POST['to'] ?? '');
             $client_id = (int)($_POST['client_id'] ?? 0);
 
-            $sql = "SELECT p.id, p.amount, p.payment_date, p.method, p.notes,
-                           c.name AS client_name,
-                           t.title AS card_title,
-                           u.name  AS created_by_name
-                    FROM `{$p}luna_card_payments` p
-                    LEFT JOIN `{$p}luna_card_cobros_meta` m ON m.card_id = p.card_id
-                    LEFT JOIN `{$p}luna_clients` c ON c.id = m.client_id
-                    LEFT JOIN `{$p}tasks`         t ON t.id = p.card_id
-                    LEFT JOIN `{$p}users`         u ON u.id = p.created_by
+            $sql = "SELECT pm.payment_date, pm.due_date, pm.concept, pm.amount,
+                           pm.type, pm.method, pm.notes,
+                           c.id AS client_id, c.name AS client_name
+                    FROM `{$p}luna_payments` pm
+                    JOIN `{$p}luna_clients` c ON c.id = pm.client_id
                     WHERE 1=1";
             $args = [];
-            if ($from) { $sql .= " AND p.payment_date >= %s"; $args[] = $from; }
-            if ($to)   { $sql .= " AND p.payment_date <= %s"; $args[] = $to;   }
-            if ($client_id) { $sql .= " AND m.client_id = %d"; $args[] = $client_id; }
-            $sql .= " ORDER BY p.payment_date DESC, p.id DESC";
+            if ($from) { $sql .= " AND COALESCE(pm.payment_date, pm.due_date) >= %s"; $args[] = $from; }
+            if ($to)   { $sql .= " AND COALESCE(pm.payment_date, pm.due_date) <= %s"; $args[] = $to;   }
+            if ($client_id) { $sql .= " AND pm.client_id = %d"; $args[] = $client_id; }
+            $sql .= " ORDER BY c.name ASC, COALESCE(pm.payment_date, pm.due_date) ASC, pm.id ASC";
 
             $rows = $args
                 ? $wpdb->get_results($wpdb->prepare($sql, $args), ARRAY_A)
                 : $wpdb->get_results($sql, ARRAY_A);
 
-            wp_send_json_success($rows ?: []);
+            // Saldo acumulado por cliente: se recalcula en cada consulta (no se
+            // persiste) para que quede siempre correcto ante cargas de datos
+            // retroactivas o ediciones — evita arrastrar un saldo desactualizado.
+            $out = [];
+            $saldo = 0.0; $prevClient = null;
+            foreach (($rows ?: []) as $r) {
+                if ($r['client_id'] !== $prevClient) { $saldo = 0.0; $prevClient = $r['client_id']; }
+                $debe  = ($r['type'] === 'cargo') ? (float)$r['amount'] : 0.0;
+                $haber = ($r['type'] === 'cobro') ? (float)$r['amount'] : 0.0;
+                $saldo += $debe - $haber;
+                $out[] = [
+                    'payment_date' => $r['payment_date'] ?: $r['due_date'],
+                    'client_name'  => $r['client_name'],
+                    'concept'      => $r['concept'],
+                    'debe'         => $debe,
+                    'haber'        => $haber,
+                    'method'       => $r['method'],
+                    'saldo'        => $saldo,
+                ];
+            }
+
+            wp_send_json_success($out);
             break;
 
         default:

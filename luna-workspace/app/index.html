@@ -894,7 +894,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
     <div class="sep"></div>
     <button class="tbtn" onclick="toggleCalPanel()" title="Calendario"><i class="fas fa-calendar-alt"></i></button>
     <button class="tbtn" onclick="openMetrics()" title="Analítica"><i class="fas fa-chart-bar"></i></button>
-    <button class="tbtn" onclick="openInforme()" title="Cobranza y Cta Cte"><i class="fas fa-file-invoice-dollar"></i></button>
+    <button class="tbtn" onclick="openInforme()" title="Libro contable de pagos"><i class="fas fa-file-invoice-dollar"></i> Cobranzas</button>
     <div class="notif-bell tbtn" onclick="toggleNotifPanel()" title="Notificaciones">
       <i class="fas fa-bell"></i>
       <span class="notif-badge" id="notif-badge">0</span>
@@ -5922,18 +5922,20 @@ function renderInforme() {
     document.getElementById('inf-print-row').style.display = 'none';
     return;
   }
-  const total = INF_DATA.reduce((s, r) => s + parseFloat(r.amount||0), 0);
+  const totalDebe  = INF_DATA.reduce((s, r) => s + parseFloat(r.debe ||0), 0);
+  const totalHaber = INF_DATA.reduce((s, r) => s + parseFloat(r.haber||0), 0);
   el.innerHTML = `<div style="overflow-x:auto"><table class="inf-table">
-    <thead><tr><th>Fecha</th><th>Cliente</th><th>Tarea</th><th>Método</th><th>Monto</th><th>Notas</th></tr></thead>
+    <thead><tr><th>Fecha</th><th>Cliente/Razón Social</th><th>Concepto/Motivo</th><th>Debe</th><th>Haber</th><th>Forma de pago</th><th>Saldo</th></tr></thead>
     <tbody>${INF_DATA.map(r=>`<tr>
       <td>${esc(r.payment_date||'')}</td>
       <td>${esc(r.client_name||'—')}</td>
-      <td>${esc(r.card_title||'—')}</td>
+      <td>${esc(r.concept||'—')}</td>
+      <td>${parseFloat(r.debe)  ? fmtMoney(r.debe)  : ''}</td>
+      <td>${parseFloat(r.haber) ? fmtMoney(r.haber) : ''}</td>
       <td>${esc(r.method||'—')}</td>
-      <td style="font-weight:700;color:var(--ok)">${fmtMoney(r.amount)}</td>
-      <td>${esc(r.notes||'')}</td>
+      <td style="font-weight:700;color:var(--ok)">${fmtMoney(r.saldo)}</td>
     </tr>`).join('')}</tbody>
-    <tfoot><tr class="inf-total-row"><td colspan="4">TOTAL</td><td>${fmtMoney(total)}</td><td></td></tr></tfoot>
+    <tfoot><tr class="inf-total-row"><td colspan="3">TOTAL</td><td>${fmtMoney(totalDebe)}</td><td>${fmtMoney(totalHaber)}</td><td colspan="2"></td></tr></tfoot>
   </table></div>`;
   document.getElementById('inf-print-row').style.display = 'flex';
 }
@@ -5943,9 +5945,10 @@ function printInforme() {
   const to       = document.getElementById('inf-to').value   || '—';
   const clientEl = document.getElementById('inf-client');
   const clientTxt = clientEl.options[clientEl.selectedIndex]?.text || 'Todos';
-  const total = INF_DATA.reduce((s,r)=>s+parseFloat(r.amount||0),0);
+  const totalDebe  = INF_DATA.reduce((s,r)=>s+parseFloat(r.debe ||0),0);
+  const totalHaber = INF_DATA.reduce((s,r)=>s+parseFloat(r.haber||0),0);
   const w = window.open('', '_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cobranza y Cta Cte</title><style>
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Libro contable de pagos</title><style>
     body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:20px}
     h2{font-size:16px;margin-bottom:4px}
     .sub{color:#666;font-size:11px;margin-bottom:16px}
@@ -5955,19 +5958,20 @@ function printInforme() {
     .tot{font-weight:700;background:#f9f9f9}
     @media print{button{display:none}}
   </style></head><body>
-  <h2>Cobranza y Cta Cte</h2>
+  <h2>Libro contable de pagos</h2>
   <div class="sub">Período: ${from} al ${to} &nbsp;·&nbsp; Cliente: ${clientTxt}</div>
   <table>
-    <thead><tr><th>Fecha</th><th>Cliente</th><th>Tarea</th><th>Método</th><th>Monto</th><th>Notas</th></tr></thead>
+    <thead><tr><th>Fecha</th><th>Cliente/Razón Social</th><th>Concepto/Motivo</th><th>Debe</th><th>Haber</th><th>Forma de pago</th><th>Saldo</th></tr></thead>
     <tbody>${INF_DATA.map(r=>`<tr>
       <td>${r.payment_date||''}</td>
       <td>${r.client_name||'—'}</td>
-      <td>${r.card_title||'—'}</td>
+      <td>${r.concept||'—'}</td>
+      <td>${parseFloat(r.debe)  ? '$'+parseFloat(r.debe).toFixed(2)  : ''}</td>
+      <td>${parseFloat(r.haber) ? '$'+parseFloat(r.haber).toFixed(2) : ''}</td>
       <td>${r.method||'—'}</td>
-      <td>$${parseFloat(r.amount||0).toFixed(2)}</td>
-      <td>${r.notes||''}</td>
+      <td>$${parseFloat(r.saldo||0).toFixed(2)}</td>
     </tr>`).join('')}</tbody>
-    <tfoot><tr class="tot"><td colspan="4">TOTAL</td><td>$${total.toFixed(2)}</td><td></td></tr></tfoot>
+    <tfoot><tr class="tot"><td colspan="3">TOTAL</td><td>$${totalDebe.toFixed(2)}</td><td>$${totalHaber.toFixed(2)}</td><td colspan="2"></td></tr></tfoot>
   </table>
   <script>setTimeout(()=>window.print(),400)<\/script>
   </body></html>`);
