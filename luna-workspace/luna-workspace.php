@@ -3,7 +3,7 @@
  * Plugin Name:       Luna Workspace
  * Plugin URI:        https://websobreruedas.com
  * Description:       Pizarra Colaborativa, gestión de tareas, equipos y proyectos. Versión 11.1.53 | Por Web Sobre Ruedas | 2026 | websobreruedas.com
- * Version:           11.1.59
+ * Version:           11.1.60
  * Author:            Web Sobre Ruedas
  * License:           Proprietary
  * Text Domain:       luna-workspace
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('LUNA_VERSION',     '11.1.59');
+define('LUNA_VERSION',     '11.1.60');
 define('LUNA_PLUGIN_DIR',  plugin_dir_path(__FILE__));
 define('LUNA_PLUGIN_URL',  plugin_dir_url(__FILE__));
 define('LUNA_APP_DIR',     LUNA_PLUGIN_DIR . 'app/');
@@ -329,6 +329,8 @@ function luna_run_daily_billing_check() {
         ARRAY_A
     );
 
+    $default_renewal_amount = (float) get_option( 'luna_default_renewal_amount', 340000 );
+
     // ── 1. Abonos con billing_day = hoy ──────────────────────────────────────
     $today_day = (int) date('j');
     $clients = $wpdb->get_results( $wpdb->prepare(
@@ -338,6 +340,32 @@ function luna_run_daily_billing_check() {
          ORDER BY name",
         $today_day
     ), ARRAY_A );
+
+    // Genera el cargo (Debe) del mes en la cuenta corriente — idempotente:
+    // si ya existe un cargo de abono para este cliente en el mes en curso,
+    // no se duplica (protege contra el cron corriendo más de una vez el mismo día).
+    $mes_actual = date('Y-m');
+    foreach ( ( $clients ?: [] ) as $c ) {
+        $ya_existe = $wpdb->get_var( $wpdb->prepare(
+            "SELECT id FROM `{$p}payments`
+             WHERE client_id = %d AND type = 'cargo' AND concept = 'Abono mensual'
+               AND DATE_FORMAT(COALESCE(payment_date, due_date), '%%Y-%%m') = %s
+             LIMIT 1",
+            $c['id'], $mes_actual
+        ) );
+        if ( $ya_existe ) continue;
+        $monto = (float) $c['renewal_amount'] > 0 ? (float) $c['renewal_amount'] : $default_renewal_amount;
+        $wpdb->insert( "{$p}payments", [
+            'client_id'    => $c['id'],
+            'concept'      => 'Abono mensual',
+            'amount'       => $monto,
+            'currency'     => 'ARS',
+            'due_date'     => date('Y-m-d'),
+            'status'       => 'pending',
+            'type'         => 'cargo',
+            'created_at'   => current_time('mysql'),
+        ] );
+    }
 
     if ( ! empty( $clients ) ) {
         $lines = [];
@@ -366,7 +394,47 @@ function luna_run_daily_billing_check() {
         }
     }
 
-    // ── 2. Vencimientos próximos (clientes no abonados) ───────────────────────
+    // ── 2. Renovación anual de dominio: cargo del día en la cuenta corriente ──
+    // Clientes sin abono mensual (is_subscription=0) con renewal_date = hoy.
+    // Por defecto, TODO cliente usa este esquema (renovación anual de dominio)
+    // salvo que tenga un abono mensual configurado (sección 1, arriba).
+    $due_today = $wpdb->get_results( $wpdb->prepare(
+        "SELECT id, name, domain, renewal_amount
+         FROM `{$p}clients`
+         WHERE is_subscription = 0 AND renewal_date = %s AND active = 1
+         ORDER BY name",
+        date('Y-m-d')
+    ), ARRAY_A );
+
+    foreach ( ( $due_today ?: [] ) as $c ) {
+        // Idempotencia: si ya se generó el cargo de esta renovación, no duplicar.
+        $ya_existe = $wpdb->get_var( $wpdb->prepare(
+            "SELECT id FROM `{$p}payments`
+             WHERE client_id = %d AND type = 'cargo' AND concept = 'Renovación anual de dominio'
+               AND due_date = %s
+             LIMIT 1",
+            $c['id'], date('Y-m-d')
+        ) );
+        if ( $ya_existe ) continue;
+        $monto = (float) $c['renewal_amount'] > 0 ? (float) $c['renewal_amount'] : $default_renewal_amount;
+        $wpdb->insert( "{$p}payments", [
+            'client_id'    => $c['id'],
+            'concept'      => 'Renovación anual de dominio',
+            'amount'       => $monto,
+            'currency'     => 'ARS',
+            'due_date'     => date('Y-m-d'),
+            'status'       => 'pending',
+            'type'         => 'cargo',
+            'created_at'   => current_time('mysql'),
+        ] );
+        // Adelantar la fecha de renovación un año para el próximo ciclo.
+        $wpdb->update( "{$p}clients",
+            [ 'renewal_date' => date('Y-m-d', strtotime('+1 year')) ],
+            [ 'id' => $c['id'] ]
+        );
+    }
+
+    // ── 3. Vencimientos próximos (clientes no abonados) ───────────────────────
     $days_ahead  = (int) get_option('luna_renewal_reminder_days', 7);
     $target_date = date('Y-m-d', strtotime("+{$days_ahead} days"));
     $upcoming    = $wpdb->get_results( $wpdb->prepare(

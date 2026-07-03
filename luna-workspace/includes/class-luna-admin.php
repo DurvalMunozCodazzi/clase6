@@ -2505,6 +2505,7 @@ class Luna_Admin {
         $provider_cuit  = get_option('luna_provider_cuit',  '');
         $provider_email = get_option('luna_provider_email', get_option('admin_email'));
         $provider_phone = get_option('luna_provider_phone', '');
+        $default_renewal_amount = get_option('luna_default_renewal_amount', 340000);
         ?>
         <div class="wrap" style="max-width:1100px">
         <style>
@@ -2586,6 +2587,7 @@ class Luna_Admin {
                 <div><label>CUIT</label><input type="text" id="lc-prov-cuit" value="<?php echo esc_attr($provider_cuit) ?>" style="width:140px"></div>
                 <div><label>Email</label><input type="text" id="lc-prov-email" value="<?php echo esc_attr($provider_email) ?>"></div>
                 <div><label>Teléfono</label><input type="text" id="lc-prov-phone" value="<?php echo esc_attr($provider_phone) ?>" style="width:140px"></div>
+                <div><label>Monto renovación anual por defecto</label><input type="number" id="lc-prov-default-renewal" min="0" step="1" value="<?php echo esc_attr($default_renewal_amount) ?>" style="width:140px"></div>
                 <button class="lc-btn lc-btn-sm" id="lc-save-provider">Guardar</button>
                 <span id="lc-prov-msg" style="font-size:12px;color:#16a34a;align-self:flex-end"></span>
             </div>
@@ -2668,18 +2670,30 @@ class Luna_Admin {
                         <select id="lc-c-subscription">
                             <option value="none">Sin renovación periódica</option>
                             <option value="mensual">Abono mensual</option>
-                            <option value="anual">Abono anual</option>
+                            <option value="anual">Abono anual (renovación de dominio)</option>
                         </select>
                     </div>
                     <div class="lc-fg" id="lc-billing-day-row" style="display:none">
                         <label>Día de cobro mensual (1-31)</label>
                         <input type="number" id="lc-c-billing-day" min="1" max="31" placeholder="Ej: 1">
                     </div>
+                    <div class="lc-fg" id="lc-renewal-date-row" style="display:none">
+                        <label>Fecha de renovación anual</label>
+                        <input type="date" id="lc-c-renewal-date">
+                    </div>
+                    <div class="lc-fg" id="lc-renewal-amount-row" style="display:none">
+                        <label>Monto de la renovación</label>
+                        <input type="number" id="lc-c-renewal-amount" min="0" step="1" placeholder="Ej: 340000">
+                    </div>
                     <div class="lc-fg" style="grid-column:1/-1">
                         <label>Notas internas</label>
                         <textarea id="lc-c-notes" placeholder="Observaciones..."></textarea>
                     </div>
                 </div>
+                <p style="font-size:11px;color:#94a3b8;margin:-6px 0 12px">
+                    Con un tipo de renovación configurado, el cobro se genera solo en la Cuenta Corriente
+                    en la fecha correspondiente (por el monto de arriba, o el monto por defecto de la empresa si se deja vacío).
+                </p>
                 <button class="lc-submit" id="lc-submit-client">Guardar cliente</button>
                 <p class="lc-msg" id="lc-client-msg"></p>
             </div>
@@ -2885,6 +2899,7 @@ class Luna_Admin {
         (function($){
         var ajaxUrl = <?php echo json_encode(admin_url('admin-ajax.php')) ?>;
         var nonce   = <?php echo json_encode(wp_create_nonce('luna_admin_nonce')) ?>;
+        var defaultRenewalAmount = <?php echo json_encode((float) get_option('luna_default_renewal_amount', 340000)) ?>;
         var activeClientId = 0;
         var activeClientName = '';
         var defaultWorkspaceId = $('#lc-p-workspace option').eq(1).val() || '';
@@ -3313,7 +3328,11 @@ class Luna_Admin {
             if (subType === 'none' && data && parseInt(data.is_subscription, 10) === 1) subType = 'mensual';
             $('#lc-c-subscription').val(subType);
             $('#lc-c-billing-day').val(data && data.billing_day ? data.billing_day : '');
+            $('#lc-c-renewal-date').val(data && data.renewal_date ? data.renewal_date : '');
+            $('#lc-c-renewal-amount').val(data && parseFloat(data.renewal_amount) ? data.renewal_amount : '');
             $('#lc-billing-day-row').toggle(subType === 'mensual');
+            $('#lc-renewal-date-row').toggle(subType === 'anual');
+            $('#lc-renewal-amount-row').toggle(subType === 'mensual' || subType === 'anual');
             $('#lc-client-modal-title').text(data ? 'Editar cliente' : 'Nuevo cliente');
             $('#lc-client-msg').text('').removeClass('ok err');
             $('#lc-modal-client').addClass('open');
@@ -3409,7 +3428,15 @@ class Luna_Admin {
             if (activeView === 'invoices') { $('#lc-clients-wrap').hide(); $('#lc-invoices-wrap').show(); renderInvoices(); }
             else { $('#lc-invoices-wrap').hide(); $('#lc-clients-wrap').show(); renderClients(); }
         });
-        $('#lc-c-subscription').on('change', function(){ $('#lc-billing-day-row').toggle($(this).val() === 'mensual'); });
+        $('#lc-c-subscription').on('change', function(){
+            var v = $(this).val();
+            $('#lc-billing-day-row').toggle(v === 'mensual');
+            $('#lc-renewal-date-row').toggle(v === 'anual');
+            $('#lc-renewal-amount-row').toggle(v === 'mensual' || v === 'anual');
+            if ((v === 'mensual' || v === 'anual') && !$('#lc-c-renewal-amount').val()) {
+                $('#lc-c-renewal-amount').val(defaultRenewalAmount || '');
+            }
+        });
 
         // Tipo cargo/cobro: ajustar formulario
         $(document).on('change', 'input[name=lc-p-type]', function(){
@@ -3901,6 +3928,8 @@ class Luna_Admin {
                 notes:         $('#lc-c-notes').val(),
                 subscription_type: $('#lc-c-subscription').val(),
                 billing_day:       $('#lc-c-billing-day').val() || '',
+                renewal_date:      $('#lc-c-renewal-date').val() || '',
+                renewal_amount:    $('#lc-c-renewal-amount').val() || '',
             };
             $.post(ajaxUrl, data, function(r){
                 if(r.success){
@@ -3970,9 +3999,11 @@ class Luna_Admin {
                 provider_cuit:  $('#lc-prov-cuit').val(),
                 provider_email: $('#lc-prov-email').val(),
                 provider_phone: $('#lc-prov-phone').val(),
+                default_renewal_amount: $('#lc-prov-default-renewal').val(),
             }, function(r){
                 if(r.success){
                     providerData = { name:$('#lc-prov-name').val(), cuit:$('#lc-prov-cuit').val(), email:$('#lc-prov-email').val(), phone:$('#lc-prov-phone').val() };
+                    defaultRenewalAmount = parseFloat($('#lc-prov-default-renewal').val()) || 0;
                     $('#lc-prov-msg').text('✓ Guardado').show();
                     setTimeout(function(){ $('#lc-prov-msg').text('') }, 2000);
                 }
@@ -4024,6 +4055,9 @@ class Luna_Admin {
             update_option('luna_provider_cuit',  sanitize_text_field($_POST['provider_cuit']  ?? ''));
             update_option('luna_provider_email', sanitize_email($_POST['provider_email']       ?? ''));
             update_option('luna_provider_phone', sanitize_text_field($_POST['provider_phone']  ?? ''));
+            if (isset($_POST['default_renewal_amount']) && $_POST['default_renewal_amount'] !== '') {
+                update_option('luna_default_renewal_amount', (float) $_POST['default_renewal_amount']);
+            }
             wp_send_json_success();
         }
 
@@ -4045,6 +4079,8 @@ class Luna_Admin {
             'subscription_type' => in_array($_POST['subscription_type'] ?? '', ['mensual','anual']) ? sanitize_text_field($_POST['subscription_type']) : 'none',
             'is_subscription'   => in_array($_POST['subscription_type'] ?? '', ['mensual','anual']) ? 1 : 0,
             'billing_day'       => !empty($_POST['billing_day']) ? min(31, max(1, (int)$_POST['billing_day'])) : null,
+            'renewal_date'      => !empty($_POST['renewal_date']) ? sanitize_text_field($_POST['renewal_date']) : null,
+            'renewal_amount'    => (isset($_POST['renewal_amount']) && $_POST['renewal_amount'] !== '') ? (float)$_POST['renewal_amount'] : 0.00,
             'updated_at'      => current_time('mysql'),
         ];
 
