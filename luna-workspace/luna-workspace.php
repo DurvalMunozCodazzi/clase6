@@ -3,7 +3,7 @@
  * Plugin Name:       Luna Workspace
  * Plugin URI:        https://websobreruedas.com
  * Description:       Pizarra Colaborativa, gestión de tareas, equipos y proyectos. Versión 11.1.53 | Por Web Sobre Ruedas | 2026 | websobreruedas.com
- * Version:           11.1.61
+ * Version:           11.1.62
  * Author:            Web Sobre Ruedas
  * License:           Proprietary
  * Text Domain:       luna-workspace
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('LUNA_VERSION',     '11.1.61');
+define('LUNA_VERSION',     '11.1.62');
 define('LUNA_PLUGIN_DIR',  plugin_dir_path(__FILE__));
 define('LUNA_PLUGIN_URL',  plugin_dir_url(__FILE__));
 define('LUNA_APP_DIR',     LUNA_PLUGIN_DIR . 'app/');
@@ -634,6 +634,124 @@ function luna_ajax_cobros() {
             }
 
             wp_send_json_success($out);
+            break;
+
+        // ── Planilla rápida (misma lógica que wp-admin, con auth de la pizarra) ──
+        case 'ledger_list':
+            $rows = $wpdb->get_results(
+                "SELECT c.id, c.name, c.domain,
+                    COALESCE(SUM(CASE WHEN pm.type='cargo' THEN pm.amount ELSE 0 END),0)
+                  - COALESCE(SUM(CASE WHEN pm.type='cobro' THEN pm.amount ELSE 0 END),0) AS saldo
+                 FROM `{$p}luna_clients` c
+                 LEFT JOIN `{$p}luna_payments` pm ON pm.client_id = c.id
+                 WHERE c.active = 1
+                 GROUP BY c.id
+                 ORDER BY c.name",
+                ARRAY_A
+            );
+            $total_adeudado = 0.0;
+            foreach (($rows ?: []) as $r) { if ((float)$r['saldo'] > 0) $total_adeudado += (float)$r['saldo']; }
+            $cobrado_mes = (float) $wpdb->get_var(
+                "SELECT COALESCE(SUM(amount),0) FROM `{$p}luna_payments`
+                 WHERE type='cobro' AND DATE_FORMAT(payment_date,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')"
+            );
+            wp_send_json_success([
+                'rows'           => $rows ?: [],
+                'total_adeudado' => $total_adeudado,
+                'cobrado_mes'    => $cobrado_mes,
+            ]);
+            break;
+
+        case 'ledger_save':
+            if ($session['role'] !== 'admin') { wp_send_json_error('Solo el admin puede registrar cargos y pagos'); return; }
+            $client_id = (int) ($_POST['client_id'] ?? 0);
+            $monto     = (float) ($_POST['monto'] ?? 0);
+            $pago      = (float) ($_POST['pago']  ?? 0);
+            $method    = sanitize_text_field($_POST['method'] ?? '');
+            if (!$client_id) { wp_send_json_error('Cliente inválido'); return; }
+            if ($monto <= 0 && $pago <= 0) { wp_send_json_error('Ingresá un monto o un pago'); return; }
+
+            $client = $wpdb->get_row($wpdb->prepare(
+                "SELECT id FROM `{$p}luna_clients` WHERE id=%d AND active=1", $client_id
+            ));
+            if (!$client) { wp_send_json_error('Cliente no encontrado'); return; }
+
+            $now = current_time('mysql');
+            if ($monto > 0) {
+                $wpdb->insert("{$p}luna_payments", [
+                    'client_id' => $client_id, 'concept' => 'Cargo registrado', 'amount' => $monto,
+                    'currency'  => 'ARS', 'due_date' => date('Y-m-d'), 'status' => 'pending',
+                    'type'      => 'cargo', 'created_at' => $now,
+                ]);
+            }
+            if ($pago > 0) {
+                $wpdb->insert("{$p}luna_payments", [
+                    'client_id'    => $client_id, 'concept' => 'Pago registrado', 'amount' => $pago,
+                    'currency'     => 'ARS', 'payment_date' => date('Y-m-d'), 'method' => $method,
+                    'status'       => 'paid', 'type' => 'cobro', 'created_at' => $now,
+                ]);
+            }
+            $saldo = (float) $wpdb->get_var($wpdb->prepare(
+                "SELECT COALESCE(SUM(CASE WHEN type='cargo' THEN amount ELSE 0 END),0)
+                       - COALESCE(SUM(CASE WHEN type='cobro' THEN amount ELSE 0 END),0)
+                 FROM `{$p}luna_payments` WHERE client_id = %d",
+                $client_id
+            ));
+            wp_send_json_success(['saldo' => $saldo]);
+            break;
+
+        // ── Saldo por tarjeta (para el badge de deuda en el kanban) ──────────────
+        case 'card_balances':
+            $rows = $wpdb->get_results(
+                "SELECT m.card_id,
+                    COALESCE(SUM(CASE WHEN pm.type='cargo' THEN pm.amount ELSE 0 END),0)
+                  - COALESCE(SUM(CASE WHEN pm.type='cobro' THEN pm.amount ELSE 0 END),0) AS saldo
+                 FROM `{$p}luna_card_cobros_meta` m
+                 JOIN `{$p}luna_payments` pm ON pm.client_id = m.client_id
+                 WHERE m.client_id IS NOT NULL
+                 GROUP BY m.card_id",
+                ARRAY_A
+            );
+            $map = [];
+            foreach (($rows ?: []) as $r) { $map[$r['card_id']] = (float) $r['saldo']; }
+            wp_send_json_success($map);
+            break;
+
+        // ── Recordatorio de saldo pendiente por email al cliente ─────────────────
+        case 'send_reminder':
+            if ($session['role'] !== 'admin') { wp_send_json_error('Solo el admin puede enviar recordatorios'); return; }
+            $client_id = (int) ($_POST['client_id'] ?? 0);
+            if (!$client_id) { wp_send_json_error('Cliente inválido'); return; }
+            $client = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM `{$p}luna_clients` WHERE id=%d AND active=1", $client_id
+            ), ARRAY_A);
+            if (!$client) { wp_send_json_error('Cliente no encontrado'); return; }
+            if (empty($client['email'])) { wp_send_json_error('El cliente no tiene email registrado'); return; }
+
+            $saldo = (float) $wpdb->get_var($wpdb->prepare(
+                "SELECT COALESCE(SUM(CASE WHEN type='cargo' THEN amount ELSE 0 END),0)
+                       - COALESCE(SUM(CASE WHEN type='cobro' THEN amount ELSE 0 END),0)
+                 FROM `{$p}luna_payments` WHERE client_id = %d",
+                $client_id
+            ));
+            if ($saldo <= 0) { wp_send_json_error('Este cliente no tiene saldo pendiente'); return; }
+
+            $saldo_fmt  = '$' . number_format($saldo, 0, ',', '.');
+            $from_name  = get_bloginfo('name');
+            $from_email = get_option('admin_email');
+            $subject    = 'Recordatorio de pago — ' . ($client['domain'] ?: $client['name']);
+            $html = '<div style="font-family:\'Segoe UI\',sans-serif;max-width:560px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px">'
+                  . '<h2 style="color:#5b6af0;margin-bottom:8px">Recordatorio de pago</h2>'
+                  . '<p style="color:#334155;font-size:15px;line-height:1.6">Hola ' . esc_html($client['name']) . ', te recordamos que tenés un saldo pendiente de <strong>' . $saldo_fmt . '</strong>. Por favor, ponete en contacto para coordinar el pago. ¡Gracias!</p>'
+                  . '<hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">'
+                  . '<p style="color:#94a3b8;font-size:12px">Enviado por ' . esc_html($from_name) . '</p>'
+                  . '</div>';
+            add_filter('wp_mail_content_type', function() { return 'text/html'; });
+            $sent = wp_mail($client['email'], $subject, $html);
+            remove_all_filters('wp_mail_content_type');
+
+            if ($sent) wp_send_json_success(['to' => $client['email']]);
+            else       wp_send_json_error('No se pudo enviar el email');
             break;
 
         default:

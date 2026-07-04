@@ -3086,11 +3086,12 @@ class Luna_Admin {
         }
 
         // ── PLANILLA RÁPIDA: una fila por cliente, Monto + Pago en una sola operación ──
-        var ledgerData = [];
+        var ledgerData = [], ledgerTotals = { total_adeudado: 0, cobrado_mes: 0 };
         function loadLedger() {
             $.post(ajaxUrl, {action:'luna_quick_ledger', sub:'list', nonce}, function(r) {
                 if (!r.success) { $('#lc-ledger-wrap').html('<p class="lc-empty">Error al cargar.</p>'); return; }
-                ledgerData = r.data;
+                ledgerData   = r.data.rows || [];
+                ledgerTotals = { total_adeudado: r.data.total_adeudado || 0, cobrado_mes: r.data.cobrado_mes || 0 };
                 renderLedger();
             });
         }
@@ -3100,7 +3101,11 @@ class Luna_Admin {
             if (!ledgerData.length) { el.html('<p class="lc-empty">Sin clientes aún. Creá el primero en la pestaña "Todos los clientes".</p>'); return; }
             var q = $.trim(filterText||'').toLowerCase();
             var rows = ledgerData.filter(function(c){ return !q || (c.name||'').toLowerCase().indexOf(q)>=0 || (c.domain||'').toLowerCase().indexOf(q)>=0; });
-            var h = '<p style="font-size:12px;color:#64748b;margin:0 0 12px">Cargá el monto nuevo a cobrar y/o el pago recibido, y guardá — una sola operación por cliente.</p>';
+            var h = '<div style="display:flex;gap:16px;margin-bottom:14px">'
+               + '<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 16px"><div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Total adeudado</div><div style="font-size:18px;font-weight:800;color:#dc2626">$'+fmtQ(ledgerTotals.total_adeudado)+'</div></div>'
+               + '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 16px"><div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Cobrado este mes</div><div style="font-size:18px;font-weight:800;color:#16a34a">$'+fmtQ(ledgerTotals.cobrado_mes)+'</div></div>'
+               + '</div>';
+            h += '<p style="font-size:12px;color:#64748b;margin:0 0 12px">Cargá el monto nuevo a cobrar y/o el pago recibido, y guardá — una sola operación por cliente.</p>';
             h += '<div style="overflow-x:auto"><table class="lc-table"><thead><tr>'
                + '<th>Cliente</th><th style="text-align:right">Deuda actual</th>'
                + '<th style="text-align:right">Monto a cargar</th><th style="text-align:right">Pago recibido</th>'
@@ -3143,13 +3148,8 @@ class Luna_Admin {
                 $.post(ajaxUrl, {action:'luna_quick_ledger', sub:'save', nonce, client_id: cid, monto: monto, pago: pago, method: method}, function(r){
                     btn.prop('disabled', false).text('💾');
                     if (!r.success) { notifyLc('Error: '+r.data, true); return; }
-                    var nuevoSaldo = parseFloat(r.data.saldo) || 0;
-                    tr.find('.lq-deuda').data('saldo', nuevoSaldo).html(nuevoSaldo>0?'<span style="color:#dc2626;font-weight:700">$'+fmtQ(nuevoSaldo)+'</span>':(nuevoSaldo<0?'<span style="color:#2563eb">$'+fmtQ(nuevoSaldo)+'</span>':'<span style="color:#16a34a">Al día</span>'));
-                    tr.find('.lq-preview').html(nuevoSaldo>0?'<span style="color:#dc2626;font-weight:700">$'+fmtQ(nuevoSaldo)+'</span>':(nuevoSaldo<0?'<span style="color:#2563eb">$'+fmtQ(nuevoSaldo)+'</span>':'<span style="color:#16a34a">Al día</span>'));
-                    tr.find('.lq-monto, .lq-pago').val('');
-                    var cd = ledgerData.find(function(x){ return x.id == cid; });
-                    if (cd) cd.saldo = nuevoSaldo;
                     notifyLc('✓ Guardado');
+                    loadLedger();
                 });
             });
         }
@@ -4606,7 +4606,17 @@ class Luna_Admin {
              ORDER BY c.name",
             ARRAY_A
         );
-        wp_send_json_success($rows ?: []);
+        $total_adeudado = 0.0;
+        foreach (($rows ?: []) as $r) { if ((float)$r['saldo'] > 0) $total_adeudado += (float)$r['saldo']; }
+        $cobrado_mes = (float) $wpdb->get_var(
+            "SELECT COALESCE(SUM(amount),0) FROM `{$p}payments`
+             WHERE type='cobro' AND DATE_FORMAT(payment_date,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')"
+        );
+        wp_send_json_success([
+            'rows'           => $rows ?: [],
+            'total_adeudado' => $total_adeudado,
+            'cobrado_mes'    => $cobrado_mes,
+        ]);
     }
 
     // ── Enviar recordatorio de pago por email al cliente ─────────────────────────
