@@ -35,6 +35,7 @@ class Luna_Admin {
         add_action('wp_ajax_luna_estado_cuenta',        [$this, 'ajax_estado_cuenta']);
         add_action('wp_ajax_luna_report_payments',      [$this, 'ajax_report_payments']);
         add_action('wp_ajax_luna_send_client_reminder', [$this, 'ajax_send_client_reminder']);
+        add_action('wp_ajax_luna_quick_ledger',         [$this, 'ajax_quick_ledger']);
     }
 
     public function show_db_diagnostic() {
@@ -2597,11 +2598,15 @@ class Luna_Admin {
         <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
             <input type="text" id="lc-search-client" placeholder="🔍  Buscar cliente por nombre..." style="width:100%;max-width:360px;border:1px solid #cbd5e1;border-radius:8px;padding:8px 12px;font-size:13px;color:#1e1e1e;outline:none;font-family:inherit" autocomplete="off">
             <div style="display:flex;gap:4px;background:#f1f5f9;border-radius:8px;padding:4px">
-                <button class="lc-btn lc-btn-sm lc-view-tab active" id="lc-tab-clients" data-view="clients" style="background:#5b6af0;color:#fff">👥 Todos los clientes</button>
+                <button class="lc-btn lc-btn-sm lc-view-tab active" id="lc-tab-ledger" data-view="ledger" style="background:#5b6af0;color:#fff">📋 Planilla rápida</button>
+                <button class="lc-btn lc-btn-sm lc-view-tab" id="lc-tab-clients" data-view="clients" style="background:transparent;color:#475569">👥 Todos los clientes</button>
                 <button class="lc-btn lc-btn-sm lc-view-tab" id="lc-tab-invoices" data-view="invoices" style="background:transparent;color:#475569">🧾 Facturas (cada factura por separado)</button>
             </div>
         </div>
-        <div id="lc-clients-wrap">
+        <div id="lc-ledger-wrap">
+            <p class="lc-empty">Cargando...</p>
+        </div>
+        <div id="lc-clients-wrap" style="display:none">
             <p class="lc-empty">Cargando...</p>
         </div>
         <div id="lc-invoices-wrap" style="display:none">
@@ -3080,6 +3085,79 @@ class Luna_Admin {
             });
         }
 
+        // ── PLANILLA RÁPIDA: una fila por cliente, Monto + Pago en una sola operación ──
+        var ledgerData = [];
+        function loadLedger() {
+            $.post(ajaxUrl, {action:'luna_quick_ledger', sub:'list', nonce}, function(r) {
+                if (!r.success) { $('#lc-ledger-wrap').html('<p class="lc-empty">Error al cargar.</p>'); return; }
+                ledgerData = r.data;
+                renderLedger();
+            });
+        }
+        function fmtQ(v) { return (parseFloat(v)||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+        function renderLedger() {
+            var el = $('#lc-ledger-wrap');
+            if (!ledgerData.length) { el.html('<p class="lc-empty">Sin clientes aún. Creá el primero en la pestaña "Todos los clientes".</p>'); return; }
+            var q = $.trim(filterText||'').toLowerCase();
+            var rows = ledgerData.filter(function(c){ return !q || (c.name||'').toLowerCase().indexOf(q)>=0 || (c.domain||'').toLowerCase().indexOf(q)>=0; });
+            var h = '<p style="font-size:12px;color:#64748b;margin:0 0 12px">Cargá el monto nuevo a cobrar y/o el pago recibido, y guardá — una sola operación por cliente.</p>';
+            h += '<div style="overflow-x:auto"><table class="lc-table"><thead><tr>'
+               + '<th>Cliente</th><th style="text-align:right">Deuda actual</th>'
+               + '<th style="text-align:right">Monto a cargar</th><th style="text-align:right">Pago recibido</th>'
+               + '<th>Forma de pago</th><th style="text-align:right">Saldo resultante</th><th></th>'
+               + '</tr></thead><tbody>';
+            rows.forEach(function(c){
+                var saldo = parseFloat(c.saldo)||0;
+                h += '<tr data-cid="'+c.id+'">'
+                   + '<td><strong>'+esc(c.name)+'</strong>'+(c.domain?' <span style="color:#94a3b8;font-size:11px">('+esc(c.domain)+')</span>':'')+'</td>'
+                   + '<td style="text-align:right" class="lq-deuda" data-saldo="'+saldo+'">'+(saldo>0?'<span style="color:#dc2626;font-weight:700">$'+fmtQ(saldo)+'</span>':(saldo<0?'<span style="color:#2563eb">$'+fmtQ(saldo)+'</span>':'<span style="color:#16a34a">Al día</span>'))+'</td>'
+                   + '<td style="text-align:right"><input type="number" min="0" step="1" class="lq-monto" style="width:110px;text-align:right;border:1px solid #cbd5e1;border-radius:5px;padding:5px 8px;font-size:12px"></td>'
+                   + '<td style="text-align:right"><input type="number" min="0" step="1" class="lq-pago" style="width:110px;text-align:right;border:1px solid #cbd5e1;border-radius:5px;padding:5px 8px;font-size:12px"></td>'
+                   + '<td><select class="lq-method" style="border:1px solid #cbd5e1;border-radius:5px;padding:5px 6px;font-size:12px"><option>Transferencia</option><option>Efectivo</option><option>MercadoPago</option><option>Tarjeta</option><option>Otro</option></select></td>'
+                   + '<td style="text-align:right" class="lq-preview">'+(saldo>0?'$'+fmtQ(saldo):(saldo<0?'$'+fmtQ(saldo):'Al día'))+'</td>'
+                   + '<td><button class="lc-btn lc-btn-sm lq-save">💾</button></td>'
+                   + '</tr>';
+            });
+            h += '</tbody></table></div>';
+            el.html(h);
+
+            // Preview en vivo del saldo resultante al tipear Monto/Pago
+            el.on('input', '.lq-monto, .lq-pago', function(){
+                var tr = $(this).closest('tr');
+                var base  = parseFloat(tr.find('.lq-deuda').data('saldo')) || 0;
+                var monto = parseFloat(tr.find('.lq-monto').val()) || 0;
+                var pago  = parseFloat(tr.find('.lq-pago').val())  || 0;
+                var resultante = base + monto - pago;
+                tr.find('.lq-preview').html(resultante > 0 ? '<span style="color:#dc2626;font-weight:700">$'+fmtQ(resultante)+'</span>'
+                    : (resultante < 0 ? '<span style="color:#2563eb">$'+fmtQ(resultante)+'</span>' : '<span style="color:#16a34a">Al día</span>'));
+            });
+
+            el.on('click', '.lq-save', function(){
+                var tr    = $(this).closest('tr');
+                var cid   = tr.data('cid');
+                var monto = parseFloat(tr.find('.lq-monto').val()) || 0;
+                var pago  = parseFloat(tr.find('.lq-pago').val())  || 0;
+                var method = tr.find('.lq-method').val();
+                if (!monto && !pago) return;
+                var btn = $(this); btn.prop('disabled', true).text('...');
+                $.post(ajaxUrl, {action:'luna_quick_ledger', sub:'save', nonce, client_id: cid, monto: monto, pago: pago, method: method}, function(r){
+                    btn.prop('disabled', false).text('💾');
+                    if (!r.success) { notifyLc('Error: '+r.data, true); return; }
+                    var nuevoSaldo = parseFloat(r.data.saldo) || 0;
+                    tr.find('.lq-deuda').data('saldo', nuevoSaldo).html(nuevoSaldo>0?'<span style="color:#dc2626;font-weight:700">$'+fmtQ(nuevoSaldo)+'</span>':(nuevoSaldo<0?'<span style="color:#2563eb">$'+fmtQ(nuevoSaldo)+'</span>':'<span style="color:#16a34a">Al día</span>'));
+                    tr.find('.lq-preview').html(nuevoSaldo>0?'<span style="color:#dc2626;font-weight:700">$'+fmtQ(nuevoSaldo)+'</span>':(nuevoSaldo<0?'<span style="color:#2563eb">$'+fmtQ(nuevoSaldo)+'</span>':'<span style="color:#16a34a">Al día</span>'));
+                    tr.find('.lq-monto, .lq-pago').val('');
+                    var cd = ledgerData.find(function(x){ return x.id == cid; });
+                    if (cd) cd.saldo = nuevoSaldo;
+                    notifyLc('✓ Guardado');
+                });
+            });
+        }
+        function notifyLc(msg, isErr) {
+            var d = $('<div>').text(msg).css({position:'fixed',bottom:'20px',right:'20px',background:isErr?'#ef4444':'#16a34a',color:'#fff',padding:'10px 18px',borderRadius:'8px',fontSize:'13px',zIndex:999999,boxShadow:'0 4px 12px rgba(0,0,0,.15)'});
+            $('body').append(d); setTimeout(function(){ d.fadeOut(300, function(){ d.remove(); }); }, 2200);
+        }
+
         function renderInvoices() {
             if (!invoicesData.length) { $('#lc-invoices-wrap').html('<p class="lc-empty">Sin facturas aún. Registrá la primera con "🧾 Nueva factura".</p>'); return; }
 
@@ -3416,17 +3494,21 @@ class Luna_Admin {
         $(document).on('input', '#lc-p-client-search', function(){ $('#lc-payment-client-id').val(''); });
         $('#lc-search-client').on('input', function(){
             filterText = $.trim($(this).val()).toLowerCase();
-            if (activeView === 'invoices') renderInvoices(); else renderClients();
+            if (activeView === 'invoices') renderInvoices();
+            else if (activeView === 'clients') renderClients();
+            else renderLedger();
         });
 
-        // ── Tabs Clientes / Facturas ───────────────────────────
-        var activeView = 'clients';
+        // ── Tabs Planilla / Clientes / Facturas ───────────────────────────
+        var activeView = 'ledger';
         $('.lc-view-tab').on('click', function(){
             activeView = $(this).data('view');
             $('.lc-view-tab').css({background:'transparent',color:'#475569'}).removeClass('active');
             $(this).css({background:'#5b6af0',color:'#fff'}).addClass('active');
-            if (activeView === 'invoices') { $('#lc-clients-wrap').hide(); $('#lc-invoices-wrap').show(); renderInvoices(); }
-            else { $('#lc-invoices-wrap').hide(); $('#lc-clients-wrap').show(); renderClients(); }
+            $('#lc-ledger-wrap, #lc-clients-wrap, #lc-invoices-wrap').hide();
+            if (activeView === 'invoices')     { $('#lc-invoices-wrap').show(); renderInvoices(); }
+            else if (activeView === 'clients') { $('#lc-clients-wrap').show();  renderClients();  }
+            else                                { $('#lc-ledger-wrap').show();  loadLedger();      }
         });
         $('#lc-c-subscription').on('change', function(){
             var v = $(this).val();
@@ -4014,6 +4096,7 @@ class Luna_Admin {
         $(document).on('keydown', function(e){ if(e.key==='Escape'){ $('.lc-overlay').removeClass('open'); } });
 
         loadClients();
+        loadLedger();
         })(jQuery);
         </script>
         <?php
@@ -4460,6 +4543,70 @@ class Luna_Admin {
             }
         }
         wp_send_json_success(['rows' => $rows ?: [], 'totals' => $totals]);
+    }
+
+    // ── Planilla rápida: una fila por cliente, Monto (cargo) + Pago (cobro) ──────
+    // en una sola operación — evita el ida-y-vuelta de crear el cargo primero y
+    // recién después registrar el cobro por separado.
+    public function ajax_quick_ledger() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+        global $wpdb;
+        $p   = $wpdb->prefix . 'luna_';
+        $sub = sanitize_text_field($_POST['sub'] ?? 'list');
+
+        // Saldo actual del cliente = Debe (cargo) - Haber (cobro) acumulado
+        $saldo_sql = "SELECT
+                COALESCE(SUM(CASE WHEN pm.type='cargo' THEN pm.amount ELSE 0 END),0)
+              - COALESCE(SUM(CASE WHEN pm.type='cobro' THEN pm.amount ELSE 0 END),0) AS saldo
+            FROM `{$p}payments` pm WHERE pm.client_id = %d";
+
+        if ($sub === 'save') {
+            $client_id = (int) ($_POST['client_id'] ?? 0);
+            $monto     = (float) ($_POST['monto'] ?? 0);
+            $pago      = (float) ($_POST['pago']  ?? 0);
+            $method    = sanitize_text_field($_POST['method'] ?? '');
+            if (!$client_id) wp_send_json_error('Cliente inválido.');
+            if ($monto <= 0 && $pago <= 0) wp_send_json_error('Ingresá un monto o un pago.');
+
+            $client = $wpdb->get_row($wpdb->prepare(
+                "SELECT id FROM `{$p}clients` WHERE id=%d AND active=1", $client_id
+            ));
+            if (!$client) wp_send_json_error('Cliente no encontrado.');
+
+            $now = current_time('mysql');
+            if ($monto > 0) {
+                $wpdb->insert("{$p}payments", [
+                    'client_id'  => $client_id, 'concept' => 'Cargo registrado', 'amount' => $monto,
+                    'currency'   => 'ARS', 'due_date' => date('Y-m-d'), 'status' => 'pending',
+                    'type'       => 'cargo', 'created_at' => $now,
+                ]);
+            }
+            if ($pago > 0) {
+                $wpdb->insert("{$p}payments", [
+                    'client_id'    => $client_id, 'concept' => 'Pago registrado', 'amount' => $pago,
+                    'currency'     => 'ARS', 'payment_date' => date('Y-m-d'), 'method' => $method,
+                    'status'       => 'paid', 'type' => 'cobro', 'created_at' => $now,
+                ]);
+            }
+
+            $saldo = (float) $wpdb->get_var($wpdb->prepare($saldo_sql, $client_id));
+            wp_send_json_success(['saldo' => $saldo]);
+        }
+
+        // sub === 'list': saldo actual de todos los clientes activos
+        $rows = $wpdb->get_results(
+            "SELECT c.id, c.name, c.domain,
+                COALESCE(SUM(CASE WHEN pm.type='cargo' THEN pm.amount ELSE 0 END),0)
+              - COALESCE(SUM(CASE WHEN pm.type='cobro' THEN pm.amount ELSE 0 END),0) AS saldo
+             FROM `{$p}clients` c
+             LEFT JOIN `{$p}payments` pm ON pm.client_id = c.id
+             WHERE c.active = 1
+             GROUP BY c.id
+             ORDER BY c.name",
+            ARRAY_A
+        );
+        wp_send_json_success($rows ?: []);
     }
 
     // ── Enviar recordatorio de pago por email al cliente ─────────────────────────
