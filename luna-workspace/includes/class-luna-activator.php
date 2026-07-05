@@ -587,25 +587,51 @@ class Luna_Activator {
     }
 
     // ¿Estas credenciales conectan y tienen la tabla {prefijo}users?
+    // Usa PDO (igual que app/config.php::getDB()) — NO mysqli — para que este
+    // chequeo tenga exactamente la misma confiabilidad que la conexión real
+    // que usa la app. Antes usaba mysqli, una librería distinta que puede
+    // comportarse diferente en algunos hostings y fallar en silencio,
+    // impidiendo que se guarde el respaldo de credenciales.
     public static function test_db_config( $db_host, $db_name, $db_user, $db_pass, $tb_prefix ) {
-        $host = $db_host; $port = null; $socket = null;
+        $host = $db_host; $port = ''; $socket = '';
         if ( strpos( $host, ':/' ) !== false ) {
             list( $host, $socket ) = explode( ':', $host, 2 );
-        } elseif ( strpos( $host, ':' ) !== false ) {
-            list( $host, $port ) = explode( ':', $host, 2 );
-            $port = (int) $port;
+        } elseif ( preg_match( '/^(.*):(\d+)$/', $host, $hm ) ) {
+            $host = $hm[1]; $port = $hm[2];
         }
-        // PHP 8.1+ lanza excepciones por defecto en mysqli — desactivar y capturar
-        if ( function_exists( 'mysqli_report' ) ) mysqli_report( MYSQLI_REPORT_OFF );
+        if ( $socket )    $dsn = "mysql:unix_socket={$socket};dbname={$db_name};charset=utf8mb4";
+        elseif ( $port )  $dsn = "mysql:host={$host};port={$port};dbname={$db_name};charset=utf8mb4";
+        else              $dsn = "mysql:host={$host};dbname={$db_name};charset=utf8mb4";
         try {
-            $my = @mysqli_connect( $host, $db_user, $db_pass, $db_name, $port, $socket );
-        } catch ( \Throwable $e ) { return false; }
-        if ( ! $my ) return false;
-        $tbl = mysqli_real_escape_string( $my, $tb_prefix . 'users' );
-        $res = mysqli_query( $my, "SHOW TABLES LIKE '{$tbl}'" );
-        $ok  = ( $res && mysqli_fetch_row( $res ) );
-        mysqli_close( $my );
-        return (bool) $ok;
+            $pdo = new \PDO( $dsn, $db_user, $db_pass, [ \PDO::ATTR_TIMEOUT => 5 ] );
+            $tbl = $tb_prefix . 'users';
+            $st  = $pdo->prepare( "SHOW TABLES LIKE " . $pdo->quote( $tbl ) );
+            $st->execute();
+            return (bool) $st->fetch();
+        } catch ( \Throwable $e ) {
+            return false;
+        }
+    }
+
+    // Cantidad de filas en {prefijo}users — a diferencia de test_db_config()
+    // (que solo confirma que la tabla EXISTE), esto confirma que hay datos
+    // reales. Usado por la red de seguridad del fallback a la BD de WordPress.
+    public static function count_users( $db_host, $db_name, $db_user, $db_pass, $tb_prefix ) {
+        $host = $db_host; $port = ''; $socket = '';
+        if ( strpos( $host, ':/' ) !== false ) {
+            list( $host, $socket ) = explode( ':', $host, 2 );
+        } elseif ( preg_match( '/^(.*):(\d+)$/', $host, $hm ) ) {
+            $host = $hm[1]; $port = $hm[2];
+        }
+        if ( $socket )    $dsn = "mysql:unix_socket={$socket};dbname={$db_name};charset=utf8mb4";
+        elseif ( $port )  $dsn = "mysql:host={$host};port={$port};dbname={$db_name};charset=utf8mb4";
+        else              $dsn = "mysql:host={$host};dbname={$db_name};charset=utf8mb4";
+        try {
+            $pdo = new \PDO( $dsn, $db_user, $db_pass, [ \PDO::ATTR_TIMEOUT => 5 ] );
+            return (int) $pdo->query( "SELECT COUNT(*) FROM `{$tb_prefix}users`" )->fetchColumn();
+        } catch ( \Throwable $e ) {
+            return 0;
+        }
     }
 
     // Respalda credenciales VALIDADAS en wp_options — sobrevive a los updates
@@ -620,11 +646,22 @@ class Luna_Activator {
         ], false );
     }
 
-    // Captura única: si hay un config funcionando y todavía no hay respaldo
-    // en wp_options, guardarlo. Se llama en plugins_loaded (barato: solo corre
-    // si falta la opción).
+    // Si el config actual funciona, mantener el respaldo de wp_options
+    // sincronizado con él. Se llama en plugins_loaded (todos los requests).
+    // IMPORTANTE: siempre se re-valida y re-guarda si el config vigente
+    // conecta bien — NO solo "una vez si falta la opción". La versión
+    // anterior solo guardaba si la opción estaba vacía; si en algún momento
+    // se guardó un respaldo incorrecto (o nunca se guardó porque esta misma
+    // validación fallaba con mysqli), quedaba PERMANENTEMENTE sin corregirse
+    // aunque el archivo real se arreglara después. Ahora se refresca en cada
+    // carga mientras el archivo conecte, así el respaldo nunca queda obsoleto.
     public static function maybe_backup_current_config() {
-        if ( get_option( 'luna_db_backup' ) ) return;
+        // Throttle: re-validar como máximo 1 vez cada 6hs (no en cada request
+        // de todo el sitio WP) — pero SIEMPRE re-validar, nunca "una sola vez
+        // para siempre", que es el bug que dejó el respaldo desactualizado.
+        if ( get_transient( 'luna_db_backup_check' ) ) return;
+        set_transient( 'luna_db_backup_check', 1, 6 * HOUR_IN_SECONDS );
+
         $cfg_path = LUNA_APP_DIR . 'luna-wp-config.php';
         if ( ! file_exists( $cfg_path ) ) return;
         $defs = self::parse_app_config( file_get_contents( $cfg_path ) );
@@ -689,28 +726,25 @@ class Luna_Activator {
                 $tables[$t] = (int) $wpdb->get_var("SELECT COUNT(*) FROM `{$t}`");
             }
         } else {
-            // BD manual/externa → conectar aparte para escanear
-            $host = $db_host; $port = null;
-            if (strpos($host, ':') !== false && strpos($host, ':/') === false) {
-                list($host, $port) = explode(':', $host, 2);
+            // BD manual/externa → conectar aparte para escanear (PDO, igual que
+            // el resto del plugin — ver test_db_config() para el porqué).
+            $host = $db_host; $port = ''; $socket = '';
+            if (strpos($host, ':/') !== false) {
+                list($host, $socket) = explode(':', $host, 2);
+            } elseif (preg_match('/^(.*):(\d+)$/', $host, $hm)) {
+                $host = $hm[1]; $port = $hm[2];
             }
-            // PHP 8.1+ lanza excepciones por defecto en mysqli — desactivar y capturar
-            if (function_exists('mysqli_report')) mysqli_report(MYSQLI_REPORT_OFF);
+            if ($socket)    $dsn = "mysql:unix_socket={$socket};dbname={$db_name};charset=utf8mb4";
+            elseif ($port)  $dsn = "mysql:host={$host};port={$port};dbname={$db_name};charset=utf8mb4";
+            else            $dsn = "mysql:host={$host};dbname={$db_name};charset=utf8mb4";
             try {
-                $my = @mysqli_connect($host, $db_user, $db_pass, $db_name, $port ? (int)$port : null);
-            } catch (\Throwable $e) { $my = false; }
-            if ($my) {
-                $rows = [];
-                $res = mysqli_query($my, "SHOW TABLES LIKE '%luna\\_users'");
-                while ($res && ($r = mysqli_fetch_row($res))) $rows[] = $r[0];
-                $res2 = mysqli_query($my, "SHOW TABLES LIKE 'users'");
-                if ($res2 && mysqli_fetch_row($res2)) $rows[] = 'users';
+                $pdo = new \PDO($dsn, $db_user, $db_pass, [\PDO::ATTR_TIMEOUT => 5]);
+                $rows = array_column($pdo->query("SHOW TABLES LIKE '%luna\\_users'")->fetchAll(\PDO::FETCH_NUM), 0);
+                if ($pdo->query("SHOW TABLES LIKE 'users'")->fetch()) $rows[] = 'users';
                 foreach ($rows as $t) {
-                    $c = mysqli_query($my, "SELECT COUNT(*) FROM `" . mysqli_real_escape_string($my, $t) . "`");
-                    $tables[$t] = $c ? (int) mysqli_fetch_row($c)[0] : 0;
+                    $tables[$t] = (int) $pdo->query("SELECT COUNT(*) FROM `{$t}`")->fetchColumn();
                 }
-                mysqli_close($my);
-            }
+            } catch (\Throwable $e) { /* no conecta: $tables queda vacío, se usa $default abajo */ }
         }
 
         if (!$tables) return $default;
@@ -764,6 +798,12 @@ class Luna_Activator {
             $db_user = DB_USER;
             $db_pass = DB_PASSWORD;
             $tb_prefix = null; // se detecta abajo
+            // Ni credenciales manuales ni respaldo válido: vamos a usar la BD de
+            // WordPress como último recurso. Si esa BD no tiene NINGÚN dato real
+            // de Luna, esto probablemente significa que el sitio usa una BD
+            // externa cuyas credenciales se perdieron — avisar en vez de fallar
+            // en silencio (se verifica más abajo, después de detectar el prefijo).
+            $usar_fallback_wp = true;
         }
 
         $license_key    = get_option('luna_license_key', '');
@@ -777,6 +817,21 @@ class Luna_Activator {
         // y elige la que tiene usuarios, priorizando el prefijo WP actual.
         if ($tb_prefix === null) {
             $tb_prefix = self::detect_tb_prefix($db_host, $db_name, $db_user, $db_pass, !empty($manual_db['db_name']));
+        }
+
+        // Red de seguridad: si estamos por escribir la BD de WordPress como
+        // último recurso (sin manual ni respaldo) y no hay NINGÚN usuario real
+        // ahí, dejar un aviso visible en wp-admin en vez de fallar en silencio.
+        // OJO: no alcanza con que la tabla EXISTA — ensure_client_tables() la
+        // crea vacía en cada request (CREATE TABLE IF NOT EXISTS). Hace falta
+        // que tenga al menos una fila real.
+        if (!empty($usar_fallback_wp)) {
+            $hay_datos = self::count_users($db_host, $db_name, $db_user, $db_pass, $tb_prefix) > 0;
+            if (!$hay_datos) {
+                update_option('luna_config_recovery_warning', current_time('mysql'));
+            } else {
+                delete_option('luna_config_recovery_warning');
+            }
         }
 
         $content = "<?php\n"

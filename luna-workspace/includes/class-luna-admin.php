@@ -172,6 +172,18 @@ class Luna_Admin {
     }
 
     public function show_notices() {
+        // Aviso crítico, visible en TODO wp-admin (no solo páginas de Luna):
+        // la configuración de BD se regeneró sin poder confirmar datos reales
+        // de Luna — probablemente se perdió la conexión a una BD externa.
+        $recovery_warning = get_option('luna_config_recovery_warning');
+        if ($recovery_warning && current_user_can('manage_options')) {
+            echo '<div class="notice notice-error"><p>'
+                . '<strong>⚠️ Luna Workspace:</strong> no se pudo confirmar la base de datos configurada '
+                . '(desde ' . esc_html($recovery_warning) . '). Si tu sitio usa una base de datos externa para Luna, '
+                . 'las credenciales pueden haberse perdido en la última actualización del plugin. '
+                . 'Contactá a soporte antes de que tus clientes intenten iniciar sesión — '
+                . 'revisá <a href="' . admin_url('admin.php?page=luna-database') . '">Luna Workspace → Base de datos</a>.</p></div>';
+        }
         $screen = get_current_screen();
         if (!$screen || strpos($screen->id, 'luna') === false) return;
         // Show banner but do NOT delete the option here — render_main_page() deletes it
