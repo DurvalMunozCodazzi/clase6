@@ -4192,15 +4192,16 @@ class Luna_Admin {
             if (!czData.length) { el.html('<p class="cz-empty">Sin clientes activos aún. Creá el primero en la pestaña "Clientes".</p>'); return; }
             var h = '<table class="cz-table"><thead><tr>'
                 + '<th>Cliente</th><th style="text-align:right">Deuda actual</th>'
-                + '<th style="text-align:right">Monto a cargar</th><th style="text-align:right">Pago recibido</th>'
+                + '<th style="text-align:right;background:#fef2f2"><span style="color:#dc2626;font-weight:800;font-size:10px">◆ DEBE</span><br>Monto a cargar</th>'
+                + '<th style="text-align:right;background:#f0fdf4"><span style="color:#16a34a;font-weight:800;font-size:10px">✓ HABER</span><br>Pago recibido</th>'
                 + '<th>Forma de pago</th><th style="text-align:right">Saldo resultante</th><th></th>'
                 + '</tr></thead><tbody>';
             czData.forEach(function(c){
                 h += '<tr data-cid="'+c.id+'">'
                    + '<td><strong>'+esc2(c.name)+'</strong>'+(c.domain?' <span style="color:#94a3b8;font-size:11px">('+esc2(c.domain)+')</span>':'')+'</td>'
                    + '<td style="text-align:right" class="cz-deuda" data-saldo="'+c.saldo+'">'+czSaldoHtml(c.saldo)+'</td>'
-                   + '<td style="text-align:right"><input type="number" min="0" step="1" class="cz-input cz-monto"></td>'
-                   + '<td style="text-align:right"><input type="number" min="0" step="1" class="cz-input cz-pago"></td>'
+                   + '<td style="text-align:right;background:#fef2f2"><input type="number" min="0" step="1" class="cz-input cz-monto" style="border-color:#f9c9c9"></td>'
+                   + '<td style="text-align:right;background:#f0fdf4"><input type="number" min="0" step="1" class="cz-input cz-pago" style="border-color:#bfe6cc"></td>'
                    + '<td><select class="cz-select cz-method"><option>Transferencia</option><option>Efectivo</option><option>MercadoPago</option><option>Tarjeta</option><option>Otro</option></select></td>'
                    + '<td style="text-align:right" class="cz-preview">'+czSaldoHtml(c.saldo)+'</td>'
                    + '<td><button class="cz-btn cz-save">Guardar</button></td>'
