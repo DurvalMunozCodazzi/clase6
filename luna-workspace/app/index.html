@@ -894,7 +894,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
     <div class="sep"></div>
     <button class="tbtn" onclick="toggleCalPanel()" title="Calendario"><i class="fas fa-calendar-alt"></i></button>
     <button class="tbtn" onclick="openMetrics()" title="Analítica"><i class="fas fa-chart-bar"></i></button>
-    <button class="tbtn" onclick="openInforme()" title="Libro contable de pagos"><i class="fas fa-file-invoice-dollar"></i> Cobranzas</button>
+    <button class="tbtn" onclick="openInforme()" title="Cobranza y Cta Cte"><i class="fas fa-file-invoice-dollar"></i></button>
     <div class="notif-bell tbtn" onclick="toggleNotifPanel()" title="Notificaciones">
       <i class="fas fa-bell"></i>
       <span class="notif-badge" id="notif-badge">0</span>
@@ -1126,40 +1126,17 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
   <!-- INFORME DE COBRANZA MODAL -->
   <div class="mo" id="informeMo">
     <div class="md lg">
-      <div class="mh"><h3><i class="fas fa-file-invoice-dollar" style="color:var(--acc)"></i> Cobranzas</h3><button class="mx" onclick="closeMo('informeMo')"><i class="fas fa-times"></i></button></div>
-      <div style="display:flex;gap:4px;background:var(--elev);border-radius:8px;padding:4px;margin-bottom:14px;width:fit-content">
-        <button class="btn cob-tab active" id="cob-tab-planilla" onclick="showCobTab('planilla')" style="padding:6px 14px;font-size:12px"><i class="fas fa-table"></i> Planilla</button>
-        <button class="btn cob-tab" id="cob-tab-informe" onclick="showCobTab('informe')" style="padding:6px 14px;font-size:12px;background:transparent"><i class="fas fa-file-alt"></i> Informe / Imprimir</button>
+      <div class="mh"><h3><i class="fas fa-file-invoice-dollar" style="color:var(--acc)"></i> Cobranza y Cta Cte</h3><button class="mx" onclick="closeMo('informeMo')"><i class="fas fa-times"></i></button></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;margin-bottom:16px;align-items:flex-end">
+        <div class="fg" style="margin:0"><label class="fl">Desde</label><input type="date" class="fi" id="inf-from"></div>
+        <div class="fg" style="margin:0"><label class="fl">Hasta</label><input type="date" class="fi" id="inf-to"></div>
+        <div class="fg" style="margin:0"><label class="fl">Cliente</label><select class="fse" id="inf-client"><option value="">Todos los clientes</option></select></div>
+        <button class="btn bp" onclick="runInforme()" style="white-space:nowrap;height:38px"><i class="fas fa-search"></i> Filtrar</button>
       </div>
-
-      <!-- PLANILLA RÁPIDA -->
-      <div id="cob-panel-planilla">
-        <div style="display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap">
-          <div style="background:#fef2f222;border:1px solid #fca5a544;border-radius:8px;padding:9px 16px">
-            <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">Total adeudado</div>
-            <div style="font-size:17px;font-weight:800;color:#dc2626" id="lq-kpi-adeudado">$0</div>
-          </div>
-          <div style="background:#22d3a022;border:1px solid #22d3a044;border-radius:8px;padding:9px 16px">
-            <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">Cobrado este mes</div>
-            <div style="font-size:17px;font-weight:800;color:#22d3a0" id="lq-kpi-cobrado">$0</div>
-          </div>
-        </div>
-        <div id="lq-wrap" style="overflow-x:auto;max-height:52vh;overflow-y:auto"><p style="text-align:center;color:var(--t3);padding:20px;font-size:13px">Cargando...</p></div>
-      </div>
-
-      <!-- INFORME / IMPRIMIR (histórico con filtros) -->
-      <div id="cob-panel-informe" style="display:none">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;margin-bottom:16px;align-items:flex-end">
-          <div class="fg" style="margin:0"><label class="fl">Desde</label><input type="date" class="fi" id="inf-from"></div>
-          <div class="fg" style="margin:0"><label class="fl">Hasta</label><input type="date" class="fi" id="inf-to"></div>
-          <div class="fg" style="margin:0"><label class="fl">Cliente</label><select class="fse" id="inf-client"><option value="">Todos los clientes</option></select></div>
-          <button class="btn bp" onclick="runInforme()" style="white-space:nowrap;height:38px"><i class="fas fa-search"></i> Filtrar</button>
-        </div>
-        <div id="inf-results"></div>
-        <div class="mac" id="inf-print-row" style="display:none">
-          <button class="btn" onclick="closeMo('informeMo')">Cerrar</button>
-          <button class="btn bp" onclick="printInforme()"><i class="fas fa-print"></i> Imprimir PDF</button>
-        </div>
+      <div id="inf-results"></div>
+      <div class="mac" id="inf-print-row" style="display:none">
+        <button class="btn" onclick="closeMo('informeMo')">Cerrar</button>
+        <button class="btn bp" onclick="printInforme()"><i class="fas fa-print"></i> Imprimir PDF</button>
       </div>
     </div>
   </div>
@@ -2002,13 +1979,10 @@ function renderCard(card,col){
   // Status badge (column name - clickable to change)
   const ro=isVisitor();
   const colBadge=`<span style="font-size:8px;font-weight:700;padding:1px 7px;border-radius:99px;background:${col.color}18;color:${col.color};border:1px solid ${col.color}33;cursor:${ro?'default':'pointer'};white-space:nowrap" ${ro?'':'onclick="event.stopPropagation();showQuickStatus(event,'+card.id+')"'} title="Estado: ${esc(col.title)}${ro?'':' — clic para cambiar'}">${esc(col.title)}</span>`;
-  // Badge de deuda: si la tarjeta tiene un cliente vinculado con saldo pendiente
-  const cardSaldo = (typeof CARD_SALDOS !== 'undefined' && CARD_SALDOS) ? parseFloat(CARD_SALDOS[card.id]) : 0;
-  const deudaH = cardSaldo > 0 ? `<span style="font-size:8px;font-weight:700;padding:1px 7px;border-radius:99px;background:#dc262622;color:#dc2626;border:1px solid #dc262644;white-space:nowrap" title="Saldo pendiente del cliente"><i class="fas fa-dollar-sign"></i> $${Math.round(cardSaldo).toLocaleString('es-AR')}</span>` : '';
   el.innerHTML=`
     <div class="ktit">${esc(card.title)}</div>
     ${tagsH?`<div class="ktags">${tagsH}</div>`:''}
-    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:4px">${colBadge}${prioH}${deudaH}</div>
+    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:4px">${colBadge}${prioH}</div>
     <div class="kmeta" style="margin-top:5px">
       <span class="kdate">${new Date(card.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short'})}</span>
       ${dueH}
@@ -5065,7 +5039,6 @@ async function showApp(){
   await loadUsers();
   await loadGlobalLabels();
   loadClients();
-  loadCardSaldos();
   applyRole();
   initTheme();
   detectOSDarkMode();
@@ -5926,108 +5899,7 @@ function openInforme() {
   }
   document.getElementById('inf-results').innerHTML = '';
   document.getElementById('inf-print-row').style.display = 'none';
-  showCobTab('planilla');
-  loadLQ();
   openMo('informeMo');
-}
-
-function showCobTab(tab) {
-  document.querySelectorAll('.cob-tab').forEach(b => b.classList.remove('active'));
-  document.getElementById('cob-tab-'+tab).classList.add('active');
-  document.querySelectorAll('.cob-tab').forEach(b => b.style.background = 'transparent');
-  document.getElementById('cob-tab-'+tab).style.background = 'var(--acc)';
-  document.getElementById('cob-panel-planilla').style.display = tab === 'planilla' ? '' : 'none';
-  document.getElementById('cob-panel-informe').style.display  = tab === 'informe'  ? '' : 'none';
-}
-
-// ── PLANILLA RÁPIDA (dentro de la pizarra) ──────────────────────────────────
-let LQ_DATA = [];
-function fmtQ(v) { return Math.round(parseFloat(v)||0).toLocaleString('es-AR'); }
-function saldoHtml(saldo) {
-  saldo = parseFloat(saldo) || 0;
-  if (saldo > 0) return `<span style="color:#dc2626;font-weight:700">$${fmtQ(saldo)}</span>`;
-  if (saldo < 0) return `<span style="color:#2563eb">$${fmtQ(saldo)}</span>`;
-  return `<span style="color:#22d3a0">Al día</span>`;
-}
-
-async function loadLQ() {
-  try {
-    const r = await _cobAjax('ledger_list');
-    LQ_DATA = r.rows || [];
-    document.getElementById('lq-kpi-adeudado').textContent = '$' + fmtQ(r.total_adeudado);
-    document.getElementById('lq-kpi-cobrado').textContent   = '$' + fmtQ(r.cobrado_mes);
-    renderLQ();
-  } catch(e) {
-    document.getElementById('lq-wrap').innerHTML = `<p style="text-align:center;color:var(--er);padding:20px;font-size:13px">Error: ${esc(e.message)}</p>`;
-  }
-}
-
-function renderLQ() {
-  const el = document.getElementById('lq-wrap');
-  if (!LQ_DATA.length) { el.innerHTML = '<p style="text-align:center;color:var(--t3);padding:20px;font-size:13px">Sin clientes aún.</p>'; return; }
-  const admin = isAdmin();
-  el.innerHTML = `<table class="inf-table"><thead><tr>
-      <th>Cliente</th><th style="text-align:right">Deuda actual</th>
-      ${admin?'<th style="text-align:right">Monto a cargar</th><th style="text-align:right">Pago recibido</th><th>Forma de pago</th>':''}
-      <th style="text-align:right">Saldo resultante</th><th></th>
-    </tr></thead><tbody>${LQ_DATA.map(c => `
-    <tr data-cid="${c.id}">
-      <td><strong>${esc(c.name)}</strong>${c.domain?` <span style="color:var(--t3);font-size:11px">(${esc(c.domain)})</span>`:''}</td>
-      <td style="text-align:right" class="lq-deuda" data-saldo="${c.saldo}">${saldoHtml(c.saldo)}</td>
-      ${admin?`
-      <td style="text-align:right"><input type="number" min="0" step="1" class="fi lq-monto" style="width:100px;text-align:right;padding:5px 8px;font-size:12px"></td>
-      <td style="text-align:right"><input type="number" min="0" step="1" class="fi lq-pago" style="width:100px;text-align:right;padding:5px 8px;font-size:12px"></td>
-      <td><select class="fse lq-method" style="padding:5px 6px;font-size:12px"><option>Transferencia</option><option>Efectivo</option><option>MercadoPago</option><option>Tarjeta</option><option>Otro</option></select></td>`:''}
-      <td style="text-align:right" class="lq-preview">${saldoHtml(c.saldo)}</td>
-      <td style="white-space:nowrap">
-        ${admin?`<button class="btn bp" style="padding:5px 10px;font-size:11px" onclick="saveLQRow(${c.id})"><i class="fas fa-check"></i></button>
-        ${parseFloat(c.saldo)>0?`<button class="btn" style="padding:5px 10px;font-size:11px" title="Enviar recordatorio por email" onclick="sendReminderLQ(${c.id})"><i class="fas fa-paper-plane"></i></button>`:''}`:''}
-      </td>
-    </tr>`).join('')}</tbody></table>`;
-
-  if (admin) {
-    el.querySelectorAll('.lq-monto, .lq-pago').forEach(inp => {
-      inp.addEventListener('input', e => {
-        const tr = e.target.closest('tr');
-        const base  = parseFloat(tr.querySelector('.lq-deuda').dataset.saldo) || 0;
-        const monto = parseFloat(tr.querySelector('.lq-monto').value) || 0;
-        const pago  = parseFloat(tr.querySelector('.lq-pago').value)  || 0;
-        tr.querySelector('.lq-preview').innerHTML = saldoHtml(base + monto - pago);
-      });
-    });
-  }
-}
-
-async function saveLQRow(clientId) {
-  const tr     = document.querySelector(`#lq-wrap tr[data-cid="${clientId}"]`);
-  const monto  = parseFloat(tr.querySelector('.lq-monto')?.value)  || 0;
-  const pago   = parseFloat(tr.querySelector('.lq-pago')?.value)   || 0;
-  const method = tr.querySelector('.lq-method')?.value || '';
-  if (!monto && !pago) { notify('Ingresá un monto o un pago', 'wa'); return; }
-  try {
-    await _cobAjax('ledger_save', { client_id: clientId, monto, pago, method });
-    notify('✓ Guardado', 'ok');
-    await loadLQ();
-    loadCardSaldos();
-  } catch(e) { notify('Error: ' + e.message, 'er'); }
-}
-
-async function sendReminderLQ(clientId) {
-  if (!confirm('¿Enviar recordatorio de saldo pendiente por email a este cliente?')) return;
-  try {
-    const r = await _cobAjax('send_reminder', { client_id: clientId });
-    notify('✉️ Recordatorio enviado a ' + r.to, 'ok');
-  } catch(e) { notify('Error: ' + e.message, 'er'); }
-}
-
-// ── Badge de deuda en las tarjetas del kanban ───────────────────────────────
-let CARD_SALDOS = {};
-async function loadCardSaldos() {
-  try {
-    CARD_SALDOS = await _cobAjax('card_balances');
-    renderKanban();
-    if (S.view === 'kn') renderFK();
-  } catch(e) { /* silencioso: el badge es un extra, no debe romper el tablero */ }
 }
 
 async function runInforme() {
@@ -6050,20 +5922,18 @@ function renderInforme() {
     document.getElementById('inf-print-row').style.display = 'none';
     return;
   }
-  const totalDebe  = INF_DATA.reduce((s, r) => s + parseFloat(r.debe ||0), 0);
-  const totalHaber = INF_DATA.reduce((s, r) => s + parseFloat(r.haber||0), 0);
+  const total = INF_DATA.reduce((s, r) => s + parseFloat(r.amount||0), 0);
   el.innerHTML = `<div style="overflow-x:auto"><table class="inf-table">
-    <thead><tr><th>Fecha</th><th>Cliente/Razón Social</th><th>Concepto/Motivo</th><th>Debe</th><th>Haber</th><th>Forma de pago</th><th>Saldo</th></tr></thead>
+    <thead><tr><th>Fecha</th><th>Cliente</th><th>Tarea</th><th>Método</th><th>Monto</th><th>Notas</th></tr></thead>
     <tbody>${INF_DATA.map(r=>`<tr>
       <td>${esc(r.payment_date||'')}</td>
       <td>${esc(r.client_name||'—')}</td>
-      <td>${esc(r.concept||'—')}</td>
-      <td>${parseFloat(r.debe)  ? fmtMoney(r.debe)  : ''}</td>
-      <td>${parseFloat(r.haber) ? fmtMoney(r.haber) : ''}</td>
+      <td>${esc(r.card_title||'—')}</td>
       <td>${esc(r.method||'—')}</td>
-      <td style="font-weight:700;color:var(--ok)">${fmtMoney(r.saldo)}</td>
+      <td style="font-weight:700;color:var(--ok)">${fmtMoney(r.amount)}</td>
+      <td>${esc(r.notes||'')}</td>
     </tr>`).join('')}</tbody>
-    <tfoot><tr class="inf-total-row"><td colspan="3">TOTAL</td><td>${fmtMoney(totalDebe)}</td><td>${fmtMoney(totalHaber)}</td><td colspan="2"></td></tr></tfoot>
+    <tfoot><tr class="inf-total-row"><td colspan="4">TOTAL</td><td>${fmtMoney(total)}</td><td></td></tr></tfoot>
   </table></div>`;
   document.getElementById('inf-print-row').style.display = 'flex';
 }
@@ -6073,10 +5943,9 @@ function printInforme() {
   const to       = document.getElementById('inf-to').value   || '—';
   const clientEl = document.getElementById('inf-client');
   const clientTxt = clientEl.options[clientEl.selectedIndex]?.text || 'Todos';
-  const totalDebe  = INF_DATA.reduce((s,r)=>s+parseFloat(r.debe ||0),0);
-  const totalHaber = INF_DATA.reduce((s,r)=>s+parseFloat(r.haber||0),0);
+  const total = INF_DATA.reduce((s,r)=>s+parseFloat(r.amount||0),0);
   const w = window.open('', '_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Libro contable de pagos</title><style>
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cobranza y Cta Cte</title><style>
     body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:20px}
     h2{font-size:16px;margin-bottom:4px}
     .sub{color:#666;font-size:11px;margin-bottom:16px}
@@ -6086,20 +5955,19 @@ function printInforme() {
     .tot{font-weight:700;background:#f9f9f9}
     @media print{button{display:none}}
   </style></head><body>
-  <h2>Libro contable de pagos</h2>
+  <h2>Cobranza y Cta Cte</h2>
   <div class="sub">Período: ${from} al ${to} &nbsp;·&nbsp; Cliente: ${clientTxt}</div>
   <table>
-    <thead><tr><th>Fecha</th><th>Cliente/Razón Social</th><th>Concepto/Motivo</th><th>Debe</th><th>Haber</th><th>Forma de pago</th><th>Saldo</th></tr></thead>
+    <thead><tr><th>Fecha</th><th>Cliente</th><th>Tarea</th><th>Método</th><th>Monto</th><th>Notas</th></tr></thead>
     <tbody>${INF_DATA.map(r=>`<tr>
       <td>${r.payment_date||''}</td>
       <td>${r.client_name||'—'}</td>
-      <td>${r.concept||'—'}</td>
-      <td>${parseFloat(r.debe)  ? '$'+parseFloat(r.debe).toFixed(2)  : ''}</td>
-      <td>${parseFloat(r.haber) ? '$'+parseFloat(r.haber).toFixed(2) : ''}</td>
+      <td>${r.card_title||'—'}</td>
       <td>${r.method||'—'}</td>
-      <td>$${parseFloat(r.saldo||0).toFixed(2)}</td>
+      <td>$${parseFloat(r.amount||0).toFixed(2)}</td>
+      <td>${r.notes||''}</td>
     </tr>`).join('')}</tbody>
-    <tfoot><tr class="tot"><td colspan="3">TOTAL</td><td>$${totalDebe.toFixed(2)}</td><td>$${totalHaber.toFixed(2)}</td><td colspan="2"></td></tr></tfoot>
+    <tfoot><tr class="tot"><td colspan="4">TOTAL</td><td>$${total.toFixed(2)}</td><td></td></tr></tfoot>
   </table>
   <script>setTimeout(()=>window.print(),400)<\/script>
   </body></html>`);
