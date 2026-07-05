@@ -41,6 +41,7 @@ class Luna_Admin {
         add_action('wp_ajax_luna_cobranzas_kpis',   [$this, 'ajax_cobranzas_kpis']);
         add_action('wp_ajax_luna_cobranzas_update_mov', [$this, 'ajax_cobranzas_update_mov']);
         add_action('wp_ajax_luna_cobranzas_delete_mov', [$this, 'ajax_cobranzas_delete_mov']);
+        add_action('wp_ajax_luna_cobranzas_import', [$this, 'ajax_cobranzas_import']);
     }
 
     public function show_db_diagnostic() {
@@ -4038,7 +4039,15 @@ class Luna_Admin {
         .cz-kpi-label{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
         .cz-kpi-value{font-size:20px;font-weight:800}
         </style>
-        <div class="cz-title">💵 Cobranzas</div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px">
+            <div class="cz-title" style="margin-bottom:0">💵 Cobranzas</div>
+            <button class="cz-btn cz-btn-sm cz-btn-ghost" id="cz-btn-import" style="margin-left:auto">📥 Importar histórico (CSV)</button>
+            <input type="file" id="cz-import-file" accept=".csv" style="display:none">
+        </div>
+        <p style="font-size:11px;color:#94a3b8;margin:0 0 20px">
+            El CSV debe tener columnas: <code>cliente,dia,mes,monto,estado</code> — estado es <code>PAGO</code> o <code>DEBE</code>.
+            Si el cliente no existe, se crea. Movimientos existentes no se duplican si volvés a importar el mismo archivo.
+        </p>
 
         <div class="cz-kpis">
             <div class="cz-kpi" style="background:#fef2f2;border:1px solid #fca5a5">
@@ -4244,6 +4253,46 @@ class Luna_Admin {
             });
         });
 
+        // ── Importar histórico (CSV genérico: cliente,dia,mes,monto,estado) ──
+        $('#cz-btn-import').on('click', function(){ $('#cz-import-file').val('').trigger('click'); });
+        $('#cz-import-file').on('change', function(){
+            var file = this.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e){
+                var lines = e.target.result.split(/\r?\n/).filter(function(l){ return $.trim(l); });
+                if (!lines.length) return;
+                function parseLine(line){
+                    var cols=[], cur='', inQ=false;
+                    for (var i=0;i<line.length;i++){
+                        var ch=line[i];
+                        if (ch==='"'){ inQ=!inQ; }
+                        else if (ch===',' && !inQ){ cols.push($.trim(cur)); cur=''; }
+                        else { cur+=ch; }
+                    }
+                    cols.push($.trim(cur));
+                    return cols;
+                }
+                var first = parseLine(lines[0]);
+                var start = /cliente|dia|mes|monto|estado/i.test(first.join(',')) ? 1 : 0;
+                var rows = [];
+                for (var i=start; i<lines.length; i++){
+                    var c = parseLine(lines[i]);
+                    if (!c[0]) continue;
+                    rows.push({cliente:c[0], dia:c[1], mes:c[2], monto:(c[3]||'').replace(/[$,\s"]/g,''), estado:c[4]});
+                }
+                if (!rows.length) { alert('El archivo no tiene filas válidas.'); return; }
+                var msg = $('#cz-msg');
+                msg.css('color','#64748b').text('Importando ' + rows.length + ' filas...');
+                $.post(ajaxUrl, {action:'luna_cobranzas_import', nonce, rows: JSON.stringify(rows)}, function(r){
+                    if (!r.success) { msg.css('color','#dc2626').text('Error: '+r.data); return; }
+                    msg.css('color','#16a34a').text('✓ Clientes creados: '+r.data.clientes_creados+' · Cargos: '+r.data.cargos+' · Cobros: '+r.data.cobros+(r.data.omitidos?' · Omitidos: '+r.data.omitidos:''));
+                    loadCz(); loadCzLedger(); loadCzKpis();
+                }).fail(function(){ msg.css('color','#dc2626').text('Error de conexión.'); });
+            };
+            reader.readAsText(file);
+        });
+
         loadCz();
         loadCzLedger();
         loadCzKpis();
@@ -4425,6 +4474,87 @@ class Luna_Admin {
         if (!$id) wp_send_json_error('Movimiento inválido.');
         $wpdb->delete("{$p}payments", ['id' => $id]);
         wp_send_json_success();
+    }
+
+    // ── AJAX: Cobranzas — importar histórico de vencimientos (CSV genérico) ──
+    // Formato: cliente,dia,mes,monto,estado (estado = PAGO|DEBE). El día/mes se
+    // toma como referencia del ciclo recurrente anual (se ignora cualquier año
+    // que venga en el origen de los datos, ya que se repite todos los años).
+    // Crea el cliente si no existe (match case-insensitive por nombre) y agrega
+    // el cargo (Debe) correspondiente, más el cobro (Haber) si estado=PAGO.
+    // Idempotente: reimportar el mismo archivo no duplica movimientos.
+    public function ajax_cobranzas_import() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+        global $wpdb;
+        $p = $wpdb->prefix . 'luna_';
+
+        $rows = json_decode(stripslashes($_POST['rows'] ?? '[]'), true);
+        if (!is_array($rows) || !$rows) wp_send_json_error('Sin filas para importar.');
+
+        $anio = date('Y');
+        $clientes_creados = 0; $cargos = 0; $cobros = 0; $omitidos = 0;
+
+        foreach ($rows as $r) {
+            $nombre = sanitize_text_field(trim($r['cliente'] ?? ''));
+            $dia    = (int) ($r['dia'] ?? 0);
+            $mes    = (int) ($r['mes'] ?? 0);
+            $monto  = (float) ($r['monto'] ?? 0);
+            $estado = strtoupper(sanitize_text_field($r['estado'] ?? ''));
+            if (!$nombre || $dia < 1 || $dia > 31 || $mes < 1 || $mes > 12 || $monto <= 0) { $omitidos++; continue; }
+
+            $fecha = sprintf('%04d-%02d-%02d', $anio, $mes, $dia);
+
+            $client = $wpdb->get_row($wpdb->prepare(
+                "SELECT id FROM `{$p}clients` WHERE LOWER(name) = LOWER(%s) LIMIT 1", $nombre
+            ), ARRAY_A);
+            if ($client) {
+                $client_id = (int) $client['id'];
+            } else {
+                $now = current_time('mysql');
+                $wpdb->insert("{$p}clients", [
+                    'name' => $nombre, 'active' => 1,
+                    'renewal_date' => $fecha, 'renewal_amount' => $monto,
+                    'subscription_type' => 'none', 'is_subscription' => 0,
+                    'created_at' => $now, 'updated_at' => $now,
+                ]);
+                $client_id = $wpdb->insert_id;
+                $clientes_creados++;
+            }
+
+            $ya_cargo = $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM `{$p}payments` WHERE client_id=%d AND type='cargo' AND amount=%f AND due_date=%s LIMIT 1",
+                $client_id, $monto, $fecha
+            ));
+            if (!$ya_cargo) {
+                $wpdb->insert("{$p}payments", [
+                    'client_id' => $client_id, 'concept' => 'Renovación anual', 'amount' => $monto,
+                    'currency' => 'ARS', 'due_date' => $fecha, 'status' => 'pending',
+                    'type' => 'cargo', 'created_at' => current_time('mysql'),
+                ]);
+                $cargos++;
+            }
+
+            if ($estado === 'PAGO') {
+                $ya_cobro = $wpdb->get_var($wpdb->prepare(
+                    "SELECT id FROM `{$p}payments` WHERE client_id=%d AND type='cobro' AND amount=%f AND payment_date=%s LIMIT 1",
+                    $client_id, $monto, $fecha
+                ));
+                if (!$ya_cobro) {
+                    $wpdb->insert("{$p}payments", [
+                        'client_id' => $client_id, 'concept' => 'Pago renovación', 'amount' => $monto,
+                        'currency' => 'ARS', 'payment_date' => $fecha, 'method' => '',
+                        'status' => 'paid', 'type' => 'cobro', 'created_at' => current_time('mysql'),
+                    ]);
+                    $cobros++;
+                }
+            }
+        }
+
+        wp_send_json_success([
+            'clientes_creados' => $clientes_creados, 'cargos' => $cargos,
+            'cobros' => $cobros, 'omitidos' => $omitidos,
+        ]);
     }
 
     // ── AJAX: list clients ────────────────────────────────────────────────────
