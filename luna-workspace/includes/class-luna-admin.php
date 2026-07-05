@@ -35,6 +35,8 @@ class Luna_Admin {
         add_action('wp_ajax_luna_estado_cuenta',        [$this, 'ajax_estado_cuenta']);
         add_action('wp_ajax_luna_report_payments',      [$this, 'ajax_report_payments']);
         add_action('wp_ajax_luna_send_client_reminder', [$this, 'ajax_send_client_reminder']);
+        add_action('wp_ajax_luna_cobranzas_list', [$this, 'ajax_cobranzas_list']);
+        add_action('wp_ajax_luna_cobranzas_save', [$this, 'ajax_cobranzas_save']);
     }
 
     public function show_db_diagnostic() {
@@ -156,6 +158,7 @@ class Luna_Admin {
         add_submenu_page('luna-workspace', 'Base de datos', 'Base de datos', 'manage_options', 'luna-database',        [$this, 'render_database_page']);
         add_submenu_page('luna-workspace', 'Backup & Restore', 'Backup & Restore', 'manage_options', 'luna-backup', [$this, 'render_backup_page']);
         add_submenu_page('luna-workspace', 'Clientes',         'Clientes',         'manage_options', 'luna-clientes', [$this, 'render_clients_page']);
+        add_submenu_page('luna-workspace', 'Cobranzas',        'Cobranzas',        'manage_options', 'luna-cobranzas', [$this, 'render_cobranzas_page']);
         // Wizard — oculto del menú pero accesible por URL
         add_submenu_page(null, 'Luna — Configuración inicial', '', 'manage_options', 'luna-onboarding', [$this, 'render_onboarding_wizard']);
     }
@@ -3998,6 +4001,184 @@ class Luna_Admin {
         })(jQuery);
         </script>
         <?php
+    }
+
+    // ── COBRANZAS — página aislada, independiente de Clientes ────────────────
+    // v1 minimalista a propósito: una fila por cliente, Deuda/Monto/Pago/Saldo
+    // en una sola operación. Nada de badges, KPIs, recordatorios ni cobranza
+    // automática todavía — eso se agrega en pasos siguientes, cada uno probado
+    // y aprobado antes de sumar el próximo. Reusa luna_clients/luna_payments
+    // (las mismas tablas que ya usa el panel Clientes) — no crea tablas nuevas.
+    public function render_cobranzas_page() {
+        if (!current_user_can('manage_options')) return;
+        ?>
+        <div class="wrap" style="max-width:1000px">
+        <style>
+        .cz-title{font-size:1.4rem;font-weight:700;color:#1e1e1e;margin-bottom:20px}
+        .cz-table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+        .cz-table th{background:#f1f5f9;padding:10px 14px;text-align:left;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0}
+        .cz-table td{padding:8px 14px;border-bottom:1px solid #f1f5f9;color:#334155;vertical-align:middle}
+        .cz-table tr:last-child td{border-bottom:none}
+        .cz-input{width:100px;text-align:right;border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px}
+        .cz-select{border:1px solid #cbd5e1;border-radius:5px;padding:6px 6px;font-size:12px}
+        .cz-btn{background:#5b6af0;color:#fff;border:none;border-radius:5px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer}
+        .cz-btn:hover{background:#4a59d0}
+        .cz-btn:disabled{opacity:.6;cursor:default}
+        .cz-empty{text-align:center;color:#94a3b8;padding:32px;font-size:13px}
+        </style>
+        <div class="cz-title">💵 Cobranzas</div>
+        <p style="font-size:12px;color:#64748b;margin:0 0 14px">
+            Cargá el monto nuevo a cobrar y/o el pago recibido, y guardá — una sola operación por cliente.
+            Página independiente, en prueba: todavía no está conectada a la Pizarra.
+        </p>
+        <div id="cz-wrap"><p class="cz-empty">Cargando...</p></div>
+        <div id="cz-msg" style="margin-top:10px;font-size:12px;min-height:16px"></div>
+        </div>
+        <script>
+        (function($){
+        var ajaxUrl = <?php echo json_encode(admin_url('admin-ajax.php')) ?>;
+        var nonce   = <?php echo json_encode(wp_create_nonce('luna_admin_nonce')) ?>;
+        var czData  = [];
+
+        function czFmt(v){ return (parseFloat(v)||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+        function czSaldoHtml(saldo){
+            saldo = parseFloat(saldo) || 0;
+            if (saldo > 0) return '<span style="color:#dc2626;font-weight:700">$'+czFmt(saldo)+'</span>';
+            if (saldo < 0) return '<span style="color:#2563eb">$'+czFmt(saldo)+'</span>';
+            return '<span style="color:#16a34a">Al día</span>';
+        }
+
+        function loadCz(){
+            $.post(ajaxUrl, {action:'luna_cobranzas_list', nonce}, function(r){
+                if (!r.success) { $('#cz-wrap').html('<p class="cz-empty">Error al cargar: '+esc2(r.data)+'</p>'); return; }
+                czData = r.data;
+                renderCz();
+            }).fail(function(){ $('#cz-wrap').html('<p class="cz-empty">Error de conexión.</p>'); });
+        }
+
+        function esc2(s){ var d=document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+        function renderCz(){
+            var el = $('#cz-wrap');
+            if (!czData.length) { el.html('<p class="cz-empty">Sin clientes activos aún. Creá el primero en la pestaña "Clientes".</p>'); return; }
+            var h = '<table class="cz-table"><thead><tr>'
+                + '<th>Cliente</th><th style="text-align:right">Deuda actual</th>'
+                + '<th style="text-align:right">Monto a cargar</th><th style="text-align:right">Pago recibido</th>'
+                + '<th>Forma de pago</th><th style="text-align:right">Saldo resultante</th><th></th>'
+                + '</tr></thead><tbody>';
+            czData.forEach(function(c){
+                h += '<tr data-cid="'+c.id+'">'
+                   + '<td><strong>'+esc2(c.name)+'</strong>'+(c.domain?' <span style="color:#94a3b8;font-size:11px">('+esc2(c.domain)+')</span>':'')+'</td>'
+                   + '<td style="text-align:right" class="cz-deuda" data-saldo="'+c.saldo+'">'+czSaldoHtml(c.saldo)+'</td>'
+                   + '<td style="text-align:right"><input type="number" min="0" step="1" class="cz-input cz-monto"></td>'
+                   + '<td style="text-align:right"><input type="number" min="0" step="1" class="cz-input cz-pago"></td>'
+                   + '<td><select class="cz-select cz-method"><option>Transferencia</option><option>Efectivo</option><option>MercadoPago</option><option>Tarjeta</option><option>Otro</option></select></td>'
+                   + '<td style="text-align:right" class="cz-preview">'+czSaldoHtml(c.saldo)+'</td>'
+                   + '<td><button class="cz-btn cz-save">Guardar</button></td>'
+                   + '</tr>';
+            });
+            h += '</tbody></table>';
+            el.html(h);
+        }
+
+        $(document).on('input', '.cz-monto, .cz-pago', function(){
+            var tr = $(this).closest('tr');
+            var base  = parseFloat(tr.find('.cz-deuda').data('saldo')) || 0;
+            var monto = parseFloat(tr.find('.cz-monto').val()) || 0;
+            var pago  = parseFloat(tr.find('.cz-pago').val())  || 0;
+            tr.find('.cz-preview').html(czSaldoHtml(base + monto - pago));
+        });
+
+        $(document).on('click', '.cz-save', function(){
+            var tr     = $(this).closest('tr');
+            var cid    = tr.data('cid');
+            var monto  = parseFloat(tr.find('.cz-monto').val()) || 0;
+            var pago   = parseFloat(tr.find('.cz-pago').val())  || 0;
+            var method = tr.find('.cz-method').val();
+            var msg    = $('#cz-msg');
+            if (!monto && !pago) { msg.css('color','#dc2626').text('Ingresá un monto o un pago.'); return; }
+            var btn = $(this);
+            btn.prop('disabled', true).text('...');
+            $.post(ajaxUrl, {action:'luna_cobranzas_save', nonce, client_id: cid, monto: monto, pago: pago, method: method}, function(r){
+                btn.prop('disabled', false).text('Guardar');
+                if (!r.success) { msg.css('color','#dc2626').text('Error: '+r.data); return; }
+                msg.css('color','#16a34a').text('✓ Guardado');
+                setTimeout(function(){ msg.text(''); }, 2500);
+                loadCz();
+            }).fail(function(){
+                btn.prop('disabled', false).text('Guardar');
+                msg.css('color','#dc2626').text('Error de conexión.');
+            });
+        });
+
+        loadCz();
+        })(jQuery);
+        </script>
+        <?php
+    }
+
+    // ── AJAX: Cobranzas — listar saldo de todos los clientes activos ─────────
+    public function ajax_cobranzas_list() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+        global $wpdb;
+        $p = $wpdb->prefix . 'luna_';
+        $rows = $wpdb->get_results(
+            "SELECT c.id, c.name, c.domain,
+                COALESCE(SUM(CASE WHEN pm.type='cargo' THEN pm.amount ELSE 0 END),0)
+              - COALESCE(SUM(CASE WHEN pm.type='cobro' THEN pm.amount ELSE 0 END),0) AS saldo
+             FROM `{$p}clients` c
+             LEFT JOIN `{$p}payments` pm ON pm.client_id = c.id
+             WHERE c.active = 1
+             GROUP BY c.id
+             ORDER BY c.name",
+            ARRAY_A
+        );
+        wp_send_json_success($rows ?: []);
+    }
+
+    // ── AJAX: Cobranzas — registrar Monto (cargo) y/o Pago (cobro) en un paso ─
+    public function ajax_cobranzas_save() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+        global $wpdb;
+        $p = $wpdb->prefix . 'luna_';
+
+        $client_id = (int) ($_POST['client_id'] ?? 0);
+        $monto     = (float) ($_POST['monto'] ?? 0);
+        $pago      = (float) ($_POST['pago']  ?? 0);
+        $method    = sanitize_text_field($_POST['method'] ?? '');
+        if (!$client_id) wp_send_json_error('Cliente inválido.');
+        if ($monto <= 0 && $pago <= 0) wp_send_json_error('Ingresá un monto o un pago.');
+
+        $client = $wpdb->get_row($wpdb->prepare(
+            "SELECT id FROM `{$p}clients` WHERE id=%d AND active=1", $client_id
+        ));
+        if (!$client) wp_send_json_error('Cliente no encontrado.');
+
+        $now = current_time('mysql');
+        if ($monto > 0) {
+            $wpdb->insert("{$p}payments", [
+                'client_id' => $client_id, 'concept' => 'Cargo registrado', 'amount' => $monto,
+                'currency'  => 'ARS', 'due_date' => date('Y-m-d'), 'status' => 'pending',
+                'type'      => 'cargo', 'created_at' => $now,
+            ]);
+        }
+        if ($pago > 0) {
+            $wpdb->insert("{$p}payments", [
+                'client_id'    => $client_id, 'concept' => 'Pago registrado', 'amount' => $pago,
+                'currency'     => 'ARS', 'payment_date' => date('Y-m-d'), 'method' => $method,
+                'status'       => 'paid', 'type' => 'cobro', 'created_at' => $now,
+            ]);
+        }
+
+        $saldo = (float) $wpdb->get_var($wpdb->prepare(
+            "SELECT COALESCE(SUM(CASE WHEN type='cargo' THEN amount ELSE 0 END),0)
+                   - COALESCE(SUM(CASE WHEN type='cobro' THEN amount ELSE 0 END),0)
+             FROM `{$p}payments` WHERE client_id = %d",
+            $client_id
+        ));
+        wp_send_json_success(['saldo' => $saldo]);
     }
 
     // ── AJAX: list clients ────────────────────────────────────────────────────
