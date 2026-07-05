@@ -4173,7 +4173,7 @@ class Luna_Admin {
         function czSaldoHtml(saldo){
             saldo = parseFloat(saldo) || 0;
             if (saldo > 0) return '<span style="color:#dc2626;font-weight:700">$'+czFmt(saldo)+'</span>';
-            if (saldo < 0) return '<span style="color:#2563eb">$'+czFmt(saldo)+'</span>';
+            if (saldo < 0) return '<span style="color:#2563eb">$'+czFmt(Math.abs(saldo))+' a favor</span>';
             return '<span style="color:#16a34a">Al día</span>';
         }
 
