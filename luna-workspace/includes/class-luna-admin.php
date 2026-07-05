@@ -35,8 +35,12 @@ class Luna_Admin {
         add_action('wp_ajax_luna_estado_cuenta',        [$this, 'ajax_estado_cuenta']);
         add_action('wp_ajax_luna_report_payments',      [$this, 'ajax_report_payments']);
         add_action('wp_ajax_luna_send_client_reminder', [$this, 'ajax_send_client_reminder']);
-        add_action('wp_ajax_luna_cobranzas_list', [$this, 'ajax_cobranzas_list']);
-        add_action('wp_ajax_luna_cobranzas_save', [$this, 'ajax_cobranzas_save']);
+        add_action('wp_ajax_luna_cobranzas_list',   [$this, 'ajax_cobranzas_list']);
+        add_action('wp_ajax_luna_cobranzas_save',   [$this, 'ajax_cobranzas_save']);
+        add_action('wp_ajax_luna_cobranzas_ledger', [$this, 'ajax_cobranzas_ledger']);
+        add_action('wp_ajax_luna_cobranzas_kpis',   [$this, 'ajax_cobranzas_kpis']);
+        add_action('wp_ajax_luna_cobranzas_update_mov', [$this, 'ajax_cobranzas_update_mov']);
+        add_action('wp_ajax_luna_cobranzas_delete_mov', [$this, 'ajax_cobranzas_delete_mov']);
     }
 
     public function show_db_diagnostic() {
@@ -4012,7 +4016,7 @@ class Luna_Admin {
     public function render_cobranzas_page() {
         if (!current_user_can('manage_options')) return;
         ?>
-        <div class="wrap" style="max-width:1000px">
+        <div class="wrap" style="max-width:1200px">
         <style>
         .cz-title{font-size:1.4rem;font-weight:700;color:#1e1e1e;margin-bottom:20px}
         .cz-table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
@@ -4024,21 +4028,146 @@ class Luna_Admin {
         .cz-btn{background:#5b6af0;color:#fff;border:none;border-radius:5px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer}
         .cz-btn:hover{background:#4a59d0}
         .cz-btn:disabled{opacity:.6;cursor:default}
+        .cz-btn-sm{padding:4px 9px;font-size:11px}
+        .cz-btn-ghost{background:transparent;color:#5b6af0;border:1px solid #5b6af0}
+        .cz-btn-danger{background:#ef4444}
+        .cz-btn-danger:hover{background:#dc2626}
         .cz-empty{text-align:center;color:#94a3b8;padding:32px;font-size:13px}
+        .cz-kpis{display:flex;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+        .cz-kpi{border-radius:8px;padding:12px 20px}
+        .cz-kpi-label{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
+        .cz-kpi-value{font-size:20px;font-weight:800}
         </style>
         <div class="cz-title">💵 Cobranzas</div>
+
+        <div class="cz-kpis">
+            <div class="cz-kpi" style="background:#fef2f2;border:1px solid #fca5a5">
+                <div class="cz-kpi-label">Total adeudado (a cobrar)</div>
+                <div class="cz-kpi-value" id="cz-kpi-adeudado" style="color:#dc2626">$0</div>
+            </div>
+            <div class="cz-kpi" style="background:#f0fdf4;border:1px solid #bbf7d0">
+                <div class="cz-kpi-label" id="cz-kpi-cobrado-label">Total cobrado (año)</div>
+                <div class="cz-kpi-value" id="cz-kpi-cobrado" style="color:#16a34a">$0</div>
+            </div>
+        </div>
+
         <p style="font-size:12px;color:#64748b;margin:0 0 14px">
             Cargá el monto nuevo a cobrar y/o el pago recibido, y guardá — una sola operación por cliente.
             Página independiente, en prueba: todavía no está conectada a la Pizarra.
         </p>
         <div id="cz-wrap"><p class="cz-empty">Cargando...</p></div>
         <div id="cz-msg" style="margin-top:10px;font-size:12px;min-height:16px"></div>
+
+        <div class="cz-title" style="margin-top:36px;font-size:1.15rem">📖 Libro contable</div>
+        <p style="font-size:12px;color:#64748b;margin:0 0 14px">
+            Todos los movimientos, de todos los clientes, ordenados por cliente y fecha — sin desplegables.
+            Cada registro es editable con el lápiz, o se puede eliminar.
+        </p>
+        <div id="cz-ledger-wrap"><p class="cz-empty">Cargando...</p></div>
+        <div id="cz-ledger-msg" style="margin-top:10px;font-size:12px;min-height:16px"></div>
         </div>
         <script>
         (function($){
         var ajaxUrl = <?php echo json_encode(admin_url('admin-ajax.php')) ?>;
         var nonce   = <?php echo json_encode(wp_create_nonce('luna_admin_nonce')) ?>;
         var czData  = [];
+
+        var czLedgerRows = [];
+
+        function loadCzKpis(){
+            $.post(ajaxUrl, {action:'luna_cobranzas_kpis', nonce}, function(r){
+                if (!r.success) return;
+                $('#cz-kpi-adeudado').text('$'+czFmt(r.data.total_adeudado));
+                $('#cz-kpi-cobrado').text('$'+czFmt(r.data.cobrado_anio));
+                $('#cz-kpi-cobrado-label').text('Total cobrado ('+r.data.anio+')');
+            });
+        }
+
+        function loadCzLedger(){
+            $.post(ajaxUrl, {action:'luna_cobranzas_ledger', nonce}, function(r){
+                if (!r.success) { $('#cz-ledger-wrap').html('<p class="cz-empty">Error al cargar: '+esc2(r.data)+'</p>'); return; }
+                czLedgerRows = r.data;
+                renderCzLedger();
+            }).fail(function(){ $('#cz-ledger-wrap').html('<p class="cz-empty">Error de conexión.</p>'); });
+        }
+
+        function renderCzLedger(){
+            var el = $('#cz-ledger-wrap');
+            var rows = czLedgerRows;
+            if (!rows.length) { el.html('<p class="cz-empty">Sin movimientos registrados aún.</p>'); return; }
+            var h = '<div style="overflow-x:auto"><table class="cz-table"><thead><tr>'
+                + '<th>Fecha</th><th>Cliente/Razón Social</th><th>Concepto/Motivo</th>'
+                + '<th style="text-align:right">Debe</th><th style="text-align:right">Haber</th>'
+                + '<th>Forma de pago</th><th style="text-align:right">Saldo</th><th></th>'
+                + '</tr></thead><tbody>';
+            rows.forEach(function(r){
+                h += '<tr data-id="'+r.id+'">'
+                   + '<td class="cz-view-fecha">'+esc2(r.fecha||'')+'</td>'
+                   + '<td>'+esc2(r.cliente)+'</td>'
+                   + '<td class="cz-view-concepto">'+esc2(r.concepto||'—')+'</td>'
+                   + '<td style="text-align:right" class="cz-view-debe">'+(parseFloat(r.debe)  ? '$'+czFmt(r.debe)  : '')+'</td>'
+                   + '<td style="text-align:right" class="cz-view-haber">'+(parseFloat(r.haber) ? '$'+czFmt(r.haber) : '')+'</td>'
+                   + '<td class="cz-view-forma">'+esc2(r.forma_pago||'—')+'</td>'
+                   + '<td style="text-align:right;font-weight:700">'+czSaldoHtml(r.saldo)+'</td>'
+                   + '<td style="white-space:nowrap">'
+                   + '<button class="cz-btn cz-btn-sm cz-btn-ghost cz-edit-mov" title="Editar"><i class="fas fa-pen"></i></button> '
+                   + '<button class="cz-btn cz-btn-sm cz-btn-danger cz-del-mov" title="Eliminar"><i class="fas fa-trash"></i></button>'
+                   + '</td>'
+                   + '</tr>';
+            });
+            h += '</tbody></table></div>';
+            el.html(h);
+        }
+
+        function czRowById(id){ return czLedgerRows.find(function(x){ return x.id == id; }); }
+
+        $(document).on('click', '.cz-edit-mov', function(){
+            var tr = $(this).closest('tr');
+            var id = tr.data('id');
+            var r  = czRowById(id);
+            if (!r) return;
+            tr.find('.cz-view-fecha').html('<input type="date" class="cz-input cz-e-fecha" style="width:130px;text-align:left" value="'+esc2(r.fecha||'')+'">');
+            tr.find('.cz-view-concepto').html('<input type="text" class="cz-input cz-e-concepto" style="width:100%;text-align:left" value="'+esc2(r.concepto||'')+'">');
+            var tipoSel = '<select class="cz-select cz-e-tipo"><option value="cargo"'+(r.tipo==='cargo'?' selected':'')+'>Debe</option><option value="cobro"'+(r.tipo==='cobro'?' selected':'')+'>Haber</option></select>';
+            tr.find('.cz-view-debe').html(tipoSel);
+            tr.find('.cz-view-haber').html('<input type="number" min="0" step="1" class="cz-input cz-e-monto" value="'+r.monto+'">');
+            tr.find('.cz-view-forma').html('<input type="text" class="cz-input cz-e-forma" style="width:100px;text-align:left" value="'+esc2(r.forma_pago||'')+'">');
+            tr.find('.cz-edit-mov').replaceWith('<button class="cz-btn cz-btn-sm cz-save-mov" title="Guardar"><i class="fas fa-check"></i></button>');
+        });
+
+        $(document).on('click', '.cz-save-mov', function(){
+            var tr   = $(this).closest('tr');
+            var id   = tr.data('id');
+            var msg  = $('#cz-ledger-msg');
+            var data = {
+                action: 'luna_cobranzas_update_mov', nonce, id: id,
+                fecha: tr.find('.cz-e-fecha').val(),
+                concepto: tr.find('.cz-e-concepto').val(),
+                tipo: tr.find('.cz-e-tipo').val(),
+                monto: tr.find('.cz-e-monto').val(),
+                forma_pago: tr.find('.cz-e-forma').val(),
+            };
+            if (!data.fecha) { msg.css('color','#dc2626').text('La fecha es obligatoria.'); return; }
+            $.post(ajaxUrl, data, function(r){
+                if (!r.success) { msg.css('color','#dc2626').text('Error: '+r.data); return; }
+                msg.css('color','#16a34a').text('✓ Movimiento actualizado');
+                setTimeout(function(){ msg.text(''); }, 2500);
+                loadCzLedger(); loadCz(); loadCzKpis();
+            }).fail(function(){ msg.css('color','#dc2626').text('Error de conexión.'); });
+        });
+
+        $(document).on('click', '.cz-del-mov', function(){
+            if (!confirm('¿Eliminar este movimiento? No se puede deshacer.')) return;
+            var tr  = $(this).closest('tr');
+            var id  = tr.data('id');
+            var msg = $('#cz-ledger-msg');
+            $.post(ajaxUrl, {action:'luna_cobranzas_delete_mov', nonce, id: id}, function(r){
+                if (!r.success) { msg.css('color','#dc2626').text('Error: '+r.data); return; }
+                msg.css('color','#16a34a').text('✓ Movimiento eliminado');
+                setTimeout(function(){ msg.text(''); }, 2500);
+                loadCzLedger(); loadCz(); loadCzKpis();
+            }).fail(function(){ msg.css('color','#dc2626').text('Error de conexión.'); });
+        });
 
         function czFmt(v){ return (parseFloat(v)||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0}); }
         function czSaldoHtml(saldo){
@@ -4105,6 +4234,8 @@ class Luna_Admin {
                 msg.css('color','#16a34a').text('✓ Guardado');
                 setTimeout(function(){ msg.text(''); }, 2500);
                 loadCz();
+                loadCzLedger();
+                loadCzKpis();
             }).fail(function(){
                 btn.prop('disabled', false).text('Guardar');
                 msg.css('color','#dc2626').text('Error de conexión.');
@@ -4112,6 +4243,8 @@ class Luna_Admin {
         });
 
         loadCz();
+        loadCzLedger();
+        loadCzKpis();
         })(jQuery);
         </script>
         <?php
@@ -4179,6 +4312,117 @@ class Luna_Admin {
             $client_id
         ));
         wp_send_json_success(['saldo' => $saldo]);
+    }
+
+    // ── AJAX: Cobranzas — libro contable completo, todos los movimientos ─────
+    // Agrupado por cliente y ordenado cronológicamente dentro de cada uno;
+    // Debe/Haber/Saldo calculados en el servidor. Todas las filas se muestran
+    // de una — sin desplegables ni resúmenes que oculten el detalle diario.
+    public function ajax_cobranzas_ledger() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+        global $wpdb;
+        $p = $wpdb->prefix . 'luna_';
+
+        $rows = $wpdb->get_results(
+            "SELECT pm.id, pm.payment_date, pm.due_date, pm.concept, pm.amount, pm.type, pm.method,
+                    c.id AS client_id, c.name AS client_name
+             FROM `{$p}payments` pm
+             JOIN `{$p}clients` c ON c.id = pm.client_id
+             ORDER BY c.name ASC, COALESCE(pm.payment_date, pm.due_date) ASC, pm.id ASC",
+            ARRAY_A
+        );
+
+        $out = [];
+        $saldo = 0.0; $prevClient = null;
+        foreach (($rows ?: []) as $r) {
+            if ($r['client_id'] !== $prevClient) { $saldo = 0.0; $prevClient = $r['client_id']; }
+            $debe  = ($r['type'] === 'cargo') ? (float) $r['amount'] : 0.0;
+            $haber = ($r['type'] === 'cobro') ? (float) $r['amount'] : 0.0;
+            $saldo += $debe - $haber;
+            $out[] = [
+                'id'         => (int) $r['id'],
+                'fecha'      => $r['payment_date'] ?: $r['due_date'],
+                'cliente'    => $r['client_name'],
+                'concepto'   => $r['concept'],
+                'tipo'       => $r['type'],
+                'monto'      => (float) $r['amount'],
+                'debe'       => $debe,
+                'haber'      => $haber,
+                'forma_pago' => $r['method'],
+                'saldo'      => $saldo,
+            ];
+        }
+        wp_send_json_success($out);
+    }
+
+    // ── AJAX: Cobranzas — KPIs de cabecera (adeudado + cobrado del año) ──────
+    public function ajax_cobranzas_kpis() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+        global $wpdb;
+        $p = $wpdb->prefix . 'luna_';
+
+        $por_cliente = $wpdb->get_results(
+            "SELECT COALESCE(SUM(CASE WHEN type='cargo' THEN amount ELSE 0 END),0)
+                  - COALESCE(SUM(CASE WHEN type='cobro' THEN amount ELSE 0 END),0) AS saldo
+             FROM `{$p}payments` GROUP BY client_id",
+            ARRAY_A
+        );
+        $total_adeudado = 0.0;
+        foreach (($por_cliente ?: []) as $r) { if ((float) $r['saldo'] > 0) $total_adeudado += (float) $r['saldo']; }
+
+        $anio = date('Y');
+        $cobrado_anio = (float) $wpdb->get_var($wpdb->prepare(
+            "SELECT COALESCE(SUM(amount),0) FROM `{$p}payments`
+             WHERE type='cobro' AND YEAR(payment_date) = %d",
+            $anio
+        ));
+
+        wp_send_json_success(['total_adeudado' => $total_adeudado, 'cobrado_anio' => $cobrado_anio, 'anio' => $anio]);
+    }
+
+    // ── AJAX: Cobranzas — editar un movimiento existente ──────────────────────
+    public function ajax_cobranzas_update_mov() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+        global $wpdb;
+        $p = $wpdb->prefix . 'luna_';
+
+        $id      = (int) ($_POST['id'] ?? 0);
+        $fecha   = sanitize_text_field($_POST['fecha'] ?? '');
+        $concept = sanitize_text_field($_POST['concepto'] ?? '');
+        $tipo    = ($_POST['tipo'] ?? '') === 'cobro' ? 'cobro' : 'cargo';
+        $monto   = (float) ($_POST['monto'] ?? 0);
+        $method  = sanitize_text_field($_POST['forma_pago'] ?? '');
+
+        if (!$id) wp_send_json_error('Movimiento inválido.');
+        if (!$fecha) wp_send_json_error('La fecha es obligatoria.');
+        if ($monto <= 0) wp_send_json_error('El monto debe ser mayor a 0.');
+
+        $existing = $wpdb->get_row($wpdb->prepare("SELECT id FROM `{$p}payments` WHERE id=%d", $id));
+        if (!$existing) wp_send_json_error('Movimiento no encontrado.');
+
+        $data = [
+            'concept' => $concept, 'amount' => $monto, 'type' => $tipo, 'method' => $method,
+        ];
+        if ($tipo === 'cobro') { $data['payment_date'] = $fecha; $data['due_date'] = null; }
+        else                   { $data['due_date'] = $fecha; $data['payment_date'] = null; }
+
+        $wpdb->update("{$p}payments", $data, ['id' => $id]);
+        wp_send_json_success();
+    }
+
+    // ── AJAX: Cobranzas — eliminar un movimiento ──────────────────────────────
+    public function ajax_cobranzas_delete_mov() {
+        check_ajax_referer('luna_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+        global $wpdb;
+        $p  = $wpdb->prefix . 'luna_';
+        $id = (int) ($_POST['id'] ?? 0);
+        if (!$id) wp_send_json_error('Movimiento inválido.');
+        $wpdb->delete("{$p}payments", ['id' => $id]);
+        wp_send_json_success();
     }
 
     // ── AJAX: list clients ────────────────────────────────────────────────────
