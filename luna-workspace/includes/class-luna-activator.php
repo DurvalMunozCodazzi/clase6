@@ -749,15 +749,21 @@ class Luna_Activator {
 
         if (!$tables) return $default;
 
-        // El prefijo del WP actual con usuarios gana siempre
-        if (isset($tables[$default . 'users']) && $tables[$default . 'users'] > 0) {
-            return $default;
+        // Gana la tabla users con MÁS filas; el prefijo del WP actual solo
+        // desempata. Antes el prefijo WP ganaba con tener >0 filas, pero la
+        // activación del plugin siembra {prefijo}luna_users con 1 admin nuevo:
+        // en sitios con los datos reales bajo otro prefijo (instalación vieja),
+        // esa tabla recién sembrada le ganaba a la tabla real con todos los
+        // usuarios, y ninguna credencial conocida funcionaba (401 para todos).
+        $max = max($tables);
+        if ($max <= 0) return $default;
+        if (($tables[$default . 'users'] ?? -1) === $max) {
+            return $default; // el prefijo WP tiene el máximo (o empata) → gana
         }
-        // Si no, la tabla users con más filas
-        arsort($tables);
+        arsort($tables); // estable: en empate conserva el orden de inserción
         reset($tables);
         $best = key($tables);
-        if ($tables[$best] > 0 && substr($best, -5) === 'users') {
+        if (substr($best, -5) === 'users') {
             return substr($best, 0, -5);
         }
         return $default;
@@ -785,13 +791,23 @@ class Luna_Activator {
                     $backup_db['db_host'] ?? 'localhost', $backup_db['db_name'],
                     $backup_db['db_user'] ?? '', $backup_db['db_pass'] ?? '',
                     $backup_db['tb_prefix'] ?? '')) {
-            // El respaldo sigue funcionando → reusarlo tal cual (prefijo incluido;
-            // '' es un prefijo válido en instalaciones con BD externa sin prefijo)
+            // El respaldo sigue funcionando → reusar sus credenciales (prefijo
+            // incluido; '' es un prefijo válido en BD externa sin prefijo)
             $db_host   = $backup_db['db_host'] ?? 'localhost';
             $db_name   = $backup_db['db_name'];
             $db_user   = $backup_db['db_user'] ?? '';
             $db_pass   = $backup_db['db_pass'] ?? '';
             $tb_prefix = $backup_db['tb_prefix'] ?? '';
+            // Re-verificar el PREFIJO del respaldo contra esa misma BD: si otra
+            // tabla users tiene MÁS usuarios, el respaldo quedó apuntando a una
+            // tabla equivocada (ej: la sembrada por la activación con 1 admin)
+            // y hay que corregirlo — mismas credenciales, prefijo re-detectado.
+            $detectado = self::detect_tb_prefix($db_host, $db_name, $db_user, $db_pass, true);
+            if ($detectado !== $tb_prefix
+                && self::count_users($db_host, $db_name, $db_user, $db_pass, $detectado)
+                 > self::count_users($db_host, $db_name, $db_user, $db_pass, $tb_prefix)) {
+                $tb_prefix = $detectado;
+            }
         } else {
             $db_host = DB_HOST;
             $db_name = DB_NAME;

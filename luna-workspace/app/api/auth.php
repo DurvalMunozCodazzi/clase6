@@ -121,4 +121,24 @@ if ($method === 'GET' && $action === 'me') {
     ]]);
 }
 
+// GET diag — diagnóstico mínimo, sin datos sensibles (no expone credenciales
+// ni nombres de usuarios; solo el prefijo en uso y conteos, para soporte)
+if ($method === 'GET' && $action === 'diag') {
+    $out = [
+        'version'  => defined('LUNA_VERSION') ? LUNA_VERSION : '?',
+        'prefix'   => LUNA_TB_PREFIX,
+        'db'       => 'ERROR',
+        'users'    => null,
+        'sessions' => null,
+    ];
+    try {
+        $out['users'] = (int) $db->query("SELECT COUNT(*) FROM " . tb('users'))->fetchColumn();
+        $out['db']    = 'OK';
+    } catch (Exception $e) {}
+    try {
+        $out['sessions'] = (int) $db->query("SELECT COUNT(*) FROM " . tb('sessions'))->fetchColumn();
+    } catch (Exception $e) {}
+    jsonOut($out);
+}
+
 jsonErr('Acción no encontrada', 404);
