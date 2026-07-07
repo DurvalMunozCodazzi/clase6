@@ -98,6 +98,71 @@ if ($method === 'POST' && $action === 'login') {
     ]);
 }
 
+// POST forgot_password — genera una contraseña nueva y la envía por WhatsApp
+// al teléfono que el usuario ya tiene configurado en su perfil (mismo
+// mecanismo de CallMeBot que usan las notificaciones — requiere que el
+// usuario ya haya vinculado su número y API Key con anterioridad).
+if ($method === 'POST' && $action === 'forgot_password') {
+    $body  = json_decode(file_get_contents('php://input'), true);
+    $email = trim($body['email'] ?? '');
+    $generic = 'Si el email corresponde a una cuenta activa con WhatsApp configurado, vas a recibir la contraseña nueva en breve.';
+    if (!$email) jsonErr('Ingresá tu email');
+
+    // ── Rate limiting: máx 5 solicitudes por IP en 15 minutos ────────────────
+    $ip      = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $rateKey = 'rate_forgot_' . substr(hash('sha256', $ip), 0, 20);
+    try {
+        $rateSt = $db->prepare("SELECT meta_value FROM ".tb('app_settings')." WHERE meta_key=? LIMIT 1");
+        $rateSt->execute([$rateKey]);
+        $rateRow  = $rateSt->fetch();
+        $rateData = $rateRow ? json_decode($rateRow['meta_value'], true) : null;
+        if (!is_array($rateData)) $rateData = ['count' => 0, 'since' => time()];
+        if ((time() - ($rateData['since'] ?? 0)) >= 900) $rateData = ['count' => 0, 'since' => time()];
+        if ($rateData['count'] >= 5) {
+            $wait = 900 - (time() - $rateData['since']);
+            jsonErr('Demasiados intentos. Esperá ' . ceil($wait / 60) . ' minuto(s).', 429);
+        }
+        $rateData['count']++;
+        $db->prepare("INSERT INTO ".tb('app_settings')." (meta_key,meta_value) VALUES (?,?) ON DUPLICATE KEY UPDATE meta_value=?")
+           ->execute([$rateKey, json_encode($rateData), json_encode($rateData)]);
+    } catch (Exception $e) {}
+    // ────────────────────────────────────────────────────────────────────────
+
+    $st = $db->prepare("SELECT id, name, phone, whatsapp_apikey FROM ".tb('users')." WHERE email=? AND active=1 LIMIT 1");
+    $st->execute([$email]);
+    $user = $st->fetch();
+
+    // Mismo mensaje exista o no la cuenta — no revelar qué emails están registrados
+    if (!$user || empty($user['phone']) || empty($user['whatsapp_apikey'])) {
+        jsonOut(['message' => $generic]);
+    }
+
+    $new_pass = bin2hex(random_bytes(8)); // 16 caracteres, legible
+
+    // Enviar PRIMERO y solo cambiar la contraseña si CallMeBot confirmó el
+    // envío — si el mensaje no sale (número mal configurado, sin señal, etc.)
+    // no tiene sentido invalidar la clave vieja: el usuario quedaría afuera
+    // sin ninguna forma de saber la nueva.
+    $text = "🔑 Luna Workspace — tu contraseña nueva es: {$new_pass}\n\nUsala para ingresar y, si querés, cambiala después desde tu perfil.";
+    $url  = 'https://api.callmebot.com/whatsapp.php?' . http_build_query([
+        'phone'  => $user['phone'],
+        'text'   => $text,
+        'apikey' => $user['whatsapp_apikey'],
+    ]);
+    $ctx  = stream_context_create(['http' => ['timeout' => 20, 'ignore_errors' => true]]);
+    $resp = @file_get_contents($url, false, $ctx);
+    $sent = ($resp !== false && stripos($resp, 'Message Sent') !== false);
+
+    if ($sent) {
+        $hash = password_hash($new_pass, PASSWORD_BCRYPT);
+        $db->prepare("UPDATE ".tb('users')." SET password=? WHERE id=?")->execute([$hash, $user['id']]);
+        // Invalidar sesiones activas — obliga a re-loguear con la clave nueva
+        try { $db->prepare("DELETE FROM ".tb('sessions')." WHERE user_id=?")->execute([$user['id']]); } catch (Exception $e) {}
+    }
+
+    jsonOut(['message' => $generic]);
+}
+
 // POST logout
 if ($method === 'POST' && $action === 'logout') {
     $token = getBearerToken();

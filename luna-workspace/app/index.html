@@ -854,7 +854,24 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
     <div class="lfg"><label class="lfl">Usuario</label><div class="lfiw"><input class="lfi" id="lui" type="text" placeholder="Tu usuario o email" onkeydown="if(event.key==='Enter')doLogin()"><i class="lic fas fa-user"></i></div></div>
     <div class="lfg"><label class="lfl">Contrasena</label><div class="lfiw"><input class="lfi" id="lpi" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"><i class="lic fas fa-lock"></i><button class="leye" onclick="togLPw()" type="button"><i class="fas fa-eye" id="leyeic"></i></button></div></div>
     <button class="lbtn" id="lbtn" onclick="doLogin()"><span id="lbltx">Ingresar a Luna</span><div class="lsp" id="lsp"></div></button>
+    <div style="text-align:center;margin-top:12px"><a href="#" onclick="openForgotPw(event)" style="font-size:12px;color:var(--t3);text-decoration:underline">¿Olvidaste tu contrasena?</a></div>
     <div class="lfoot">Luna v2.0 &nbsp;·&nbsp; Acceso restringido</div>
+  </div>
+</div>
+
+<!-- OLVIDE MI CONTRASEÑA -->
+<div id="forgot-pw-screen" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;align-items:center;justify-content:center">
+  <div class="lcard" style="max-width:380px">
+    <div class="logo-wrap">
+      <div class="logo-ic"><i class="fas fa-key"></i></div>
+      <div class="logo-tx" style="font-size:18px">Recuperar acceso</div>
+      <div class="logo-sb">Te enviamos una contrasena nueva por WhatsApp</div>
+    </div>
+    <div class="lerrb" id="fpw-err" style="display:none"><i class="fas fa-exclamation-circle"></i><span id="fpw-errmsg"></span></div>
+    <div class="lerrb" id="fpw-ok" style="display:none;background:#dcfce7;color:#166534;border-color:#86efac"><i class="fas fa-check-circle"></i><span id="fpw-okmsg"></span></div>
+    <div class="lfg"><label class="lfl">Tu email</label><div class="lfiw"><input class="lfi" id="fpw-email" type="email" placeholder="tu@email.com" onkeydown="if(event.key==='Enter')submitForgotPw()"><i class="lic fas fa-envelope"></i></div></div>
+    <button class="lbtn" id="fpw-btn" onclick="submitForgotPw()"><span id="fpw-btntx">Enviar por WhatsApp</span><div class="lsp" id="fpw-sp"></div></button>
+    <div style="text-align:center;margin-top:12px"><a href="#" onclick="closeForgotPw(event)" style="font-size:12px;color:var(--t3);text-decoration:underline">Volver a iniciar sesion</a></div>
   </div>
 </div>
 
@@ -1828,6 +1845,40 @@ async function doLogin(){
     document.getElementById('lbtn').disabled=false;
     document.getElementById('lbltx').style.display='';
     document.getElementById('lsp').classList.remove('on');
+  }
+}
+
+function openForgotPw(e){
+  if(e) e.preventDefault();
+  document.getElementById('fpw-email').value=document.getElementById('lui').value.trim();
+  document.getElementById('fpw-err').style.display='none';
+  document.getElementById('fpw-ok').style.display='none';
+  document.getElementById('forgot-pw-screen').style.display='flex';
+  setTimeout(()=>document.getElementById('fpw-email').focus(),100);
+}
+function closeForgotPw(e){
+  if(e) e.preventDefault();
+  document.getElementById('forgot-pw-screen').style.display='none';
+}
+async function submitForgotPw(){
+  const email=document.getElementById('fpw-email').value.trim();
+  const errB=document.getElementById('fpw-err'), okB=document.getElementById('fpw-ok');
+  errB.style.display='none'; okB.style.display='none';
+  if(!email){errB.style.display='flex';document.getElementById('fpw-errmsg').textContent='Ingresa tu email';return}
+  document.getElementById('fpw-btn').disabled=true;
+  document.getElementById('fpw-btntx').style.display='none';
+  document.getElementById('fpw-sp').classList.add('on');
+  try{
+    const d=await api('auth.php?action=forgot_password','POST',{email});
+    okB.style.display='flex';
+    document.getElementById('fpw-okmsg').textContent=d.message||'Si el email corresponde a una cuenta activa con WhatsApp configurado, vas a recibir la contrasena nueva en breve.';
+  }catch(e){
+    errB.style.display='flex';
+    document.getElementById('fpw-errmsg').textContent=e.message||'Error al procesar la solicitud';
+  }finally{
+    document.getElementById('fpw-btn').disabled=false;
+    document.getElementById('fpw-btntx').style.display='';
+    document.getElementById('fpw-sp').classList.remove('on');
   }
 }
 

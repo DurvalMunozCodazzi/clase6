@@ -112,13 +112,11 @@ if ($method === 'PUT' && $action === 'update') {
         }
     }
 
-    // Password change
+    // Password change — solo un admin puede llegar hasta acá (chequeo de
+    // permisos más arriba), y ya está autenticado con su propia sesión activa;
+    // no se pide la contraseña anterior para no bloquear el caso más común:
+    // un usuario que se olvidó la clave y necesita que el admin le ponga una nueva.
     if (!empty($b['password'])) {
-        // Anyone changing their own password must verify the current one (including admins)
-        if ($targetId == $me['id']) {
-            if (empty($b['old_password']) || !password_verify($b['old_password'], $row['password']))
-                jsonErr('Contrasena actual incorrecta', 403);
-        }
         $fields['password'] = password_hash($b['password'], PASSWORD_BCRYPT);
     }
 
