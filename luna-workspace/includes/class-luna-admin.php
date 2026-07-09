@@ -36,8 +36,8 @@ class Luna_Admin {
         add_action('wp_ajax_luna_report_payments',      [$this, 'ajax_report_payments']);
         add_action('wp_ajax_luna_send_client_reminder', [$this, 'ajax_send_client_reminder']);
         add_action('wp_ajax_luna_cobranzas_list',   [$this, 'ajax_cobranzas_list']);
-        add_action('wp_ajax_luna_cobranzas_save',   [$this, 'ajax_cobranzas_save']);
-        add_action('wp_ajax_luna_cobranzas_ledger', [$this, 'ajax_cobranzas_ledger']);
+        add_action('wp_ajax_luna_cobranzas_registrar_pago', [$this, 'ajax_cobranzas_registrar_pago']);
+        add_action('wp_ajax_luna_cobranzas_pagos',  [$this, 'ajax_cobranzas_pagos']);
         add_action('wp_ajax_luna_cobranzas_kpis',   [$this, 'ajax_cobranzas_kpis']);
         add_action('wp_ajax_luna_cobranzas_update_mov', [$this, 'ajax_cobranzas_update_mov']);
         add_action('wp_ajax_luna_cobranzas_delete_mov', [$this, 'ajax_cobranzas_delete_mov']);
@@ -4008,12 +4008,15 @@ class Luna_Admin {
         <?php
     }
 
-    // ── COBRANZAS — página aislada, independiente de Clientes ────────────────
-    // v1 minimalista a propósito: una fila por cliente, Deuda/Monto/Pago/Saldo
-    // en una sola operación. Nada de badges, KPIs, recordatorios ni cobranza
-    // automática todavía — eso se agrega en pasos siguientes, cada uno probado
-    // y aprobado antes de sumar el próximo. Reusa luna_clients/luna_payments
-    // (las mismas tablas que ya usa el panel Clientes) — no crea tablas nuevas.
+    // ── COBRANZAS — planilla de facturación y registro de pagos ──────────────
+    // Rediseño a pedido: sin Debe/Haber/Saldo. Una fila por cliente con su
+    // vencimiento y monto del año; "Registrar pago" en contado o en cuotas
+    // (cantidad, monto y fecha de cada cuota definidos por el usuario); y un
+    // registro de pagos día por día donde CADA línea es editable/eliminable.
+    // Cabecera: Total a cobrar (año) y Total cobrado a la fecha.
+    // Modelo de datos: luna_payments — type='cargo' (lo que debe pagar el
+    // cliente en el año) y type='cobro' (pagos; status 'paid'=cobrado,
+    // 'pending'=cuota con fecha probable, aún no cobrada).
     public function render_cobranzas_page() {
         if (!current_user_can('manage_options')) return;
         ?>
@@ -4024,7 +4027,10 @@ class Luna_Admin {
         .cz-table th{background:#f1f5f9;padding:10px 14px;text-align:left;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0}
         .cz-table td{padding:8px 14px;border-bottom:1px solid #f1f5f9;color:#334155;vertical-align:middle}
         .cz-table tr:last-child td{border-bottom:none}
-        .cz-input{width:100px;text-align:right;border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px}
+        .cz-num{text-align:right;font-variant-numeric:tabular-nums}
+        .cz-input{border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px}
+        .cz-input.n{width:110px;text-align:right}
+        .cz-input.d{width:135px}
         .cz-select{border:1px solid #cbd5e1;border-radius:5px;padding:6px 6px;font-size:12px}
         .cz-btn{background:#5b6af0;color:#fff;border:none;border-radius:5px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer}
         .cz-btn:hover{background:#4a59d0}
@@ -4033,11 +4039,28 @@ class Luna_Admin {
         .cz-btn-ghost{background:transparent;color:#5b6af0;border:1px solid #5b6af0}
         .cz-btn-danger{background:#ef4444}
         .cz-btn-danger:hover{background:#dc2626}
+        .cz-btn-green{background:#16a34a}
+        .cz-btn-green:hover{background:#15803d}
         .cz-empty{text-align:center;color:#94a3b8;padding:32px;font-size:13px}
         .cz-kpis{display:flex;gap:16px;margin-bottom:22px;flex-wrap:wrap}
         .cz-kpi{border-radius:8px;padding:12px 20px}
         .cz-kpi-label{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
-        .cz-kpi-value{font-size:20px;font-weight:800}
+        .cz-kpi-value{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
+        .cz-badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700}
+        .cz-badge.pagado{background:#dcfce7;color:#16a34a}
+        .cz-badge.pendiente{background:#fef9c3;color:#a16207}
+        .cz-badge.cuotas{background:#dbeafe;color:#1d4ed8}
+        .cz-badge.parcial{background:#fce7f3;color:#9d174d}
+        /* Modal registrar pago */
+        .cz-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100000;align-items:center;justify-content:center}
+        .cz-overlay.open{display:flex}
+        .cz-modal{background:#fff;border-radius:12px;padding:28px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;position:relative}
+        .cz-modal h3{font-size:1.05rem;font-weight:700;margin:0 0 16px;color:#1e1e1e}
+        .cz-close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:#94a3b8;line-height:1}
+        .cz-fg{margin-bottom:12px}
+        .cz-fg label{display:block;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+        .cz-tipo-btn{flex:1;padding:9px;border-radius:6px;border:1.5px solid #cbd5e1;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:#475569}
+        .cz-tipo-btn.on{border-color:#5b6af0;background:#eef0fe;color:#5b6af0}
         </style>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px">
             <div class="cz-title" style="margin-bottom:0">💵 Cobranzas</div>
@@ -4045,215 +4068,300 @@ class Luna_Admin {
             <input type="file" id="cz-import-file" accept=".csv" style="display:none">
         </div>
         <p style="font-size:11px;color:#94a3b8;margin:0 0 20px">
-            El CSV debe tener columnas: <code>cliente,dia,mes,monto,estado</code> — estado es <code>PAGO</code> o <code>DEBE</code>.
-            Si el cliente no existe, se crea. Movimientos existentes no se duplican si volvés a importar el mismo archivo.
+            CSV: <code>cliente,dia,mes,monto,estado</code> (estado <code>PAGO</code> o <code>DEBE</code>). No duplica si se reimporta.
         </p>
 
         <div class="cz-kpis">
-            <div class="cz-kpi" style="background:#fef2f2;border:1px solid #fca5a5">
-                <div class="cz-kpi-label">Total adeudado (a cobrar)</div>
-                <div class="cz-kpi-value" id="cz-kpi-adeudado" style="color:#dc2626">$0</div>
+            <div class="cz-kpi" style="background:#eef0fe;border:1px solid #c3c9f7">
+                <div class="cz-kpi-label" id="cz-kpi-acobrar-label">Total a cobrar (año)</div>
+                <div class="cz-kpi-value" id="cz-kpi-acobrar" style="color:#4a59d0">$0</div>
             </div>
             <div class="cz-kpi" style="background:#f0fdf4;border:1px solid #bbf7d0">
-                <div class="cz-kpi-label" id="cz-kpi-cobrado-label">Total cobrado (año)</div>
+                <div class="cz-kpi-label">Total cobrado a la fecha</div>
                 <div class="cz-kpi-value" id="cz-kpi-cobrado" style="color:#16a34a">$0</div>
             </div>
         </div>
 
-        <p style="font-size:12px;color:#64748b;margin:0 0 14px">
-            Para cobrar una deuda existente, completá solo "Pago recibido". "Cargo nuevo" es únicamente
-            para facturar algo que el cliente todavía no debía. Página independiente, en prueba:
-            todavía no está conectada a la Pizarra.
-        </p>
+        <div class="cz-title" style="font-size:1.1rem">📋 Clientes del año</div>
         <div id="cz-wrap"><p class="cz-empty">Cargando...</p></div>
+
+        <div class="cz-title" style="margin-top:34px;font-size:1.1rem">🗓 Registro de pagos — día por día</div>
+        <p style="font-size:12px;color:#64748b;margin:0 0 12px">
+            Todos los pagos ordenados por fecha. Cada línea es editable con el lápiz o eliminable.
+            Las cuotas pendientes se marcan cobradas con el botón verde.
+        </p>
+        <div id="cz-pagos-wrap"><p class="cz-empty">Cargando...</p></div>
         <div id="cz-msg" style="margin-top:10px;font-size:12px;min-height:16px"></div>
 
-        <div class="cz-title" style="margin-top:36px;font-size:1.15rem">📖 Libro contable</div>
-        <p style="font-size:12px;color:#64748b;margin:0 0 14px">
-            Todos los movimientos, de todos los clientes, ordenados por cliente y fecha — sin desplegables.
-            Cada registro es editable con el lápiz, o se puede eliminar.
-        </p>
-        <div id="cz-ledger-wrap"><p class="cz-empty">Cargando...</p></div>
-        <div id="cz-ledger-msg" style="margin-top:10px;font-size:12px;min-height:16px"></div>
+        <!-- Modal: registrar pago -->
+        <div class="cz-overlay" id="cz-modal-pago">
+          <div class="cz-modal">
+            <button class="cz-close" onclick="jQuery('#cz-modal-pago').removeClass('open')">×</button>
+            <h3 id="czp-title">Registrar pago</h3>
+            <input type="hidden" id="czp-client-id">
+            <div class="cz-fg">
+              <label>Tipo de pago</label>
+              <div style="display:flex;gap:8px">
+                <button class="cz-tipo-btn on" id="czp-tab-contado" onclick="czpSetTipo('contado')">Contado</button>
+                <button class="cz-tipo-btn" id="czp-tab-cuotas" onclick="czpSetTipo('cuotas')">En cuotas</button>
+              </div>
+            </div>
+            <div class="cz-fg">
+              <label>Forma de pago</label>
+              <select class="cz-select" id="czp-forma" style="width:100%"><option>Transferencia</option><option>Efectivo</option><option>MercadoPago</option><option>Tarjeta</option><option>Otro</option></select>
+            </div>
+
+            <!-- Contado -->
+            <div id="czp-panel-contado">
+              <div style="display:flex;gap:10px">
+                <div class="cz-fg" style="flex:1"><label>Monto</label><input type="number" min="0" step="1" class="cz-input" id="czp-monto" style="width:100%"></div>
+                <div class="cz-fg" style="flex:1"><label>Fecha del pago</label><input type="date" class="cz-input" id="czp-fecha" style="width:100%"></div>
+              </div>
+            </div>
+
+            <!-- Cuotas -->
+            <div id="czp-panel-cuotas" style="display:none">
+              <div class="cz-fg">
+                <label>Cantidad de cuotas</label>
+                <input type="number" min="1" max="36" class="cz-input" id="czp-ncuotas" value="2" style="width:90px" onchange="czpRenderCuotas()">
+              </div>
+              <div id="czp-cuotas-rows"></div>
+              <p style="font-size:11px;color:#94a3b8;margin:4px 0 0">Definí el monto y la fecha probable de cobranza de cada cuota. Todo editable después, línea por línea.</p>
+            </div>
+
+            <button class="cz-btn" id="czp-guardar" style="width:100%;margin-top:10px;padding:10px" onclick="czpGuardar()">Guardar</button>
+            <div id="czp-msg" style="margin-top:8px;font-size:12px;min-height:16px;text-align:center"></div>
+          </div>
+        </div>
         </div>
         <script>
         (function($){
         var ajaxUrl = <?php echo json_encode(admin_url('admin-ajax.php')) ?>;
         var nonce   = <?php echo json_encode(wp_create_nonce('luna_admin_nonce')) ?>;
-        var czData  = [];
+        var czClientes = [], czPagos = [];
 
-        var czLedgerRows = [];
+        function czFmt(v){ return Math.round(parseFloat(v)||0).toLocaleString('es-AR'); }
+        function esc2(s){ var d=document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+        function czMsg(txt, err){ $('#cz-msg').css('color', err?'#dc2626':'#16a34a').text(txt); if(!err) setTimeout(function(){ $('#cz-msg').text(''); }, 2500); }
+        function hoyISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
-        function loadCzKpis(){
+        function loadAll(){ loadKpis(); loadClientes(); loadPagos(); }
+
+        function loadKpis(){
             $.post(ajaxUrl, {action:'luna_cobranzas_kpis', nonce}, function(r){
                 if (!r.success) return;
-                $('#cz-kpi-adeudado').text('$'+czFmt(r.data.total_adeudado));
-                $('#cz-kpi-cobrado').text('$'+czFmt(r.data.cobrado_anio));
-                $('#cz-kpi-cobrado-label').text('Total cobrado ('+r.data.anio+')');
+                $('#cz-kpi-acobrar-label').text('Total a cobrar ('+r.data.anio+')');
+                $('#cz-kpi-acobrar').text('$'+czFmt(r.data.a_cobrar));
+                $('#cz-kpi-cobrado').text('$'+czFmt(r.data.cobrado));
             });
         }
 
-        function loadCzLedger(){
-            $.post(ajaxUrl, {action:'luna_cobranzas_ledger', nonce}, function(r){
-                if (!r.success) { $('#cz-ledger-wrap').html('<p class="cz-empty">Error al cargar: '+esc2(r.data)+'</p>'); return; }
-                czLedgerRows = r.data;
-                renderCzLedger();
-            }).fail(function(){ $('#cz-ledger-wrap').html('<p class="cz-empty">Error de conexión.</p>'); });
-        }
-
-        function renderCzLedger(){
-            var el = $('#cz-ledger-wrap');
-            var rows = czLedgerRows;
-            if (!rows.length) { el.html('<p class="cz-empty">Sin movimientos registrados aún.</p>'); return; }
-            var h = '<div style="overflow-x:auto"><table class="cz-table"><thead><tr>'
-                + '<th>Fecha</th><th>Cliente/Razón Social</th><th>Concepto/Motivo</th>'
-                + '<th style="text-align:right">Debe</th><th style="text-align:right">Haber</th>'
-                + '<th>Forma de pago</th><th style="text-align:right">Saldo</th><th></th>'
-                + '</tr></thead><tbody>';
-            rows.forEach(function(r){
-                h += '<tr data-id="'+r.id+'">'
-                   + '<td class="cz-view-fecha">'+esc2(r.fecha||'')+'</td>'
-                   + '<td>'+esc2(r.cliente)+'</td>'
-                   + '<td class="cz-view-concepto">'+esc2(r.concepto||'—')+'</td>'
-                   + '<td style="text-align:right" class="cz-view-debe">'+(parseFloat(r.debe)  ? '$'+czFmt(r.debe)  : '')+'</td>'
-                   + '<td style="text-align:right" class="cz-view-haber">'+(parseFloat(r.haber) ? '$'+czFmt(r.haber) : '')+'</td>'
-                   + '<td class="cz-view-forma">'+esc2(r.forma_pago||'—')+'</td>'
-                   + '<td style="text-align:right;font-weight:700">'+czSaldoHtml(r.saldo)+'</td>'
-                   + '<td style="white-space:nowrap">'
-                   + '<button class="cz-btn cz-btn-sm cz-btn-ghost cz-edit-mov" title="Editar"><i class="fas fa-pen"></i></button> '
-                   + '<button class="cz-btn cz-btn-sm cz-btn-danger cz-del-mov" title="Eliminar"><i class="fas fa-trash"></i></button>'
-                   + '</td>'
-                   + '</tr>';
-            });
-            h += '</tbody></table></div>';
-            el.html(h);
-        }
-
-        function czRowById(id){ return czLedgerRows.find(function(x){ return x.id == id; }); }
-
-        $(document).on('click', '.cz-edit-mov', function(){
-            var tr = $(this).closest('tr');
-            var id = tr.data('id');
-            var r  = czRowById(id);
-            if (!r) return;
-            tr.find('.cz-view-fecha').html('<input type="date" class="cz-input cz-e-fecha" style="width:130px;text-align:left" value="'+esc2(r.fecha||'')+'">');
-            tr.find('.cz-view-concepto').html('<input type="text" class="cz-input cz-e-concepto" style="width:100%;text-align:left" value="'+esc2(r.concepto||'')+'">');
-            var tipoSel = '<select class="cz-select cz-e-tipo"><option value="cargo"'+(r.tipo==='cargo'?' selected':'')+'>Debe</option><option value="cobro"'+(r.tipo==='cobro'?' selected':'')+'>Haber</option></select>';
-            tr.find('.cz-view-debe').html(tipoSel);
-            tr.find('.cz-view-haber').html('<input type="number" min="0" step="1" class="cz-input cz-e-monto" value="'+r.monto+'">');
-            tr.find('.cz-view-forma').html('<input type="text" class="cz-input cz-e-forma" style="width:100px;text-align:left" value="'+esc2(r.forma_pago||'')+'">');
-            tr.find('.cz-edit-mov').replaceWith('<button class="cz-btn cz-btn-sm cz-save-mov" title="Guardar"><i class="fas fa-check"></i></button>');
-        });
-
-        $(document).on('click', '.cz-save-mov', function(){
-            var tr   = $(this).closest('tr');
-            var id   = tr.data('id');
-            var msg  = $('#cz-ledger-msg');
-            var data = {
-                action: 'luna_cobranzas_update_mov', nonce, id: id,
-                fecha: tr.find('.cz-e-fecha').val(),
-                concepto: tr.find('.cz-e-concepto').val(),
-                tipo: tr.find('.cz-e-tipo').val(),
-                monto: tr.find('.cz-e-monto').val(),
-                forma_pago: tr.find('.cz-e-forma').val(),
-            };
-            if (!data.fecha) { msg.css('color','#dc2626').text('La fecha es obligatoria.'); return; }
-            $.post(ajaxUrl, data, function(r){
-                if (!r.success) { msg.css('color','#dc2626').text('Error: '+r.data); return; }
-                msg.css('color','#16a34a').text('✓ Movimiento actualizado');
-                setTimeout(function(){ msg.text(''); }, 2500);
-                loadCzLedger(); loadCz(); loadCzKpis();
-            }).fail(function(){ msg.css('color','#dc2626').text('Error de conexión.'); });
-        });
-
-        $(document).on('click', '.cz-del-mov', function(){
-            if (!confirm('¿Eliminar este movimiento? No se puede deshacer.')) return;
-            var tr  = $(this).closest('tr');
-            var id  = tr.data('id');
-            var msg = $('#cz-ledger-msg');
-            $.post(ajaxUrl, {action:'luna_cobranzas_delete_mov', nonce, id: id}, function(r){
-                if (!r.success) { msg.css('color','#dc2626').text('Error: '+r.data); return; }
-                msg.css('color','#16a34a').text('✓ Movimiento eliminado');
-                setTimeout(function(){ msg.text(''); }, 2500);
-                loadCzLedger(); loadCz(); loadCzKpis();
-            }).fail(function(){ msg.css('color','#dc2626').text('Error de conexión.'); });
-        });
-
-        function czFmt(v){ return (parseFloat(v)||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0}); }
-        function czSaldoHtml(saldo){
-            saldo = parseFloat(saldo) || 0;
-            if (saldo > 0) return '<span style="color:#dc2626;font-weight:700">$'+czFmt(saldo)+'</span>';
-            if (saldo < 0) return '<span style="color:#2563eb">$'+czFmt(Math.abs(saldo))+' a favor</span>';
-            return '<span style="color:#16a34a">Al día</span>';
-        }
-
-        function loadCz(){
+        // ── Planilla de clientes del año ─────────────────────────
+        function loadClientes(){
             $.post(ajaxUrl, {action:'luna_cobranzas_list', nonce}, function(r){
-                if (!r.success) { $('#cz-wrap').html('<p class="cz-empty">Error al cargar: '+esc2(r.data)+'</p>'); return; }
-                czData = r.data;
-                renderCz();
+                if (!r.success) { $('#cz-wrap').html('<p class="cz-empty">Error: '+esc2(r.data)+'</p>'); return; }
+                czClientes = r.data;
+                renderClientes();
             }).fail(function(){ $('#cz-wrap').html('<p class="cz-empty">Error de conexión.</p>'); });
         }
-
-        function esc2(s){ var d=document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
-
-        function renderCz(){
+        function estadoBadge(c){
+            var monto = parseFloat(c.monto_anual)||0, cobrado = parseFloat(c.cobrado)||0, pend = parseInt(c.cuotas_pendientes)||0;
+            if (monto > 0 && cobrado >= monto) return '<span class="cz-badge pagado">Pagado</span>';
+            if (pend > 0) return '<span class="cz-badge cuotas">En cuotas ('+pend+' pend.)</span>';
+            if (cobrado > 0) return '<span class="cz-badge parcial">Parcial</span>';
+            return '<span class="cz-badge pendiente">Pendiente</span>';
+        }
+        function renderClientes(){
             var el = $('#cz-wrap');
-            if (!czData.length) { el.html('<p class="cz-empty">Sin clientes activos aún. Creá el primero en la pestaña "Clientes".</p>'); return; }
+            if (!czClientes.length) { el.html('<p class="cz-empty">Sin clientes activos aún. Crealos en la pestaña "Clientes" o importá el CSV.</p>'); return; }
             var h = '<table class="cz-table"><thead><tr>'
-                + '<th>Cliente</th><th style="text-align:right">Deuda actual</th>'
-                + '<th style="text-align:right;background:#fef2f2"><span style="color:#dc2626;font-weight:800;font-size:10px">◆ DEBE</span><br>Cargo nuevo <span style="font-weight:400;color:#94a3b8">(opcional)</span></th>'
-                + '<th style="text-align:right;background:#f0fdf4"><span style="color:#16a34a;font-weight:800;font-size:10px">✓ HABER</span><br>Pago recibido</th>'
-                + '<th>Forma de pago</th><th style="text-align:right">Saldo resultante</th><th></th>'
+                + '<th>Cliente</th><th>Vencimiento</th><th class="cz-num">Monto</th>'
+                + '<th class="cz-num">Cobrado</th><th>Estado</th><th></th>'
                 + '</tr></thead><tbody>';
-            czData.forEach(function(c){
-                h += '<tr data-cid="'+c.id+'">'
+            czClientes.forEach(function(c){
+                var venc = c.vencimiento ? c.vencimiento.split('-').reverse().join('/') : '—';
+                h += '<tr>'
                    + '<td><strong>'+esc2(c.name)+'</strong>'+(c.domain?' <span style="color:#94a3b8;font-size:11px">('+esc2(c.domain)+')</span>':'')+'</td>'
-                   + '<td style="text-align:right" class="cz-deuda" data-saldo="'+c.saldo+'">'+czSaldoHtml(c.saldo)+'</td>'
-                   + '<td style="text-align:right;background:#fef2f2"><input type="number" min="0" step="1" class="cz-input cz-monto" style="border-color:#f9c9c9" placeholder="sin cargo"></td>'
-                   + '<td style="text-align:right;background:#f0fdf4"><input type="number" min="0" step="1" class="cz-input cz-pago" style="border-color:#bfe6cc"></td>'
-                   + '<td><select class="cz-select cz-method"><option>Transferencia</option><option>Efectivo</option><option>MercadoPago</option><option>Tarjeta</option><option>Otro</option></select></td>'
-                   + '<td style="text-align:right" class="cz-preview">'+czSaldoHtml(c.saldo)+'</td>'
-                   + '<td><button class="cz-btn cz-save">Guardar</button></td>'
+                   + '<td>'+venc+'</td>'
+                   + '<td class="cz-num">'+(parseFloat(c.monto_anual)?'$'+czFmt(c.monto_anual):'—')+'</td>'
+                   + '<td class="cz-num" style="color:#16a34a">'+(parseFloat(c.cobrado)?'$'+czFmt(c.cobrado):'')+'</td>'
+                   + '<td>'+estadoBadge(c)+'</td>'
+                   + '<td style="text-align:right"><button class="cz-btn cz-btn-sm" onclick="czpOpen('+c.id+')">Registrar pago</button></td>'
                    + '</tr>';
             });
             h += '</tbody></table>';
             el.html(h);
         }
 
-        $(document).on('input', '.cz-monto, .cz-pago', function(){
-            var tr = $(this).closest('tr');
-            var base  = parseFloat(tr.find('.cz-deuda').data('saldo')) || 0;
-            var monto = parseFloat(tr.find('.cz-monto').val()) || 0;
-            var pago  = parseFloat(tr.find('.cz-pago').val())  || 0;
-            tr.find('.cz-preview').html(czSaldoHtml(base + monto - pago));
-        });
-
-        $(document).on('click', '.cz-save', function(){
-            var tr     = $(this).closest('tr');
-            var cid    = tr.data('cid');
-            var monto  = parseFloat(tr.find('.cz-monto').val()) || 0;
-            var pago   = parseFloat(tr.find('.cz-pago').val())  || 0;
-            var method = tr.find('.cz-method').val();
-            var msg    = $('#cz-msg');
-            if (!monto && !pago) { msg.css('color','#dc2626').text('Ingresá un monto o un pago.'); return; }
-            var btn = $(this);
-            btn.prop('disabled', true).text('...');
-            $.post(ajaxUrl, {action:'luna_cobranzas_save', nonce, client_id: cid, monto: monto, pago: pago, method: method}, function(r){
-                btn.prop('disabled', false).text('Guardar');
-                if (!r.success) { msg.css('color','#dc2626').text('Error: '+r.data); return; }
-                msg.css('color','#16a34a').text('✓ Guardado');
-                setTimeout(function(){ msg.text(''); }, 2500);
-                loadCz();
-                loadCzLedger();
-                loadCzKpis();
+        // ── Modal registrar pago ─────────────────────────────────
+        var czpTipo = 'contado';
+        window.czpOpen = function(clientId){
+            var c = czClientes.find(function(x){ return x.id == clientId; });
+            if (!c) return;
+            $('#czp-client-id').val(clientId);
+            $('#czp-title').text('Registrar pago — ' + c.name);
+            var resto = Math.max(0, (parseFloat(c.monto_anual)||0) - (parseFloat(c.cobrado)||0));
+            $('#czp-monto').val(resto || '');
+            $('#czp-fecha').val(hoyISO());
+            $('#czp-ncuotas').val(2);
+            $('#czp-msg').text('');
+            czpSetTipo('contado');
+            $('#cz-modal-pago').addClass('open');
+        };
+        window.czpSetTipo = function(t){
+            czpTipo = t;
+            $('#czp-tab-contado').toggleClass('on', t==='contado');
+            $('#czp-tab-cuotas').toggleClass('on', t==='cuotas');
+            $('#czp-panel-contado').toggle(t==='contado');
+            $('#czp-panel-cuotas').toggle(t==='cuotas');
+            if (t==='cuotas') czpRenderCuotas();
+        };
+        window.czpRenderCuotas = function(){
+            var n = Math.max(1, Math.min(36, parseInt($('#czp-ncuotas').val(),10)||1));
+            var cid = parseInt($('#czp-client-id').val(),10);
+            var c = czClientes.find(function(x){ return x.id == cid; }) || {};
+            var resto = Math.max(0, (parseFloat(c.monto_anual)||0) - (parseFloat(c.cobrado)||0));
+            var montoDef = resto > 0 ? Math.round(resto/n) : '';
+            var h = '';
+            var base = new Date();
+            for (var i=0; i<n; i++){
+                var f = new Date(base.getFullYear(), base.getMonth()+i, base.getDate());
+                var fIso = f.getFullYear()+'-'+String(f.getMonth()+1).padStart(2,'0')+'-'+String(f.getDate()).padStart(2,'0');
+                h += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">'
+                   + '<span style="font-size:11px;color:#94a3b8;width:60px">Cuota '+(i+1)+'</span>'
+                   + '<input type="number" min="0" step="1" class="cz-input n czp-c-monto" value="'+montoDef+'" placeholder="Monto">'
+                   + '<input type="date" class="cz-input d czp-c-fecha" value="'+fIso+'">'
+                   + '</div>';
+            }
+            $('#czp-cuotas-rows').html(h);
+        };
+        window.czpGuardar = function(){
+            var cid   = parseInt($('#czp-client-id').val(),10);
+            var forma = $('#czp-forma').val();
+            var msg   = $('#czp-msg');
+            var payload = {action:'luna_cobranzas_registrar_pago', nonce, client_id: cid, tipo: czpTipo, forma: forma};
+            if (czpTipo === 'contado'){
+                var monto = parseFloat($('#czp-monto').val())||0;
+                var fecha = $('#czp-fecha').val();
+                if (monto<=0){ msg.css('color','#dc2626').text('Ingresá un monto válido.'); return; }
+                if (!fecha){ msg.css('color','#dc2626').text('Ingresá la fecha del pago.'); return; }
+                payload.monto = monto; payload.fecha = fecha;
+            } else {
+                var cuotas = [];
+                var err = '';
+                $('#czp-cuotas-rows > div').each(function(i){
+                    var m = parseFloat($(this).find('.czp-c-monto').val())||0;
+                    var f = $(this).find('.czp-c-fecha').val();
+                    if (m<=0) err = 'La cuota '+(i+1)+' no tiene monto válido.';
+                    if (!f)   err = 'La cuota '+(i+1)+' no tiene fecha.';
+                    cuotas.push({monto:m, fecha:f});
+                });
+                if (err){ msg.css('color','#dc2626').text(err); return; }
+                payload.cuotas = JSON.stringify(cuotas);
+            }
+            $('#czp-guardar').prop('disabled', true).text('Guardando...');
+            $.post(ajaxUrl, payload, function(r){
+                $('#czp-guardar').prop('disabled', false).text('Guardar');
+                if (!r.success){ msg.css('color','#dc2626').text('Error: '+r.data); return; }
+                $('#cz-modal-pago').removeClass('open');
+                czMsg('✓ Pago registrado');
+                loadAll();
             }).fail(function(){
-                btn.prop('disabled', false).text('Guardar');
+                $('#czp-guardar').prop('disabled', false).text('Guardar');
                 msg.css('color','#dc2626').text('Error de conexión.');
+            });
+        };
+
+        // ── Registro de pagos día por día ────────────────────────
+        function loadPagos(){
+            $.post(ajaxUrl, {action:'luna_cobranzas_pagos', nonce}, function(r){
+                if (!r.success) { $('#cz-pagos-wrap').html('<p class="cz-empty">Error: '+esc2(r.data)+'</p>'); return; }
+                czPagos = r.data;
+                renderPagos();
+            }).fail(function(){ $('#cz-pagos-wrap').html('<p class="cz-empty">Error de conexión.</p>'); });
+        }
+        function renderPagos(){
+            var el = $('#cz-pagos-wrap');
+            if (!czPagos.length) { el.html('<p class="cz-empty">Sin pagos registrados aún.</p>'); return; }
+            var h = '<div style="overflow-x:auto"><table class="cz-table"><thead><tr>'
+                + '<th>Fecha</th><th>Cliente</th><th>Concepto</th><th class="cz-num">Monto</th>'
+                + '<th>Forma de pago</th><th>Estado</th><th></th>'
+                + '</tr></thead><tbody>';
+            czPagos.forEach(function(p){
+                var fecha = p.fecha ? p.fecha.split('-').reverse().join('/') : '—';
+                var estado = p.estado === 'paid'
+                    ? '<span class="cz-badge pagado">Cobrado</span>'
+                    : '<span class="cz-badge pendiente">Pendiente</span>';
+                h += '<tr data-id="'+p.id+'">'
+                   + '<td class="v-fecha">'+fecha+'</td>'
+                   + '<td>'+esc2(p.cliente)+'</td>'
+                   + '<td class="v-concepto">'+esc2(p.concepto||'—')+'</td>'
+                   + '<td class="cz-num v-monto">$'+czFmt(p.monto)+'</td>'
+                   + '<td class="v-forma">'+esc2(p.forma||'—')+'</td>'
+                   + '<td class="v-estado">'+estado+'</td>'
+                   + '<td style="white-space:nowrap;text-align:right">'
+                   + (p.estado!=='paid' ? '<button class="cz-btn cz-btn-sm cz-btn-green cz-cobrar" title="Marcar cobrada">✓ Cobrar</button> ' : '')
+                   + '<button class="cz-btn cz-btn-sm cz-btn-ghost cz-edit" title="Editar">✎</button> '
+                   + '<button class="cz-btn cz-btn-sm cz-btn-danger cz-del" title="Eliminar">🗑</button>'
+                   + '</td></tr>';
+            });
+            h += '</tbody></table></div>';
+            el.html(h);
+        }
+        function pagoById(id){ return czPagos.find(function(x){ return x.id == id; }); }
+
+        $(document).on('click', '.cz-cobrar', function(){
+            var id = $(this).closest('tr').data('id');
+            var p = pagoById(id); if (!p) return;
+            $.post(ajaxUrl, {action:'luna_cobranzas_update_mov', nonce, id:id, fecha:hoyISO(), concepto:p.concepto, monto:p.monto, forma:p.forma, estado:'paid'}, function(r){
+                if (!r.success){ czMsg('Error: '+r.data, true); return; }
+                czMsg('✓ Cuota cobrada');
+                loadAll();
             });
         });
 
-        // ── Importar histórico (CSV genérico: cliente,dia,mes,monto,estado) ──
+        $(document).on('click', '.cz-edit', function(){
+            var tr = $(this).closest('tr');
+            var id = tr.data('id');
+            var p = pagoById(id); if (!p) return;
+            tr.find('.v-fecha').html('<input type="date" class="cz-input d e-fecha" value="'+esc2(p.fecha||'')+'">');
+            tr.find('.v-concepto').html('<input type="text" class="cz-input e-concepto" style="width:100%" value="'+esc2(p.concepto||'')+'">');
+            tr.find('.v-monto').html('<input type="number" min="0" step="1" class="cz-input n e-monto" value="'+p.monto+'">');
+            tr.find('.v-forma').html('<input type="text" class="cz-input e-forma" style="width:110px" value="'+esc2(p.forma||'')+'">');
+            tr.find('.v-estado').html('<select class="cz-select e-estado"><option value="paid"'+(p.estado==='paid'?' selected':'')+'>Cobrado</option><option value="pending"'+(p.estado!=='paid'?' selected':'')+'>Pendiente</option></select>');
+            $(this).replaceWith('<button class="cz-btn cz-btn-sm cz-save" title="Guardar">✓</button>');
+        });
+
+        $(document).on('click', '.cz-save', function(){
+            var tr = $(this).closest('tr');
+            var id = tr.data('id');
+            var data = {
+                action:'luna_cobranzas_update_mov', nonce, id:id,
+                fecha: tr.find('.e-fecha').val(),
+                concepto: tr.find('.e-concepto').val(),
+                monto: tr.find('.e-monto').val(),
+                forma: tr.find('.e-forma').val(),
+                estado: tr.find('.e-estado').val(),
+            };
+            if (!data.fecha){ czMsg('La fecha es obligatoria.', true); return; }
+            $.post(ajaxUrl, data, function(r){
+                if (!r.success){ czMsg('Error: '+r.data, true); return; }
+                czMsg('✓ Pago actualizado');
+                loadAll();
+            });
+        });
+
+        $(document).on('click', '.cz-del', function(){
+            if (!confirm('¿Eliminar este pago? No se puede deshacer.')) return;
+            var id = $(this).closest('tr').data('id');
+            $.post(ajaxUrl, {action:'luna_cobranzas_delete_mov', nonce, id:id}, function(r){
+                if (!r.success){ czMsg('Error: '+r.data, true); return; }
+                czMsg('✓ Pago eliminado');
+                loadAll();
+            });
+        });
+
+        // ── Importar histórico (CSV: cliente,dia,mes,monto,estado) ──
         $('#cz-btn-import').on('click', function(){ $('#cz-import-file').val('').trigger('click'); });
         $('#cz-import-file').on('change', function(){
             var file = this.files[0];
@@ -4282,158 +4390,173 @@ class Luna_Admin {
                     rows.push({cliente:c[0], dia:c[1], mes:c[2], monto:(c[3]||'').replace(/[$,\s"]/g,''), estado:c[4]});
                 }
                 if (!rows.length) { alert('El archivo no tiene filas válidas.'); return; }
-                var msg = $('#cz-msg');
-                msg.css('color','#64748b').text('Importando ' + rows.length + ' filas...');
+                czMsg('Importando ' + rows.length + ' filas...');
                 $.post(ajaxUrl, {action:'luna_cobranzas_import', nonce, rows: JSON.stringify(rows)}, function(r){
-                    if (!r.success) { msg.css('color','#dc2626').text('Error: '+r.data); return; }
-                    msg.css('color','#16a34a').text('✓ Clientes creados: '+r.data.clientes_creados+' · Cargos: '+r.data.cargos+' · Cobros: '+r.data.cobros+(r.data.omitidos?' · Omitidos: '+r.data.omitidos:''));
-                    loadCz(); loadCzLedger(); loadCzKpis();
-                }).fail(function(){ msg.css('color','#dc2626').text('Error de conexión.'); });
+                    if (!r.success) { czMsg('Error: '+r.data, true); return; }
+                    czMsg('✓ Clientes creados: '+r.data.clientes_creados+' · Cargos: '+r.data.cargos+' · Cobros: '+r.data.cobros+(r.data.omitidos?' · Omitidos: '+r.data.omitidos:''));
+                    loadAll();
+                }).fail(function(){ czMsg('Error de conexión.', true); });
             };
             reader.readAsText(file);
         });
 
-        loadCz();
-        loadCzLedger();
-        loadCzKpis();
+        loadAll();
         })(jQuery);
         </script>
         <?php
     }
 
-    // ── AJAX: Cobranzas — listar saldo de todos los clientes activos ─────────
+    // ── AJAX: Cobranzas — clientes con su cargo del año, cobrado y estado ────
     public function ajax_cobranzas_list() {
         check_ajax_referer('luna_admin_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
         global $wpdb;
         $p = $wpdb->prefix . 'luna_';
-        $rows = $wpdb->get_results(
+        $anio = date('Y');
+        $rows = $wpdb->get_results($wpdb->prepare(
             "SELECT c.id, c.name, c.domain,
-                COALESCE(SUM(CASE WHEN pm.type='cargo' THEN pm.amount ELSE 0 END),0)
-              - COALESCE(SUM(CASE WHEN pm.type='cobro' THEN pm.amount ELSE 0 END),0) AS saldo
+                COALESCE(SUM(CASE WHEN pm.type='cargo' THEN pm.amount ELSE 0 END),0) AS monto_anual,
+                COALESCE(SUM(CASE WHEN pm.type='cobro' AND pm.status='paid' THEN pm.amount ELSE 0 END),0) AS cobrado,
+                COALESCE(SUM(CASE WHEN pm.type='cobro' AND pm.status='pending' THEN 1 ELSE 0 END),0) AS cuotas_pendientes,
+                MIN(CASE WHEN pm.type='cargo' THEN COALESCE(pm.due_date, pm.payment_date) END) AS vencimiento
              FROM `{$p}clients` c
              LEFT JOIN `{$p}payments` pm ON pm.client_id = c.id
+                  AND YEAR(COALESCE(pm.payment_date, pm.due_date)) = %d
              WHERE c.active = 1
              GROUP BY c.id
-             ORDER BY c.name",
-            ARRAY_A
-        );
+             ORDER BY (MIN(CASE WHEN pm.type='cargo' THEN COALESCE(pm.due_date, pm.payment_date) END) IS NULL),
+                      MIN(CASE WHEN pm.type='cargo' THEN COALESCE(pm.due_date, pm.payment_date) END), c.name",
+            $anio
+        ), ARRAY_A);
         wp_send_json_success($rows ?: []);
     }
 
-    // ── AJAX: Cobranzas — registrar Monto (cargo) y/o Pago (cobro) en un paso ─
-    public function ajax_cobranzas_save() {
+    // ── AJAX: Cobranzas — registrar pago (contado o en cuotas) ───────────────
+    // Contado: un cobro pagado con fecha y monto. Cuotas: N cobros pendientes,
+    // cada uno con el monto y la fecha probable que definió el usuario.
+    // Si el cliente no tiene cargo este año, se crea automáticamente por el
+    // total (mantiene coherentes el estado y el "Total a cobrar").
+    public function ajax_cobranzas_registrar_pago() {
         check_ajax_referer('luna_admin_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
         global $wpdb;
         $p = $wpdb->prefix . 'luna_';
 
         $client_id = (int) ($_POST['client_id'] ?? 0);
-        $monto     = (float) ($_POST['monto'] ?? 0);
-        $pago      = (float) ($_POST['pago']  ?? 0);
-        $method    = sanitize_text_field($_POST['method'] ?? '');
+        $tipo      = ($_POST['tipo'] ?? '') === 'cuotas' ? 'cuotas' : 'contado';
+        $forma     = sanitize_text_field($_POST['forma'] ?? '');
         if (!$client_id) wp_send_json_error('Cliente inválido.');
-        if ($monto <= 0 && $pago <= 0) wp_send_json_error('Ingresá un monto o un pago.');
 
         $client = $wpdb->get_row($wpdb->prepare(
-            "SELECT id FROM `{$p}clients` WHERE id=%d AND active=1", $client_id
-        ));
+            "SELECT id, name FROM `{$p}clients` WHERE id=%d AND active=1", $client_id
+        ), ARRAY_A);
         if (!$client) wp_send_json_error('Cliente no encontrado.');
 
-        $now = current_time('mysql');
-        if ($monto > 0) {
+        $now  = current_time('mysql');
+        $anio = date('Y');
+        $total_nuevo = 0.0;
+
+        if ($tipo === 'contado') {
+            $monto = (float) ($_POST['monto'] ?? 0);
+            $fecha = sanitize_text_field($_POST['fecha'] ?? '');
+            if ($monto <= 0) wp_send_json_error('Ingresá un monto válido.');
+            if (!$fecha || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) wp_send_json_error('Fecha inválida.');
             $wpdb->insert("{$p}payments", [
-                'client_id' => $client_id, 'concept' => 'Cargo registrado', 'amount' => $monto,
-                'currency'  => 'ARS', 'due_date' => date('Y-m-d'), 'status' => 'pending',
-                'type'      => 'cargo', 'created_at' => $now,
+                'client_id' => $client_id, 'concept' => 'Pago contado', 'amount' => $monto,
+                'currency' => 'ARS', 'payment_date' => $fecha, 'method' => $forma,
+                'status' => 'paid', 'type' => 'cobro', 'created_at' => $now,
             ]);
+            $total_nuevo = $monto;
+        } else {
+            $cuotas = json_decode(stripslashes($_POST['cuotas'] ?? '[]'), true);
+            if (!is_array($cuotas) || !count($cuotas)) wp_send_json_error('Definí al menos una cuota.');
+            if (count($cuotas) > 36) wp_send_json_error('Máximo 36 cuotas.');
+            $n = count($cuotas);
+            foreach ($cuotas as $i => $q) {
+                $m = (float) ($q['monto'] ?? 0);
+                $f = sanitize_text_field($q['fecha'] ?? '');
+                if ($m <= 0) wp_send_json_error('La cuota ' . ($i + 1) . ' no tiene monto válido.');
+                if (!$f || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $f)) wp_send_json_error('La cuota ' . ($i + 1) . ' no tiene fecha válida.');
+            }
+            foreach ($cuotas as $i => $q) {
+                $wpdb->insert("{$p}payments", [
+                    'client_id' => $client_id,
+                    'concept' => 'Cuota ' . ($i + 1) . '/' . $n,
+                    'amount' => (float) $q['monto'],
+                    'currency' => 'ARS',
+                    'payment_date' => sanitize_text_field($q['fecha']),
+                    'method' => $forma,
+                    'status' => 'pending',
+                    'type' => 'cobro',
+                    'created_at' => $now,
+                ]);
+                $total_nuevo += (float) $q['monto'];
+            }
         }
-        if ($pago > 0) {
+
+        // Si el cliente no tiene cargo este año, crearlo por el total del pago
+        // para que "Total a cobrar" y el estado queden coherentes.
+        $tiene_cargo = $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM `{$p}payments`
+             WHERE client_id=%d AND type='cargo'
+               AND YEAR(COALESCE(due_date, payment_date)) = %d LIMIT 1",
+            $client_id, $anio
+        ));
+        if (!$tiene_cargo && $total_nuevo > 0) {
             $wpdb->insert("{$p}payments", [
-                'client_id'    => $client_id, 'concept' => 'Pago registrado', 'amount' => $pago,
-                'currency'     => 'ARS', 'payment_date' => date('Y-m-d'), 'method' => $method,
-                'status'       => 'paid', 'type' => 'cobro', 'created_at' => $now,
+                'client_id' => $client_id, 'concept' => 'Cargo del año', 'amount' => $total_nuevo,
+                'currency' => 'ARS', 'due_date' => date('Y-m-d'), 'status' => 'pending',
+                'type' => 'cargo', 'created_at' => $now,
             ]);
         }
 
-        $saldo = (float) $wpdb->get_var($wpdb->prepare(
-            "SELECT COALESCE(SUM(CASE WHEN type='cargo' THEN amount ELSE 0 END),0)
-                   - COALESCE(SUM(CASE WHEN type='cobro' THEN amount ELSE 0 END),0)
-             FROM `{$p}payments` WHERE client_id = %d",
-            $client_id
-        ));
-        wp_send_json_success(['saldo' => $saldo]);
+        wp_send_json_success();
     }
 
-    // ── AJAX: Cobranzas — libro contable completo, todos los movimientos ─────
-    // Agrupado por cliente y ordenado cronológicamente dentro de cada uno;
-    // Debe/Haber/Saldo calculados en el servidor. Todas las filas se muestran
-    // de una — sin desplegables ni resúmenes que oculten el detalle diario.
-    public function ajax_cobranzas_ledger() {
+    // ── AJAX: Cobranzas — registro de pagos día por día (solo cobros) ────────
+    public function ajax_cobranzas_pagos() {
         check_ajax_referer('luna_admin_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
         global $wpdb;
         $p = $wpdb->prefix . 'luna_';
-
         $rows = $wpdb->get_results(
-            "SELECT pm.id, pm.payment_date, pm.due_date, pm.concept, pm.amount, pm.type, pm.method,
-                    c.id AS client_id, c.name AS client_name
+            "SELECT pm.id, COALESCE(pm.payment_date, pm.due_date) AS fecha, pm.concept AS concepto,
+                    pm.amount AS monto, pm.method AS forma, pm.status AS estado,
+                    c.name AS cliente
              FROM `{$p}payments` pm
              JOIN `{$p}clients` c ON c.id = pm.client_id
-             ORDER BY c.name ASC, COALESCE(pm.payment_date, pm.due_date) ASC, pm.id ASC",
+             WHERE pm.type = 'cobro'
+             ORDER BY COALESCE(pm.payment_date, pm.due_date) DESC, pm.id DESC",
             ARRAY_A
         );
-
-        $out = [];
-        $saldo = 0.0; $prevClient = null;
-        foreach (($rows ?: []) as $r) {
-            if ($r['client_id'] !== $prevClient) { $saldo = 0.0; $prevClient = $r['client_id']; }
-            $debe  = ($r['type'] === 'cargo') ? (float) $r['amount'] : 0.0;
-            $haber = ($r['type'] === 'cobro') ? (float) $r['amount'] : 0.0;
-            $saldo += $debe - $haber;
-            $out[] = [
-                'id'         => (int) $r['id'],
-                'fecha'      => $r['payment_date'] ?: $r['due_date'],
-                'cliente'    => $r['client_name'],
-                'concepto'   => $r['concept'],
-                'tipo'       => $r['type'],
-                'monto'      => (float) $r['amount'],
-                'debe'       => $debe,
-                'haber'      => $haber,
-                'forma_pago' => $r['method'],
-                'saldo'      => $saldo,
-            ];
-        }
-        wp_send_json_success($out);
+        wp_send_json_success($rows ?: []);
     }
 
-    // ── AJAX: Cobranzas — KPIs de cabecera (adeudado + cobrado del año) ──────
+    // ── AJAX: Cobranzas — KPIs de cabecera ───────────────────────────────────
+    // Total a cobrar (año) = suma de todos los cargos del año en curso.
+    // Total cobrado a la fecha = cobros pagados del año, hasta hoy inclusive.
     public function ajax_cobranzas_kpis() {
         check_ajax_referer('luna_admin_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
         global $wpdb;
         $p = $wpdb->prefix . 'luna_';
-
-        $por_cliente = $wpdb->get_results(
-            "SELECT COALESCE(SUM(CASE WHEN type='cargo' THEN amount ELSE 0 END),0)
-                  - COALESCE(SUM(CASE WHEN type='cobro' THEN amount ELSE 0 END),0) AS saldo
-             FROM `{$p}payments` GROUP BY client_id",
-            ARRAY_A
-        );
-        $total_adeudado = 0.0;
-        foreach (($por_cliente ?: []) as $r) { if ((float) $r['saldo'] > 0) $total_adeudado += (float) $r['saldo']; }
-
         $anio = date('Y');
-        $cobrado_anio = (float) $wpdb->get_var($wpdb->prepare(
+
+        $a_cobrar = (float) $wpdb->get_var($wpdb->prepare(
             "SELECT COALESCE(SUM(amount),0) FROM `{$p}payments`
-             WHERE type='cobro' AND YEAR(payment_date) = %d",
+             WHERE type='cargo' AND YEAR(COALESCE(due_date, payment_date)) = %d",
             $anio
         ));
-
-        wp_send_json_success(['total_adeudado' => $total_adeudado, 'cobrado_anio' => $cobrado_anio, 'anio' => $anio]);
+        $cobrado = (float) $wpdb->get_var($wpdb->prepare(
+            "SELECT COALESCE(SUM(amount),0) FROM `{$p}payments`
+             WHERE type='cobro' AND status='paid'
+               AND YEAR(payment_date) = %d AND payment_date <= CURDATE()",
+            $anio
+        ));
+        wp_send_json_success(['a_cobrar' => $a_cobrar, 'cobrado' => $cobrado, 'anio' => $anio]);
     }
 
-    // ── AJAX: Cobranzas — editar un movimiento existente ──────────────────────
+    // ── AJAX: Cobranzas — editar una línea de pago ───────────────────────────
     public function ajax_cobranzas_update_mov() {
         check_ajax_referer('luna_admin_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
@@ -4443,35 +4566,33 @@ class Luna_Admin {
         $id      = (int) ($_POST['id'] ?? 0);
         $fecha   = sanitize_text_field($_POST['fecha'] ?? '');
         $concept = sanitize_text_field($_POST['concepto'] ?? '');
-        $tipo    = ($_POST['tipo'] ?? '') === 'cobro' ? 'cobro' : 'cargo';
         $monto   = (float) ($_POST['monto'] ?? 0);
-        $method  = sanitize_text_field($_POST['forma_pago'] ?? '');
+        $forma   = sanitize_text_field($_POST['forma'] ?? '');
+        $estado  = ($_POST['estado'] ?? '') === 'paid' ? 'paid' : 'pending';
 
-        if (!$id) wp_send_json_error('Movimiento inválido.');
-        if (!$fecha) wp_send_json_error('La fecha es obligatoria.');
+        if (!$id) wp_send_json_error('Pago inválido.');
+        if (!$fecha || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) wp_send_json_error('La fecha es obligatoria.');
         if ($monto <= 0) wp_send_json_error('El monto debe ser mayor a 0.');
 
-        $existing = $wpdb->get_row($wpdb->prepare("SELECT id FROM `{$p}payments` WHERE id=%d", $id));
-        if (!$existing) wp_send_json_error('Movimiento no encontrado.');
+        $existing = $wpdb->get_row($wpdb->prepare("SELECT id, type FROM `{$p}payments` WHERE id=%d", $id), ARRAY_A);
+        if (!$existing) wp_send_json_error('Pago no encontrado.');
+        if ($existing['type'] !== 'cobro') wp_send_json_error('Solo se editan líneas de pago desde acá.');
 
-        $data = [
-            'concept' => $concept, 'amount' => $monto, 'type' => $tipo, 'method' => $method,
-        ];
-        if ($tipo === 'cobro') { $data['payment_date'] = $fecha; $data['due_date'] = null; }
-        else                   { $data['due_date'] = $fecha; $data['payment_date'] = null; }
-
-        $wpdb->update("{$p}payments", $data, ['id' => $id]);
+        $wpdb->update("{$p}payments", [
+            'payment_date' => $fecha, 'concept' => $concept, 'amount' => $monto,
+            'method' => $forma, 'status' => $estado,
+        ], ['id' => $id]);
         wp_send_json_success();
     }
 
-    // ── AJAX: Cobranzas — eliminar un movimiento ──────────────────────────────
+    // ── AJAX: Cobranzas — eliminar una línea de pago ─────────────────────────
     public function ajax_cobranzas_delete_mov() {
         check_ajax_referer('luna_admin_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
         global $wpdb;
         $p  = $wpdb->prefix . 'luna_';
         $id = (int) ($_POST['id'] ?? 0);
-        if (!$id) wp_send_json_error('Movimiento inválido.');
+        if (!$id) wp_send_json_error('Pago inválido.');
         $wpdb->delete("{$p}payments", ['id' => $id]);
         wp_send_json_success();
     }
@@ -4481,7 +4602,7 @@ class Luna_Admin {
     // toma como referencia del ciclo recurrente anual (se ignora cualquier año
     // que venga en el origen de los datos, ya que se repite todos los años).
     // Crea el cliente si no existe (match case-insensitive por nombre) y agrega
-    // el cargo (Debe) correspondiente, más el cobro (Haber) si estado=PAGO.
+    // el cargo (lo que debe pagar), más el pago cobrado si estado=PAGO.
     // Idempotente: reimportar el mismo archivo no duplica movimientos.
     public function ajax_cobranzas_import() {
         check_ajax_referer('luna_admin_nonce', 'nonce');
