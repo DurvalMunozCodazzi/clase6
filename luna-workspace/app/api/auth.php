@@ -206,4 +206,27 @@ if ($method === 'GET' && $action === 'diag') {
     jsonOut($out);
 }
 
+// GET diag_user — diagnóstico de UN usuario puntual, sin exponer la clave:
+// confirma si existe, si está activo, y si tiene WhatsApp configurado (para
+// saber por qué falla el login o por qué "olvidé mi contraseña" no entrega
+// nada), sin revelar el hash ni datos de otros usuarios.
+if ($method === 'GET' && $action === 'diag_user') {
+    $login = trim($_GET['login'] ?? '');
+    if (!$login) jsonErr('Usá ?login=usuario_o_email');
+    $st = $db->prepare("SELECT username, email, role, active, phone, whatsapp_apikey, LENGTH(password) AS pass_len FROM ".tb('users')." WHERE username=? OR email=?");
+    $st->execute([$login, $login]);
+    $rows = $st->fetchAll();
+    $out = array_map(function($u) {
+        return [
+            'username'          => $u['username'],
+            'email_coincide'    => true,
+            'role'              => $u['role'],
+            'active'            => (int) $u['active'],
+            'whatsapp_ok'       => (!empty($u['phone']) && !empty($u['whatsapp_apikey'])),
+            'password_set'      => ((int) $u['pass_len']) > 0,
+        ];
+    }, $rows ?: []);
+    jsonOut(['encontrados' => count($out), 'detalle' => $out]);
+}
+
 jsonErr('Acción no encontrada', 404);
