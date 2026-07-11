@@ -303,4 +303,41 @@ if ($method === 'GET' && $action === 'fix_password_column') {
     jsonOut(['largo_anterior' => $before, 'ensanchada' => $changed]);
 }
 
+// GET diag_roundtrip — escribe un hash de prueba y lo vuelve a leer DENTRO
+// del mismo request, y restaura el hash original al final (no cambia la
+// contraseña real de la cuenta). Objetivo: separar dos causas posibles
+// distintas — (a) el UPDATE se corrompe en la base (trigger, charset,
+// etc.) o (b) el pedido real de "olvidé mi contraseña" del sitio ni
+// siquiera está llegando a este código (caché/WAF/ruta equivocada).
+if ($method === 'GET' && $action === 'diag_roundtrip') {
+    $login = trim($_GET['login'] ?? '');
+    if (!$login) jsonErr('Usá ?login=usuario_o_email');
+
+    $st = $db->prepare("SELECT id, password FROM ".tb('users')." WHERE username=? OR email=?");
+    $st->execute([$login, $login]);
+    $user = $st->fetch();
+    if (!$user) jsonErr('Usuario no encontrado');
+
+    $original = $user['password'];
+    $testPlain = 'roundtrip_' . bin2hex(random_bytes(4));
+    $testHash  = password_hash($testPlain, PASSWORD_BCRYPT);
+
+    $db->prepare("UPDATE ".tb('users')." SET password=? WHERE id=?")->execute([$testHash, $user['id']]);
+
+    $st2 = $db->prepare("SELECT password FROM ".tb('users')." WHERE id=?");
+    $st2->execute([$user['id']]);
+    $after = $st2->fetchColumn();
+
+    // Restaurar el hash original inmediatamente
+    $db->prepare("UPDATE ".tb('users')." SET password=? WHERE id=?")->execute([$original, $user['id']]);
+
+    jsonOut([
+        'largo_hash_original'  => strlen($original),
+        'largo_hash_escrito'   => strlen($testHash),
+        'largo_hash_leido'     => $after ? strlen($after) : 0,
+        'escritura_identica'   => ($after === $testHash),
+        'verifica_tras_leer'   => $after ? password_verify($testPlain, $after) : false,
+    ]);
+}
+
 jsonErr('Acción no encontrada', 404);
