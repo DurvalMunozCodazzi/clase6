@@ -151,7 +151,7 @@ if ($method === 'POST' && $action === 'forgot_password') {
     ]);
     $ctx  = stream_context_create(['http' => ['timeout' => 20, 'ignore_errors' => true]]);
     $resp = @file_get_contents($url, false, $ctx);
-    $sent = ($resp !== false && stripos($resp, 'Message Sent') !== false);
+    $sent = ($resp !== false && (stripos($resp, 'Message Sent') !== false || stripos($resp, 'Message queued') !== false));
 
     $updated = false;
     $verify_after = false;
@@ -178,7 +178,7 @@ if ($method === 'POST' && $action === 'forgot_password') {
         $log = json_encode([
             'time'          => date('Y-m-d H:i:s'),
             'resp_fue_false'=> ($resp === false),
-            'callmebot_ok'  => stripos((string)$resp, 'Message Sent') !== false,
+            'callmebot_ok'  => (stripos((string)$resp, 'Message Sent') !== false || stripos((string)$resp, 'Message queued') !== false),
             'sent'          => $sent,
             'update_afecto_fila' => $updated,
             'verifica_tras_releer' => $verify_after,
@@ -368,8 +368,9 @@ if ($method === 'GET' && $action === 'diag_roundtrip') {
 }
 
 // GET diag_whatsapp — dispara la MISMA condición de envío que usa
-// forgot_password (buscar "Message Sent" en la respuesta de CallMeBot)
-// pero con un mensaje de diagnóstico, no con una contraseña. Sirve para
+// forgot_password (buscar "Message Sent" o "Message queued" en la
+// respuesta de CallMeBot) pero con un mensaje de diagnóstico, no con
+// una contraseña. Sirve para
 // ver la respuesta cruda de CallMeBot y confirmar si esa condición se
 // cumple de verdad — si no se cumple, forgot_password nunca graba la
 // clave nueva aunque el WhatsApp llegue igual.
@@ -393,7 +394,7 @@ if ($method === 'GET' && $action === 'diag_whatsapp') {
     ]);
     $ctx  = stream_context_create(['http' => ['timeout' => 20, 'ignore_errors' => true]]);
     $resp = @file_get_contents($url, false, $ctx);
-    $sent = ($resp !== false && stripos($resp, 'Message Sent') !== false);
+    $sent = ($resp !== false && (stripos($resp, 'Message Sent') !== false || stripos($resp, 'Message queued') !== false));
 
     jsonOut([
         'resp_fue_false'    => ($resp === false),
