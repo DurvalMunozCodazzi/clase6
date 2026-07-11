@@ -217,9 +217,14 @@ if ($method === 'GET' && $action === 'diag_user') {
     $st->execute([$login, $login]);
     $rows = $st->fetchAll();
     $out = array_map(function($u) {
+        $email = $u['email'] ?? '';
+        $at    = strpos($email, '@');
+        $emailMasked = $at !== false
+            ? substr($email, 0, min(2, $at)) . str_repeat('*', max(0, $at - 2)) . substr($email, $at)
+            : '';
         return [
             'username'          => $u['username'],
-            'email_coincide'    => true,
+            'email_enmascarado' => $emailMasked,
             'role'              => $u['role'],
             'active'            => (int) $u['active'],
             'whatsapp_ok'       => (!empty($u['phone']) && !empty($u['whatsapp_apikey'])),
