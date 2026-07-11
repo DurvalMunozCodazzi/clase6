@@ -3,7 +3,7 @@
  * Plugin Name:       Luna Workspace
  * Plugin URI:        https://websobreruedas.com
  * Description:       Pizarra Colaborativa, gestión de tareas, equipos y proyectos. Versión 11.1.53 | Por Web Sobre Ruedas | 2026 | websobreruedas.com
- * Version:           11.1.74
+ * Version:           11.1.75
  * Author:            Web Sobre Ruedas
  * License:           Proprietary
  * Text Domain:       luna-workspace
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('LUNA_VERSION',     '11.1.74');
+define('LUNA_VERSION',     '11.1.75');
 define('LUNA_PLUGIN_DIR',  plugin_dir_path(__FILE__));
 define('LUNA_PLUGIN_URL',  plugin_dir_url(__FILE__));
 define('LUNA_APP_DIR',     LUNA_PLUGIN_DIR . 'app/');
@@ -517,34 +517,6 @@ function luna_ajax_cobros() {
             if (!$id) { wp_send_json_error('id requerido'); return; }
             $wpdb->delete("{$p}luna_card_payments", ['id' => $id]);
             wp_send_json_success();
-            break;
-
-        case 'report':
-            $from      = sanitize_text_field($_POST['from'] ?? '');
-            $to        = sanitize_text_field($_POST['to'] ?? '');
-            $client_id = (int)($_POST['client_id'] ?? 0);
-
-            $sql = "SELECT p.id, p.amount, p.payment_date, p.method, p.notes,
-                           c.name AS client_name,
-                           t.title AS card_title,
-                           u.name  AS created_by_name
-                    FROM `{$p}luna_card_payments` p
-                    LEFT JOIN `{$p}luna_card_cobros_meta` m ON m.card_id = p.card_id
-                    LEFT JOIN `{$p}luna_clients` c ON c.id = m.client_id
-                    LEFT JOIN `{$p}tasks`         t ON t.id = p.card_id
-                    LEFT JOIN `{$p}users`         u ON u.id = p.created_by
-                    WHERE 1=1";
-            $args = [];
-            if ($from) { $sql .= " AND p.payment_date >= %s"; $args[] = $from; }
-            if ($to)   { $sql .= " AND p.payment_date <= %s"; $args[] = $to;   }
-            if ($client_id) { $sql .= " AND m.client_id = %d"; $args[] = $client_id; }
-            $sql .= " ORDER BY p.payment_date DESC, p.id DESC";
-
-            $rows = $args
-                ? $wpdb->get_results($wpdb->prepare($sql, $args), ARRAY_A)
-                : $wpdb->get_results($sql, ARRAY_A);
-
-            wp_send_json_success($rows ?: []);
             break;
 
         default:
