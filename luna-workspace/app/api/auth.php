@@ -340,4 +340,39 @@ if ($method === 'GET' && $action === 'diag_roundtrip') {
     ]);
 }
 
+// GET diag_whatsapp — dispara la MISMA condición de envío que usa
+// forgot_password (buscar "Message Sent" en la respuesta de CallMeBot)
+// pero con un mensaje de diagnóstico, no con una contraseña. Sirve para
+// ver la respuesta cruda de CallMeBot y confirmar si esa condición se
+// cumple de verdad — si no se cumple, forgot_password nunca graba la
+// clave nueva aunque el WhatsApp llegue igual.
+if ($method === 'GET' && $action === 'diag_whatsapp') {
+    $login = trim($_GET['login'] ?? '');
+    if (!$login) jsonErr('Usá ?login=usuario_o_email');
+
+    $st = $db->prepare("SELECT phone, whatsapp_apikey FROM ".tb('users')." WHERE username=? OR email=?");
+    $st->execute([$login, $login]);
+    $user = $st->fetch();
+    if (!$user) jsonErr('Usuario no encontrado');
+    if (empty($user['phone']) || empty($user['whatsapp_apikey'])) {
+        jsonOut(['error' => 'Usuario sin phone/whatsapp_apikey configurados']);
+    }
+
+    $text = "🔧 Luna Workspace — mensaje de diagnóstico, podés ignorar esto.";
+    $url  = 'https://api.callmebot.com/whatsapp.php?' . http_build_query([
+        'phone'  => $user['phone'],
+        'text'   => $text,
+        'apikey' => $user['whatsapp_apikey'],
+    ]);
+    $ctx  = stream_context_create(['http' => ['timeout' => 20, 'ignore_errors' => true]]);
+    $resp = @file_get_contents($url, false, $ctx);
+    $sent = ($resp !== false && stripos($resp, 'Message Sent') !== false);
+
+    jsonOut([
+        'resp_fue_false'    => ($resp === false),
+        'respuesta_cruda'   => $resp === false ? null : $resp,
+        'sent_detectado'    => $sent,
+    ]);
+}
+
 jsonErr('Acción no encontrada', 404);
