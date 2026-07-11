@@ -1,0 +1,4 @@
+node_modules/
+cobranza.db
+cobranza.db-shm
+cobranza.db-wal
