@@ -229,4 +229,49 @@ if ($method === 'GET' && $action === 'diag_user') {
     jsonOut(['encontrados' => count($out), 'detalle' => $out]);
 }
 
+// GET diag_verify — confirma si una contraseña puntual coincide con el hash
+// guardado, sin exponer el hash. Comparte el mismo contador de rate-limit
+// que el login real para no convertirse en un oráculo de fuerza bruta.
+if ($method === 'GET' && $action === 'diag_verify') {
+    $login = trim($_GET['login'] ?? '');
+    $pass  = trim($_GET['password'] ?? '');
+    if (!$login || !$pass) jsonErr('Usá ?login=usuario_o_email&password=clave');
+
+    $ip      = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $rateKey = 'rate_login_' . substr(hash('sha256', $ip), 0, 20);
+    $maxAttempts = 10;
+    $windowSec   = 900;
+    $rateData    = null;
+    try {
+        $rateSt = $db->prepare("SELECT meta_value FROM ".tb('app_settings')." WHERE meta_key=? LIMIT 1");
+        $rateSt->execute([$rateKey]);
+        $rateRow = $rateSt->fetch();
+        $rateData = $rateRow ? json_decode($rateRow['meta_value'], true) : null;
+        if (!is_array($rateData)) $rateData = ['count' => 0, 'since' => time()];
+        if ((time() - ($rateData['since'] ?? 0)) >= $windowSec) $rateData = ['count' => 0, 'since' => time()];
+        if ($rateData['count'] >= $maxAttempts) {
+            $wait = $windowSec - (time() - $rateData['since']);
+            jsonErr('Demasiados intentos fallidos. Esperá ' . ceil($wait / 60) . ' minuto(s).', 429);
+        }
+    } catch (Exception $e) { $rateData = null; }
+
+    $st = $db->prepare("SELECT password FROM ".tb('users')." WHERE (username=? OR email=?) AND active=1");
+    $st->execute([$login, $login]);
+    $user = $st->fetch();
+    $matches = ($user && password_verify($pass, $user['password']));
+
+    if ($rateData !== null && !$matches) {
+        $rateData['count']++;
+        try {
+            $db->prepare("INSERT INTO ".tb('app_settings')." (meta_key,meta_value) VALUES (?,?) ON DUPLICATE KEY UPDATE meta_value=?")
+               ->execute([$rateKey, json_encode($rateData), json_encode($rateData)]);
+        } catch (Exception $e) {}
+    }
+
+    jsonOut([
+        'usuario_encontrado' => (bool) $user,
+        'password_matches'   => $matches,
+    ]);
+}
+
 jsonErr('Acción no encontrada', 404);
