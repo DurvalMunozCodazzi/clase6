@@ -153,12 +153,39 @@ if ($method === 'POST' && $action === 'forgot_password') {
     $resp = @file_get_contents($url, false, $ctx);
     $sent = ($resp !== false && stripos($resp, 'Message Sent') !== false);
 
+    $updated = false;
+    $verify_after = false;
     if ($sent) {
         $hash = password_hash($new_pass, PASSWORD_BCRYPT);
-        $db->prepare("UPDATE ".tb('users')." SET password=? WHERE id=?")->execute([$hash, $user['id']]);
+        $upd  = $db->prepare("UPDATE ".tb('users')." SET password=? WHERE id=?");
+        $upd->execute([$hash, $user['id']]);
+        $updated = ($upd->rowCount() > 0);
         // Invalidar sesiones activas — obliga a re-loguear con la clave nueva
         try { $db->prepare("DELETE FROM ".tb('sessions')." WHERE user_id=?")->execute([$user['id']]); } catch (Exception $e) {}
+        // Releer inmediatamente para confirmar que lo grabado verifica de
+        // verdad contra la clave recién generada (detecta cualquier trigger
+        // o normalización que corrompa el hash en el camino).
+        $chk = $db->prepare("SELECT password FROM ".tb('users')." WHERE id=?");
+        $chk->execute([$user['id']]);
+        $storedNow = $chk->fetchColumn();
+        $verify_after = ($storedNow && password_verify($new_pass, $storedNow));
     }
+
+    // Registro para diagnóstico (?action=diag_last_reset&login=...): no
+    // guarda la contraseña ni el hash, solo si el envío se confirmó, si el
+    // UPDATE afectó una fila, y si la relectura verifica correctamente.
+    try {
+        $log = json_encode([
+            'time'          => date('Y-m-d H:i:s'),
+            'resp_fue_false'=> ($resp === false),
+            'callmebot_ok'  => stripos((string)$resp, 'Message Sent') !== false,
+            'sent'          => $sent,
+            'update_afecto_fila' => $updated,
+            'verifica_tras_releer' => $verify_after,
+        ]);
+        $db->prepare("INSERT INTO ".tb('app_settings')." (meta_key,meta_value) VALUES (?,?) ON DUPLICATE KEY UPDATE meta_value=?")
+           ->execute(['last_reset_' . $user['id'], $log, $log]);
+    } catch (Exception $e) {}
 
     jsonOut(['message' => $generic]);
 }
@@ -373,6 +400,27 @@ if ($method === 'GET' && $action === 'diag_whatsapp') {
         'respuesta_cruda'   => $resp === false ? null : $resp,
         'sent_detectado'    => $sent,
     ]);
+}
+
+// GET diag_last_reset — lee el registro que forgot_password guarda cada
+// vez que se usa de verdad (no una simulación): si CallMeBot confirmó el
+// envío, si el UPDATE afectó una fila, y si al releer inmediatamente el
+// hash guardado verifica contra la clave recién generada. Nunca expone
+// la contraseña ni el hash.
+if ($method === 'GET' && $action === 'diag_last_reset') {
+    $login = trim($_GET['login'] ?? '');
+    if (!$login) jsonErr('Usá ?login=usuario_o_email');
+    $st = $db->prepare("SELECT id FROM ".tb('users')." WHERE username=? OR email=?");
+    $st->execute([$login, $login]);
+    $user = $st->fetch();
+    if (!$user) jsonErr('Usuario no encontrado');
+
+    $st2 = $db->prepare("SELECT meta_value FROM ".tb('app_settings')." WHERE meta_key=?");
+    $st2->execute(['last_reset_' . $user['id']]);
+    $row = $st2->fetch();
+    if (!$row) jsonOut(['existe' => false, 'mensaje' => 'Todavía no se usó "olvidé mi contraseña" con esta versión.']);
+
+    jsonOut(['existe' => true] + json_decode($row['meta_value'], true));
 }
 
 jsonErr('Acción no encontrada', 404);
