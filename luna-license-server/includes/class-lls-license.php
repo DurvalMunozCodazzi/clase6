@@ -4,9 +4,10 @@ defined('ABSPATH') || exit;
 class LLS_License {
 
     const PLANS = [
-        'starter'      => ['label' => 'Starter',      'max_workspaces' => 1,   'max_sites' => 1],
-        'professional' => ['label' => 'Professional',  'max_workspaces' => 3,   'max_sites' => 3],
-        'unlimited'    => ['label' => 'Unlimited',     'max_workspaces' => 999, 'max_sites' => 999],
+        'free'         => ['label' => 'Gratis / Trial', 'max_workspaces' => 1,   'max_sites' => 1],
+        'starter'      => ['label' => 'Starter',        'max_workspaces' => 1,   'max_sites' => 1],
+        'professional' => ['label' => 'Professional',   'max_workspaces' => 3,   'max_sites' => 3],
+        'unlimited'    => ['label' => 'Unlimited',      'max_workspaces' => 999, 'max_sites' => 999],
     ];
 
     // Generate a unique license key: LUNA-XXXX-XXXX-XXXX-XXXX

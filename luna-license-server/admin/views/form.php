@@ -1,8 +1,10 @@
 <?php defined('ABSPATH') || exit;
 $is_edit = !empty($editing);
+$prefill = $prefill ?? [];
 $action  = $is_edit ? 'lls_update' : 'lls_create';
 $nonce   = $is_edit ? 'lls_update' : 'lls_create';
-$plan    = $is_edit ? $editing['plan'] : 'starter';
+$plan    = $is_edit ? $editing['plan'] : ($prefill['plan'] ?? 'starter');
+$field   = fn($k, $default = '') => $editing[$k] ?? $prefill[$k] ?? $default;
 ?>
 <div class="wrap lls-wrap">
   <h1 class="lls-title">
@@ -25,23 +27,29 @@ $plan    = $is_edit ? $editing['plan'] : 'starter';
       <input type="hidden" name="action" value="<?= esc_attr($action) ?>">
       <?php if ($is_edit): ?>
         <input type="hidden" name="id" value="<?= (int)$editing['id'] ?>">
+      <?php elseif (!empty($prefill['request_id'])): ?>
+        <input type="hidden" name="request_id" value="<?= (int)$prefill['request_id'] ?>">
+      <?php endif; ?>
+
+      <?php if (!empty($prefill['request_id'])): ?>
+        <div class="lls-notice lls-notice-info">Completando desde una solicitud recibida — revisá los datos antes de crear la licencia.</div>
       <?php endif; ?>
 
       <div class="lls-form-grid">
 
         <div class="lls-field">
           <label class="lls-label">Nombre del cliente <span class="lls-req">*</span></label>
-          <input type="text" name="customer_name" value="<?= esc_attr($editing['customer_name'] ?? '') ?>" class="lls-input" required placeholder="Ej: Juan García">
+          <input type="text" name="customer_name" value="<?= esc_attr($field('customer_name')) ?>" class="lls-input" required placeholder="Ej: Juan García">
         </div>
 
         <div class="lls-field">
           <label class="lls-label">Email del cliente</label>
-          <input type="email" name="customer_email" value="<?= esc_attr($editing['customer_email'] ?? '') ?>" class="lls-input" placeholder="cliente@email.com">
+          <input type="email" name="customer_email" value="<?= esc_attr($field('customer_email')) ?>" class="lls-input" placeholder="cliente@email.com">
         </div>
 
         <div class="lls-field lls-field-full">
           <label class="lls-label">Dominio autorizado <span class="lls-req">*</span></label>
-          <input type="text" name="domain" value="<?= esc_attr($editing['domain'] ?? '') ?>" class="lls-input" required
+          <input type="text" name="domain" value="<?= esc_attr($field('domain')) ?>" class="lls-input" required
                  placeholder="ej: miempresa.com (sin https:// ni www)">
           <span class="lls-hint">El plugin verificará que se instale <strong>solo</strong> en este dominio. Ingresá solo el dominio raíz.</span>
         </div>
@@ -70,13 +78,13 @@ $plan    = $is_edit ? $editing['plan'] : 'starter';
 
         <div class="lls-field">
           <label class="lls-label">Fecha de vencimiento</label>
-          <input type="date" name="expires_at" value="<?= esc_attr($editing['expires_at'] ?? '') ?>" class="lls-input">
+          <input type="date" name="expires_at" value="<?= esc_attr($field('expires_at')) ?>" class="lls-input">
           <span class="lls-hint">Dejá vacío para licencia sin vencimiento.</span>
         </div>
 
         <div class="lls-field lls-field-full">
           <label class="lls-label">Notas internas</label>
-          <textarea name="notes" class="lls-input" rows="3" placeholder="Notas sobre esta licencia, pedido, condiciones, etc."><?= esc_textarea($editing['notes'] ?? '') ?></textarea>
+          <textarea name="notes" class="lls-input" rows="3" placeholder="Notas sobre esta licencia, pedido, condiciones, etc."><?= esc_textarea($field('notes')) ?></textarea>
         </div>
 
       </div>

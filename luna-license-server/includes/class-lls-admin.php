@@ -11,6 +11,7 @@ class LLS_Admin {
         add_action('admin_post_lls_delete',       [$this, 'handle_delete']);
         add_action('admin_post_lls_toggle',       [$this, 'handle_toggle']);
         add_action('admin_post_lls_save_banners', [$this, 'handle_save_banners']);
+        add_action('admin_post_lls_reject_request', [$this, 'handle_reject_request']);
         // Run schema migrations on every admin load (not just on plugin activation)
         add_action('admin_init', [$this, 'maybe_migrate']);
     }
@@ -56,6 +57,7 @@ class LLS_Admin {
         );
         add_submenu_page('luna-licenses', 'Todas las Licencias', 'Todas las Licencias', 'manage_options', 'luna-licenses',          [$this, 'page_list']);
         add_submenu_page('luna-licenses', 'Nueva Licencia',      'Nueva Licencia',      'manage_options', 'luna-licenses-new',       [$this, 'page_new']);
+        add_submenu_page('luna-licenses', 'Solicitudes',         $this->requests_menu_label(), 'manage_options', 'luna-licenses-requests', [$this, 'page_requests']);
         add_submenu_page('luna-licenses', 'Log de Verificaciones','Log',                'manage_options', 'luna-licenses-log',       [$this, 'page_log']);
         add_submenu_page('luna-licenses', 'Banners',              'Banners 📢',          'manage_options', 'luna-licenses-banners',   [$this, 'page_banners']);
         add_submenu_page('luna-licenses', 'Configuración',        'Configuración',       'manage_options', 'luna-licenses-settings',  [$this, 'page_settings']);
@@ -81,7 +83,56 @@ class LLS_Admin {
         if (!empty($_GET['edit'])) {
             $editing = LLS_License::get_by_key(sanitize_text_field($_GET['edit']));
         }
+        $prefill = [];
+        if (empty($editing) && !empty($_GET['from_request'])) {
+            global $wpdb;
+            $req = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM `{$wpdb->prefix}lls_requests` WHERE id=%d AND status='pending'",
+                (int) $_GET['from_request']
+            ), ARRAY_A);
+            if ($req) {
+                $prefill = [
+                    'request_id'     => (int) $req['id'],
+                    'customer_name'  => $req['nombre'],
+                    'customer_email' => $req['email'],
+                    'domain'         => LLS_License::normalize_domain($req['dominio']),
+                    'plan'           => $req['plan'],
+                    'expires_at'     => $req['plan'] === 'free' ? date('Y-m-d', strtotime('+30 days')) : '',
+                    'notes'          => 'Tel: ' . $req['telefono'],
+                ];
+            }
+        }
         require LLS_PLUGIN_DIR . 'admin/views/form.php';
+    }
+
+    // ── REQUESTS (solicitudes de trial/gratis desde /solicitar) ────────────────
+    private function requests_menu_label(): string {
+        global $wpdb;
+        $t = $wpdb->prefix . 'lls_requests';
+        $pending = (int) $wpdb->get_var("SELECT COUNT(*) FROM `{$t}` WHERE status='pending'");
+        return $pending ? "Solicitudes <span class=\"awaiting-mod count-{$pending}\"><span class=\"pending-count\">{$pending}</span></span>" : 'Solicitudes';
+    }
+
+    public function page_requests(): void {
+        $status = sanitize_text_field($_GET['status'] ?? 'pending');
+        global $wpdb;
+        $t = $wpdb->prefix . 'lls_requests';
+        if ($status) {
+            $rows = $wpdb->get_results($wpdb->prepare("SELECT * FROM `{$t}` WHERE status=%s ORDER BY created_at DESC LIMIT 100", $status), ARRAY_A);
+        } else {
+            $rows = $wpdb->get_results("SELECT * FROM `{$t}` ORDER BY created_at DESC LIMIT 100", ARRAY_A);
+        }
+        require LLS_PLUGIN_DIR . 'admin/views/requests.php';
+    }
+
+    public function handle_reject_request(): void {
+        check_admin_referer('lls_reject_request');
+        if (!current_user_can('manage_options')) wp_die('Sin permisos');
+        global $wpdb;
+        $id = (int) ($_POST['id'] ?? 0);
+        $wpdb->update($wpdb->prefix . 'lls_requests', ['status' => 'rejected'], ['id' => $id]);
+        wp_redirect(admin_url('admin.php?page=luna-licenses-requests&msg=rejected'));
+        exit;
     }
 
     // ── LOG ───────────────────────────────────────────────────────────────────
@@ -180,6 +231,11 @@ class LLS_Admin {
 
         $redirect = admin_url('admin.php?page=luna-licenses');
         if ($id) {
+            $request_id = (int) ($_POST['request_id'] ?? 0);
+            if ($request_id) {
+                global $wpdb;
+                $wpdb->update($wpdb->prefix . 'lls_requests', ['status' => 'sent'], ['id' => $request_id]);
+            }
             wp_redirect($redirect . '&msg=created');
         } else {
             global $wpdb;
