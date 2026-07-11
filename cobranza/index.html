@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sistema de Cobranza</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="max-width">
+      <h1>Sistema de Cobranza</h1>
+
+      <section class="panel">
+        <h2>Nuevo cliente</h2>
+        <form id="form-cliente">
+          <input type="text" id="cliente-nombre" placeholder="Nombre del cliente" required />
+          <input type="text" id="cliente-telefono" placeholder="Teléfono (opcional)" />
+          <button type="submit" class="btn">Agregar cliente</button>
+        </form>
+      </section>
+
+      <section class="panel">
+        <h2>Registrar deuda / cargo</h2>
+        <form id="form-deuda">
+          <select id="deuda-cliente" required></select>
+          <input type="text" id="deuda-concepto" placeholder="Concepto" required />
+          <input type="number" id="deuda-monto" placeholder="Monto" min="0.01" step="0.01" required />
+          <button type="submit" class="btn">Agregar cargo</button>
+        </form>
+      </section>
+
+      <section class="panel">
+        <h2>Registrar pago</h2>
+        <form id="form-pago">
+          <select id="pago-cliente" required></select>
+          <input type="number" id="pago-monto" placeholder="Monto pagado" min="0.01" step="0.01" required />
+          <button type="submit" class="btn">Registrar pago</button>
+        </form>
+      </section>
+
+      <section class="panel">
+        <h2>Clientes y saldos</h2>
+        <table id="tabla-clientes">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Teléfono</th>
+              <th>Cargos</th>
+              <th>Pagado</th>
+              <th>Saldo</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </main>
+    <footer>Hecho por DMC</footer>
+    <script src="app.js"></script>
+  </body>
+</html>
