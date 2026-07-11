@@ -1,0 +1,217 @@
+/* Estilos del Laboratorio: Modelo de Caja y Layout */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+}
+
+.max-width {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+}
+
+/* Header sticky */
+.header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    background-color: var(--purple);
+    color: #fff;
+}
+
+.header-logo {
+    font-weight: bold;
+}
+
+.header nav a {
+    color: #fff;
+    text-decoration: none;
+    margin-left: 1.5rem;
+    font-size: 0.9rem;
+}
+
+.header nav a:hover {
+    text-decoration: underline;
+}
+
+.intro {
+    line-height: 1.6;
+}
+
+.ejercicio {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #ddd;
+}
+
+.code {
+    background-color: #f2f2f2;
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.25rem;
+    font-family: monospace;
+}
+
+.panel {
+    margin-top: 1.5rem;
+}
+
+.flex {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+
+/* Ejercicio 1: Box model */
+.caja-content-box,
+.caja-border-box {
+    width: 200px;
+    padding: 20px;
+    border: 5px solid var(--purple);
+    background-color: var(--rose);
+    color: #fff;
+    text-align: center;
+}
+
+.caja-content-box {
+    box-sizing: content-box;
+}
+
+.caja-border-box {
+    box-sizing: border-box;
+}
+
+/* Ejercicio 2: Tarjetas */
+.tarjeta {
+    width: 200px;
+    padding: 16px 24px 32px 24px;
+    border-radius: 0.5rem;
+}
+
+.borde-solid {
+    border: 5px solid var(--purple);
+}
+
+.borde-dashed {
+    border: 5px dashed var(--purple);
+}
+
+.borde-dotted {
+    border: 5px dotted var(--purple);
+}
+
+.borde-double {
+    border: 8px double var(--purple);
+}
+
+/* Ejercicio 3: Overflow */
+.overflow-demo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.etiqueta {
+    font-family: monospace;
+    font-weight: bold;
+}
+
+.overflow-caja {
+    width: 150px;
+    height: 100px;
+    padding: 0.5rem;
+    border: 1px solid var(--purple);
+    border-radius: 0.5rem;
+}
+
+.demo-visible {
+    overflow: visible;
+}
+
+.demo-hidden {
+    overflow: hidden;
+}
+
+.demo-scroll {
+    overflow: scroll;
+}
+
+.demo-auto {
+    overflow: auto;
+}
+
+/* Ejercicio 4: Inline vs Block */
+.demo-block {
+    display: block;
+    background-color: #f2f2f2;
+    padding: 0.5rem;
+    margin: 0 0 0.5rem;
+}
+
+.demo-inline {
+    display: inline;
+    background-color: var(--rose);
+    color: #fff;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    text-decoration: none;
+}
+
+/* Ejercicio 5: Position */
+.producto {
+    position: relative;
+    width: 220px;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 0.5rem;
+    text-align: center;
+}
+
+.producto-img {
+    font-size: 3rem;
+}
+
+.badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: var(--purple);
+    color: #fff;
+    padding: 0.25rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+}
+
+.badge-nuevo {
+    background-color: var(--rose);
+}
+
+.volver-arriba {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--purple);
+    color: #fff;
+    border-radius: 50%;
+    text-decoration: none;
+    font-size: 1.2rem;
+}
+
+.footer {
+    text-align: center;
+    padding: 1.5rem;
+    color: #888;
+    font-size: 0.9rem;
+}

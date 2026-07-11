@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Favicon -->
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="https://renderer-v2.vercel.app/_next/image?url=https%3A%2F%2Fapi.typedream.com%2Fv0%2Fdocument%2Fpublic%2Fac4f6f0d-8160-4e58-9d18-cb5e7c880fb6_Recurso_32_png.png&w=384&q=75"
+    />
+    <!-- Estilos Base -->
+    <link
+      rel="stylesheet"
+      href="https://res.cloudinary.com/dcatzxqqf/raw/upload/v1659451742/coding/Dise%C3%B1oWebCDN/cdn_1_sjhqe3.css"
+    />
+    <!-- Estilos del Laboratorio -->
+    <link rel="stylesheet" href="style.css" />
+    <title>Laboratorio - CSS II</title>
+  </head>
+
+  <body>
+    <!-- Header sticky: híbrido entre relative y fixed -->
+    <header class="header">
+      <span class="header-logo">🧪 Laboratorio CSS II</span>
+      <nav>
+        <a href="#box-model">Box Model</a>
+        <a href="#bordes">Bordes</a>
+        <a href="#overflow">Overflow</a>
+        <a href="#position">Position</a>
+      </nav>
+    </header>
+
+    <main class="max-width">
+      <h1>Laboratorio: Modelo de Caja y Layout</h1>
+      <p class="intro">
+        En este laboratorio ponemos en práctica todo lo visto en la clase 6:
+        <b>box model, box-sizing, padding, border, margin, overflow, display y
+        position</b>. Cada sección es un ejercicio resuelto: inspeccioná el
+        código con las DevTools para ver cómo funciona cada propiedad.
+      </p>
+
+      <!-- ============================================= -->
+      <!-- Ejercicio 1: Box Model + Box Sizing            -->
+      <!-- ============================================= -->
+      <section id="box-model" class="ejercicio">
+        <h2>Ejercicio 1: Box Model y Box Sizing</h2>
+        <p>
+          Las dos cajas declaran <span class="code">width: 200px</span> y el
+          mismo padding y borde, pero la primera usa
+          <span class="code">content-box</span> (por defecto) y la segunda
+          <span class="code">border-box</span>. Miralas con las DevTools: la de
+          la izquierda termina midiendo más de 200px.
+        </p>
+        <div class="panel flex">
+          <div class="caja-content-box">content-box<br />(200px + padding + border)</div>
+          <div class="caja-border-box">border-box<br />(200px totales)</div>
+        </div>
+      </section>
+
+      <!-- ============================================= -->
+      <!-- Ejercicio 2: Padding, Border y Margin          -->
+      <!-- ============================================= -->
+      <section id="bordes" class="ejercicio">
+        <h2>Ejercicio 2: Tarjetas con Padding, Border y Margin</h2>
+        <p>
+          Cada tarjeta usa un estilo de borde distinto y el shorthand de
+          padding en sentido de las agujas del reloj:
+          <span class="code">padding: 16px 24px 32px 24px;</span>
+        </p>
+        <div class="panel flex">
+          <article class="tarjeta borde-solid">
+            <h3>Solid</h3>
+            <p>Borde sólido, el clásico de todos los días.</p>
+          </article>
+          <article class="tarjeta borde-dashed">
+            <h3>Dashed</h3>
+            <p>Borde de guiones, ideal para zonas "recortables".</p>
+          </article>
+          <article class="tarjeta borde-dotted">
+            <h3>Dotted</h3>
+            <p>Borde punteado, sutil y decorativo.</p>
+          </article>
+          <article class="tarjeta borde-double">
+            <h3>Double</h3>
+            <p>Borde doble, elegante para destacar contenido.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============================================= -->
+      <!-- Ejercicio 3: Overflow                          -->
+      <!-- ============================================= -->
+      <section id="overflow" class="ejercicio">
+        <h2>Ejercicio 3: Overflow</h2>
+        <p>
+          Cuatro cajas del mismo tamaño con el mismo texto: cambia solamente el
+          valor de <span class="code">overflow</span>.
+        </p>
+        <div class="panel flex">
+          <div class="overflow-demo">
+            <span class="etiqueta">visible</span>
+            <div class="overflow-caja demo-visible">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit, sed do
+              eiusmod tempor incididunt.
+            </div>
+          </div>
+          <div class="overflow-demo">
+            <span class="etiqueta">hidden</span>
+            <div class="overflow-caja demo-hidden">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit, sed do
+              eiusmod tempor incididunt.
+            </div>
+          </div>
+          <div class="overflow-demo">
+            <span class="etiqueta">scroll</span>
+            <div class="overflow-caja demo-scroll">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit, sed do
+              eiusmod tempor incididunt.
+            </div>
+          </div>
+          <div class="overflow-demo">
+            <span class="etiqueta">auto</span>
+            <div class="overflow-caja demo-auto">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit, sed do
+              eiusmod tempor incididunt.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================= -->
+      <!-- Ejercicio 4: Inline vs Block                   -->
+      <!-- ============================================= -->
+      <section id="display" class="ejercicio">
+        <h2>Ejercicio 4: Inline vs Block</h2>
+        <p>
+          Los elementos de bloque ocupan todo el ancho disponible; los inline,
+          solo lo que necesita su contenido.
+        </p>
+        <div class="panel">
+          <p class="demo-block">Soy un &lt;p&gt;: elemento de bloque (100% del ancho)</p>
+          <a href="#" class="demo-inline">Soy un &lt;a&gt;: inline</a>
+          <a href="#" class="demo-inline">Yo también, y me pongo al lado</a>
+        </div>
+      </section>
+
+      <!-- ============================================= -->
+      <!-- Ejercicio 5: Position                          -->
+      <!-- ============================================= -->
+      <section id="position" class="ejercicio">
+        <h2>Ejercicio 5: Position</h2>
+        <p>
+          Una tarjeta de producto con una etiqueta de descuento posicionada con
+          <span class="code">position: absolute</span> respecto de su
+          contenedor <span class="code">relative</span>. El header de arriba es
+          <span class="code">sticky</span> y el botón "↑" de abajo a la derecha
+          es <span class="code">fixed</span>.
+        </p>
+        <div class="panel flex">
+          <article class="producto">
+            <span class="badge">-30%</span>
+            <div class="producto-img">🧪</div>
+            <h3>Kit de Laboratorio</h3>
+            <p>Todo lo necesario para experimentar con CSS.</p>
+          </article>
+          <article class="producto">
+            <span class="badge badge-nuevo">Nuevo</span>
+            <div class="producto-img">⚗️</div>
+            <h3>Set de Cajas</h3>
+            <p>Cajas rectangulares: la única forma que existe en HTML.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <!-- Botón fijo respecto al viewport -->
+    <a href="#" class="volver-arriba" aria-label="Volver arriba">↑</a>
+
+    <footer class="footer">Laboratorio hecho por DMC</footer>
+  </body>
+</html>
