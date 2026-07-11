@@ -279,4 +279,28 @@ if ($method === 'GET' && $action === 'diag_verify') {
     ]);
 }
 
+// GET fix_password_column — ensancha la columna `password` a VARCHAR(255)
+// si quedó definida más angosta. Un hash bcrypt mide 60 caracteres: si la
+// columna es más chica, cada UPDATE de contraseña lo trunca en silencio y
+// el hash queda corrupto para siempre, sin importar que la clave enviada
+// sea la correcta. Esto pasa en cuentas creadas con una versión vieja del
+// plugin, porque la definición de columna solo se aplica al activar el
+// plugin por primera vez, no al subir un ZIP nuevo encima. Operación
+// segura: solo ensancha, nunca acorta ni borra datos existentes.
+if ($method === 'GET' && $action === 'fix_password_column') {
+    $table = tb('users');
+    $st = $db->prepare("SELECT CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME='password'");
+    $st->execute([$table]);
+    $before = $st->fetchColumn();
+    $before = ($before !== false && $before !== null) ? (int) $before : null;
+
+    $changed = false;
+    if ($before !== null && $before < 255) {
+        $db->exec("ALTER TABLE `{$table}` MODIFY COLUMN `password` VARCHAR(255) NOT NULL");
+        $changed = true;
+    }
+
+    jsonOut(['largo_anterior' => $before, 'ensanchada' => $changed]);
+}
+
 jsonErr('Acción no encontrada', 404);
