@@ -20,11 +20,11 @@ RSA_PUB;
 
 
     const PLANS = [
-        'free'         => ['label' => 'Gratis',        'max_workspaces' => 1,   'max_sites' => 1],
-        'starter'      => ['label' => 'Emprendedor',   'max_workspaces' => 1,   'max_sites' => 1],
-        'pyme'         => ['label' => 'Pyme',          'max_workspaces' => 2,   'max_sites' => 1],
-        'professional' => ['label' => 'Profesional',   'max_workspaces' => 3,   'max_sites' => 3],
-        'unlimited'    => ['label' => 'Corporativo',   'max_workspaces' => 999, 'max_sites' => 999],
+        'free'         => ['label' => 'Gratis',        'max_workspaces' => 1,   'max_sites' => 1,   'max_users' => 1],
+        'starter'      => ['label' => 'Emprendedor',   'max_workspaces' => 1,   'max_sites' => 1,   'max_users' => 5],
+        'pyme'         => ['label' => 'Pyme',          'max_workspaces' => 2,   'max_sites' => 1,   'max_users' => 10],
+        'professional' => ['label' => 'Profesional',   'max_workspaces' => 3,   'max_sites' => 3,   'max_users' => 20],
+        'unlimited'    => ['label' => 'Corporativo',   'max_workspaces' => 999, 'max_sites' => 999, 'max_users' => 999],
     ];
 
     public static function verify(string $key, string $domain): array {

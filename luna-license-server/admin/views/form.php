@@ -95,6 +95,7 @@ $field   = fn($k, $default = '') => $editing[$k] ?? $prefill[$k] ?? $default;
         <div class="lls-plan-card-title" id="lls-pc-title"><?= esc_html(LLS_License::plan_label($plan)) ?></div>
         <div class="lls-plan-card-row"><span>Workspaces</span><strong id="lls-pc-ws"><?= $caps['max_workspaces'] == 999 ? 'Ilimitados' : $caps['max_workspaces'] ?></strong></div>
         <div class="lls-plan-card-row"><span>Sitios autorizados</span><strong id="lls-pc-sites"><?= $caps['max_sites'] == 999 ? 'Ilimitados' : $caps['max_sites'] ?></strong></div>
+        <div class="lls-plan-card-row"><span>Usuarios</span><strong id="lls-pc-users"><?= $caps['max_users'] == 999 ? 'Ilimitados' : $caps['max_users'] ?></strong></div>
       </div>
 
       <div class="lls-form-footer">
@@ -114,5 +115,6 @@ function llsUpdatePlan(plan) {
   document.getElementById('lls-pc-title').textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
   document.getElementById('lls-pc-ws').textContent    = p.max_workspaces >= 999 ? 'Ilimitados' : p.max_workspaces;
   document.getElementById('lls-pc-sites').textContent = p.max_sites      >= 999 ? 'Ilimitados' : p.max_sites;
+  document.getElementById('lls-pc-users').textContent = p.max_users      >= 999 ? 'Ilimitados' : p.max_users;
 }
 </script>

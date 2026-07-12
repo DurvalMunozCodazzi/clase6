@@ -22,6 +22,7 @@ class LLS_Activator {
             status        ENUM('active','inactive','suspended') NOT NULL DEFAULT 'active',
             max_workspaces SMALLINT UNSIGNED NOT NULL DEFAULT 1,
             max_sites      SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+            max_users      SMALLINT UNSIGNED NOT NULL DEFAULT 1,
             expires_at    DATE         NULL DEFAULT NULL,
             notes         TEXT         NULL,
             created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,

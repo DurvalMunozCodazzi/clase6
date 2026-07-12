@@ -45,8 +45,8 @@ if ($method === 'POST' && $action === 'create') {
 
     // Plan user limit check
     try { $lic = getLicenseInfo(); } catch (\Exception $e) { $lic = ['plan' => 'free', 'max_users' => 1]; }
-    $maxUsers = isset($lic['max_users']) ? (int)$lic['max_users'] : 999;
-    if ($maxUsers > 0 && $maxUsers < 999) {
+    $maxUsers = isset($lic['max_users']) ? (int)$lic['max_users'] : 1;
+    if ($maxUsers < 9999) {  // 9999 = Unlimited plan; anything less is enforced
         $totalUsers = (int)$db->query("SELECT COUNT(*) FROM ".tb('users'))->fetchColumn();
         if ($totalUsers >= $maxUsers) {
             jsonErr('Límite de usuarios alcanzado para tu plan (' . $maxUsers . '). Actualizá tu licencia en el panel de WordPress.', 403);

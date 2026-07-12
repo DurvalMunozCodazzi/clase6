@@ -27,6 +27,8 @@ class LLS_Admin {
             $wpdb->query("ALTER TABLE `{$t_lic}` ADD COLUMN `max_workspaces` SMALLINT UNSIGNED NOT NULL DEFAULT 1");
         if (!in_array('max_sites', $lic_cols))
             $wpdb->query("ALTER TABLE `{$t_lic}` ADD COLUMN `max_sites` SMALLINT UNSIGNED NOT NULL DEFAULT 1");
+        if (!in_array('max_users', $lic_cols))
+            $wpdb->query("ALTER TABLE `{$t_lic}` ADD COLUMN `max_users` SMALLINT UNSIGNED NOT NULL DEFAULT 999");
         if (!in_array('notes', $lic_cols))
             $wpdb->query("ALTER TABLE `{$t_lic}` ADD COLUMN `notes` TEXT NULL");
         if (!in_array('updated_at', $lic_cols))

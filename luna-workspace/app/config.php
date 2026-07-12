@@ -157,7 +157,7 @@ function getLicenseInfo() {
     static $info = null;
     if ($info !== null) return $info;
     $key = LUNA_LICENSE_KEY;
-    if (!$key) { $info = ['valid' => false, 'plan' => 'none', 'max_workspaces' => 0, 'reason' => 'no_key']; return $info; }
+    if (!$key) { $info = ['valid' => false, 'plan' => 'none', 'max_workspaces' => 0, 'max_users' => 0, 'reason' => 'no_key']; return $info; }
     $cache_file = __DIR__ . '/luna-license-cache.json';
     if (file_exists($cache_file)) {
         $c = json_decode(file_get_contents($cache_file), true);
@@ -189,7 +189,7 @@ function getLicenseInfo() {
                     $c = json_decode(file_get_contents($cache_file), true);
                     if ($c && is_array($c)) { $info = $c; return $info; }
                 }
-                $info = ['valid' => false, 'plan' => 'none', 'max_workspaces' => 0, 'reason' => 'rate_limited'];
+                $info = ['valid' => false, 'plan' => 'none', 'max_workspaces' => 0, 'max_users' => 0, 'reason' => 'rate_limited'];
                 return $info;
             }
             if (!$r || $code < 200 || $code >= 300) $r = null;
@@ -211,7 +211,7 @@ function getLicenseInfo() {
             if (defined('LUNA_HMAC_SECRET') && LUNA_HMAC_SECRET) {
                 if (empty($data['hmac']) || empty($data['issued_at'])) {
                     // Respuesta sin firma cuando el servidor requiere firma — rechazar
-                    $info = ['valid' => false, 'plan' => 'none', 'max_workspaces' => 0, 'reason' => 'missing_signature'];
+                    $info = ['valid' => false, 'plan' => 'none', 'max_workspaces' => 0, 'max_users' => 0, 'reason' => 'missing_signature'];
                     return $info;
                 }
             }
@@ -227,7 +227,7 @@ function getLicenseInfo() {
                 $expected = hash_hmac('sha256', $sign_payload, LUNA_HMAC_SECRET);
                 if (!hash_equals($expected, $data['hmac'])) {
                     // Firma inválida — tratar como offline restrictivo
-                    $info = ['valid' => false, 'plan' => 'none', 'max_workspaces' => 0,
+                    $info = ['valid' => false, 'plan' => 'none', 'max_workspaces' => 0, 'max_users' => 0,
                              'reason' => 'invalid_signature'];
                     return $info;
                 }
@@ -242,14 +242,14 @@ function getLicenseInfo() {
                 if ($c && is_array($c)) { $info = $c; return $info; }
             }
             // Sin caché y servidor inalcanzable: denegar acceso
-            $info = ['valid' => false, 'plan' => 'none', 'max_workspaces' => 0, 'reason' => 'server_unreachable'];
+            $info = ['valid' => false, 'plan' => 'none', 'max_workspaces' => 0, 'max_users' => 0, 'reason' => 'server_unreachable'];
         }
     } catch (\Exception $e) {
         if (file_exists($cache_file)) {
             $c = @json_decode(@file_get_contents($cache_file), true);
             if ($c && is_array($c)) { $info = $c; return $info; }
         }
-        $info = ['valid' => false, 'plan' => 'none', 'max_workspaces' => 0, 'reason' => 'exception'];
+        $info = ['valid' => false, 'plan' => 'none', 'max_workspaces' => 0, 'max_users' => 0, 'reason' => 'exception'];
     }
     return $info;
 }

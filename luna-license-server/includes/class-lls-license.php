@@ -4,11 +4,11 @@ defined('ABSPATH') || exit;
 class LLS_License {
 
     const PLANS = [
-        'free'         => ['label' => 'Gratis',       'max_workspaces' => 1,   'max_sites' => 1],
-        'starter'      => ['label' => 'Emprendedor',  'max_workspaces' => 1,   'max_sites' => 1],
-        'pyme'         => ['label' => 'Pyme',          'max_workspaces' => 2,   'max_sites' => 1],
-        'professional' => ['label' => 'Profesional',  'max_workspaces' => 3,   'max_sites' => 3],
-        'unlimited'    => ['label' => 'Corporativo',  'max_workspaces' => 999, 'max_sites' => 999],
+        'free'         => ['label' => 'Gratis',       'max_workspaces' => 1,   'max_sites' => 1,   'max_users' => 1],
+        'starter'      => ['label' => 'Emprendedor',  'max_workspaces' => 1,   'max_sites' => 1,   'max_users' => 5],
+        'pyme'         => ['label' => 'Pyme',          'max_workspaces' => 2,   'max_sites' => 1,   'max_users' => 10],
+        'professional' => ['label' => 'Profesional',  'max_workspaces' => 3,   'max_sites' => 3,   'max_users' => 20],
+        'unlimited'    => ['label' => 'Corporativo',  'max_workspaces' => 999, 'max_sites' => 999, 'max_users' => 999],
     ];
 
     // Generate a unique license key: LUNA-XXXX-XXXX-XXXX-XXXX
@@ -44,6 +44,7 @@ class LLS_License {
             'status'         => 'active',
             'max_workspaces' => (int)($data['max_workspaces'] ?? $caps['max_workspaces']),
             'max_sites'      => (int)($data['max_sites']      ?? $caps['max_sites']),
+            'max_users'      => (int)($data['max_users']      ?? $caps['max_users']),
             'expires_at'     => !empty($data['expires_at']) ? $data['expires_at'] : null,
             'notes'          => sanitize_textarea_field($data['notes'] ?? ''),
         ];
@@ -105,7 +106,7 @@ class LLS_License {
         global $wpdb;
         $t = $wpdb->prefix . 'lls_licenses';
 
-        $allowed = ['customer_name','customer_email','domain','plan','status','max_workspaces','max_sites','expires_at','notes'];
+        $allowed = ['customer_name','customer_email','domain','plan','status','max_workspaces','max_sites','max_users','expires_at','notes'];
         $update  = [];
         foreach ($allowed as $field) {
             if (array_key_exists($field, $data)) {
@@ -120,6 +121,7 @@ class LLS_License {
             $caps = self::PLANS[$update['plan']] ?? self::PLANS['starter'];
             if (!isset($data['max_workspaces'])) $update['max_workspaces'] = $caps['max_workspaces'];
             if (!isset($data['max_sites']))      $update['max_sites']      = $caps['max_sites'];
+            if (!isset($data['max_users']))      $update['max_users']      = $caps['max_users'];
         }
 
         if (empty($update)) return false;
@@ -203,6 +205,7 @@ class LLS_License {
             'issued_at'      => $issued_at,
             'max_workspaces' => (int) $lic['max_workspaces'],
             'max_sites'      => (int) $lic['max_sites'],
+            'max_users'      => isset($lic['max_users']) ? (int) $lic['max_users'] : 999,
             'sig'            => $sig,
         ];
     }
