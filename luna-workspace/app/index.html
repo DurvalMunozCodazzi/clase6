@@ -171,6 +171,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 .av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;flex-shrink:0}
 .av24{width:24px;height:24px;font-size:9px}.av32{width:32px;height:32px;font-size:11px}.av38{width:38px;height:38px;font-size:13px}.av46{width:46px;height:46px;font-size:16px}
 #ads-strip{position:fixed;top:var(--th);left:0;right:0;height:34px;z-index:99;align-items:center;gap:12px;background:linear-gradient(90deg,#5b6af0,#06b6d4);color:#fff;padding:0 16px}
+#ads-strip-logo{width:24px;height:24px;border-radius:4px;object-fit:contain;background:#fff;flex-shrink:0;cursor:pointer}
 #ads-strip-text{flex:1;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;font-weight:600;cursor:pointer}
 #ads-strip-upgrade{height:24px;padding:0 12px;border-radius:6px;border:none;background:rgba(255,255,255,.25);color:#fff;font-weight:700;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0;font-family:var(--f)}
 #ads-strip-upgrade:hover{background:rgba(255,255,255,.4)}
@@ -934,6 +935,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
     <button class="tbtn" onclick="doLogout()" title="Cerrar sesion" style="color:var(--er);border-color:transparent;background:transparent"><i class="fas fa-sign-out-alt"></i></button>
   </div>
   <div id="ads-strip" style="display:none">
+    <img id="ads-strip-logo" onclick="adsBannerClick()" style="display:none">
     <div id="ads-strip-text" onclick="adsBannerClick()"></div>
     <button id="ads-strip-upgrade" onclick="adsUpgradeClick()"></button>
   </div>
@@ -5103,6 +5105,9 @@ function renderAdBanner(){
   const txt=document.getElementById('ads-strip-text');
   txt.textContent=b.text||'';
   txt.dataset.url=b.link||'';
+  const logo=document.getElementById('ads-strip-logo');
+  if(b.img){ logo.src=b.img; logo.style.display='block'; logo.dataset.url=b.link||''; }
+  else{ logo.style.display='none'; logo.removeAttribute('src'); }
 }
 function adsBannerClick(){
   const url=document.getElementById('ads-strip-text').dataset.url;
