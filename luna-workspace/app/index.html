@@ -1073,7 +1073,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
           <div class="fg"><label class="fl">Fecha inicio</label><input type="date" class="fi" id="cmstart"></div>
           <div class="fg"><label class="fl">Fecha limite</label><input type="date" class="fi" id="cmdue"></div>
           <div class="fg"><label class="fl">Estimacion (h)</label><input type="number" class="fi" id="cmest" min="0" step="0.5"></div>
-          <div class="fg"><label class="fl">Cliente</label><select class="fse" id="cm-client-sel"><option value="">Sin cliente</option></select></div>
+          <div class="fg"><label class="fl">Cliente</label><input class="fi" id="cm-client-display" placeholder="Sin cliente" readonly autocomplete="off" style="cursor:pointer" onclick="openClientPicker(event)"><input type="hidden" id="cm-client-id" value=""></div>
           <div class="fg"><label class="fl">Total a cobrar ($)</label><input type="number" class="fi" id="cm-total-amount" min="0" step="0.01" placeholder="0.00"></div>
         </div>
         <div class="fg">
@@ -5906,19 +5906,41 @@ async function _cobAjax(sub, extra={}) {
 async function loadClients() {
   try {
     COB_CLIENTS = await _cobAjax('get_clients');
-    const sel = document.getElementById('cm-client-sel');
-    if (sel) {
-      const cur = sel.value;
-      sel.innerHTML = '<option value="">Sin cliente</option>' +
-        COB_CLIENTS.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-      if (cur) sel.value = cur;
-    }
-    const isel = document.getElementById('inf-client');
-    if (isel) {
-      isel.innerHTML = '<option value="">Todos los clientes</option>' +
-        COB_CLIENTS.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-    }
   } catch(e) { /* sin clientes */ }
+}
+
+// ── Selector de cliente con popup + buscador ─────────────────────────────
+function openClientPicker(e) {
+  e.stopPropagation();
+  rmCtx();
+  const rect = e.target.getBoundingClientRect();
+  const m = document.createElement('div');
+  m.className = 'ctxm';
+  m.style.cssText = `left:${Math.round(rect.left)}px;top:${Math.round(rect.bottom+4)}px;min-width:${Math.max(rect.width,220)}px;max-height:280px;overflow-y:auto`;
+  m.innerHTML = `<input type="text" class="fi" id="cm-client-search" placeholder="Buscar cliente..." autocomplete="off" style="margin-bottom:4px" oninput="renderClientPickerList(this.value)">
+    <div id="cm-client-list"></div>`;
+  m.addEventListener('click', ev => ev.stopPropagation());
+  document.body.appendChild(m);
+  renderClientPickerList('');
+  setTimeout(() => {
+    document.getElementById('cm-client-search')?.focus();
+    document.addEventListener('click', rmCtx, {once:true});
+  }, 0);
+}
+function renderClientPickerList(filter) {
+  const list = document.getElementById('cm-client-list'); if (!list) return;
+  const f = (filter||'').trim().toLowerCase();
+  const filtered = COB_CLIENTS.filter(c => c.name.toLowerCase().includes(f));
+  let html = `<div class="ctxi" onclick="selectClient('','')"><i class="fas fa-ban" style="width:14px"></i> Sin cliente</div>`;
+  html += filtered.map(c => `<div class="ctxi" onclick="selectClient(${c.id},'${esc(c.name).replace(/'/g,"&#39;")}')"><i class="fas fa-user" style="width:14px"></i> ${esc(c.name)}</div>`).join('');
+  if (!filtered.length) html += `<div style="padding:7px 12px;font-size:11px;color:var(--t3)">Sin resultados</div>`;
+  list.innerHTML = html;
+}
+function selectClient(id, name) {
+  document.getElementById('cm-client-id').value = id;
+  document.getElementById('cm-client-display').value = name || '';
+  document.getElementById('cm-client-display').placeholder = 'Sin cliente';
+  rmCtx();
 }
 
 async function loadCardCobros(cardId) {
@@ -5927,8 +5949,10 @@ async function loadCardCobros(cardId) {
   } catch(e) {
     COB_DATA = { meta: null, payments: [], cobrado: 0 };
   }
-  const sel = document.getElementById('cm-client-sel');
-  if (sel && COB_DATA.meta) sel.value = COB_DATA.meta.client_id || '';
+  const clientId = (COB_DATA.meta && COB_DATA.meta.client_id) || '';
+  const client = clientId ? COB_CLIENTS.find(c => c.id == clientId) : null;
+  document.getElementById('cm-client-id').value = clientId;
+  document.getElementById('cm-client-display').value = client ? client.name : '';
   const ta = document.getElementById('cm-total-amount');
   if (ta && COB_DATA.meta) ta.value = COB_DATA.meta.total_amount || '';
   renderCobros();
@@ -5991,7 +6015,7 @@ async function delCobro(id) {
 }
 
 async function saveCardCobros() {
-  const clientId = document.getElementById('cm-client-sel')?.value || '';
+  const clientId = document.getElementById('cm-client-id')?.value || '';
   const total    = document.getElementById('cm-total-amount')?.value || '0';
   try {
     await _cobAjax('save_card_meta', { card_id: editCardId, client_id: clientId, total_amount: total });
