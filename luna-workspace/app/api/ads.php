@@ -9,7 +9,7 @@ $lic  = getLicenseInfo();
 $plan = $lic['plan'] ?? 'none';
 
 if (!in_array($plan, ['free', 'none'], true)) {
-    jsonOut(['banners' => [], 'upgrade_url' => '', 'upgrade_text' => '']);
+    jsonOut(['banners' => [], 'upgrade_url' => '', 'upgrade_text' => '', 'plan' => $plan]);
 }
 
 $empty = ['banners' => [], 'upgrade_url' => 'https://websobreruedas.com/luna-planes', 'upgrade_text' => '⚡ Quitar anuncios'];
@@ -18,7 +18,7 @@ $cache_file = __DIR__ . '/../luna-ads-cache.json';
 $ttl        = 6 * 3600; // 6 horas
 if (file_exists($cache_file) && (time() - filemtime($cache_file)) < $ttl) {
     $cached = json_decode(file_get_contents($cache_file), true);
-    if (is_array($cached)) jsonOut($cached);
+    if (is_array($cached)) jsonOut($cached + ['plan' => $plan]);
 }
 
 $host   = parse_url(LUNA_LICENSE_SERVER, PHP_URL_HOST)   ?: 'websobreruedas.com';
@@ -39,4 +39,4 @@ if (!is_array($data)) {
     @file_put_contents($cache_file, json_encode($data, JSON_UNESCAPED_UNICODE), LOCK_EX);
 }
 
-jsonOut($data);
+jsonOut($data + ['plan' => $plan]);

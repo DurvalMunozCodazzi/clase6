@@ -123,12 +123,18 @@ if ($method === 'PUT' && $action === 'update') {
     $sets = array_map(function($k){ return "$k=?"; }, array_keys($fields));
     $vals = array_values($fields);
 
-    // Notification channel fields
-    if (isset($b['phone']))                { $sets[]='phone=?';                $vals[]=trim($b['phone']); }
-    if (isset($b['whatsapp_apikey']))      { $sets[]='whatsapp_apikey=?';      $vals[]=trim($b['whatsapp_apikey']); }
-    if (isset($b['telegram_chat_id']))     { $sets[]='telegram_chat_id=?';     $vals[]=trim($b['telegram_chat_id']) ?: null; }
+    // Notification channel fields — WhatsApp/Telegram son función de planes
+    // pagos; en el plan Gratis se ignoran silenciosamente aunque los manden
+    // (el frontend ya deshabilita estos campos, esto es el respaldo server-side)
+    try { $lic = getLicenseInfo(); } catch (\Exception $e) { $lic = ['plan' => 'free']; }
+    $planActual = $lic['plan'] ?? 'none';
+    $puedeWhatsappTelegram = !in_array($planActual, ['free', 'none'], true);
+
+    if (isset($b['phone']))                { $sets[]='phone=?';                $vals[]=$puedeWhatsappTelegram ? trim($b['phone']) : ''; }
+    if (isset($b['whatsapp_apikey']))      { $sets[]='whatsapp_apikey=?';      $vals[]=$puedeWhatsappTelegram ? trim($b['whatsapp_apikey']) : ''; }
+    if (isset($b['telegram_chat_id']))     { $sets[]='telegram_chat_id=?';     $vals[]=$puedeWhatsappTelegram ? (trim($b['telegram_chat_id']) ?: null) : null; }
     if (array_key_exists('notification_channel',$b) && in_array($b['notification_channel'],['email','whatsapp','telegram','all','none'])) {
-        $sets[]='notification_channel=?'; $vals[]=$b['notification_channel'];
+        $sets[]='notification_channel=?'; $vals[]=$puedeWhatsappTelegram ? $b['notification_channel'] : 'email';
     }
 
     $vals[] = $targetId;

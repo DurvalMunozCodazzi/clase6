@@ -1176,6 +1176,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
       <div class="fg"><label class="fl">Notas</label><textarea class="fta" id="umnts" placeholder="Notas..." style="min-height:50px"></textarea></div>
       <div style="border-top:1px solid var(--bdr);padding-top:14px;margin-top:4px">
         <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.3px">📱 Notificaciones</div>
+        <div id="um-notif-lock" style="display:none;font-size:11px;color:var(--wa);background:var(--accg);border-radius:var(--r);padding:8px 10px;margin-bottom:10px">🔒 WhatsApp y Telegram no están disponibles en el plan Gratis. <a href="https://websobreruedas.com/luna-planes" target="_blank" style="color:var(--acc);font-weight:700">Actualizar plan →</a></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="fg"><label class="fl">Canal preferido</label><select class="fse" id="umch"><option value="email">Email</option><option value="whatsapp">WhatsApp</option><option value="telegram">Telegram</option><option value="all">Todos</option><option value="none">Ninguno</option></select></div>
           <div class="fg"><label class="fl">Teléfono (WhatsApp)</label><input class="fi" id="umph" placeholder="+5491XXXXXXXXX" type="tel"></div>
@@ -1206,6 +1207,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
       </div>
       <div style="border-top:1px solid var(--bdr);padding-top:14px;margin-top:4px">
         <div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.3px">📱 Notificaciones</div>
+        <div id="pm-notif-lock" style="display:none;font-size:11px;color:var(--wa);background:var(--accg);border-radius:var(--r);padding:8px 10px;margin-bottom:10px">🔒 WhatsApp y Telegram no están disponibles en el plan Gratis. <a href="https://websobreruedas.com/luna-planes" target="_blank" style="color:var(--acc);font-weight:700">Actualizar plan →</a></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="fg"><label class="fl">Canal preferido</label><select class="fse" id="pmch"><option value="email">Email</option><option value="whatsapp">WhatsApp</option><option value="telegram">Telegram</option><option value="all">Todos</option><option value="none">Ninguno</option></select></div>
           <div class="fg"><label class="fl">Teléfono (WhatsApp)</label><input class="fi" id="pmph" placeholder="+5491XXXXXXXXX" type="tel"></div>
@@ -2612,6 +2614,7 @@ function openNUM(defRole){
   document.getElementById('umdel').style.display='none';
   document.getElementById('pass-lbl').textContent='Contrasena *';
   document.getElementById('pass-hint').textContent='Requerida para nuevos usuarios.';
+  applyNotifLock('um');
   openMo('userMo');setTimeout(()=>document.getElementById('umn').focus(),100);
 }
 function openEUM(userId){
@@ -2641,6 +2644,7 @@ function openEUM(userId){
   document.getElementById('umwak').value=u.whatsapp_apikey||'';
   document.getElementById('umtg').value=u.telegram_chat_id||'';
   document.getElementById('umdel').style.display=u.id==ME.id?'none':'flex';
+  applyNotifLock('um');
   openMo('userMo');
 }
 function updUAv(){const n=document.getElementById('umn').value,c=document.getElementById('umcl').value,av=document.getElementById('umav');av.style.background=c;av.textContent=n?ini(n):'?'}
@@ -2729,6 +2733,7 @@ function openPM(){
   const av=document.getElementById('pmav');
   if(u.photo){ av.innerHTML=`<img src="${u.photo}" class="av-photo" style="width:46px;height:46px">`; av.style.background='transparent'; }
   else { av.innerHTML=''; av.style.background=u.color; av.textContent=ini(u.name); }
+  applyNotifLock('pm');
   openMo('profMo');
 }
 function updPAv(){const c=document.getElementById('pmcl').value,av=document.getElementById('pmav');av.style.background=c;av.textContent=ini(document.getElementById('pmn').value||'?')}
@@ -5080,9 +5085,26 @@ function applyRole(){
 //  PUBLICIDAD (solo plan gratis/trial — nunca en planes pagos)
 // ══════════════════════════════════════════════
 let ADS_BANNERS=[], ADS_IDX=0, adsRotateT=null;
+let CURRENT_PLAN='free';
+function isFreePlan(){ return CURRENT_PLAN==='free' || CURRENT_PLAN==='none'; }
+function applyNotifLock(prefix){
+  const locked=isFreePlan();
+  const lockEl=document.getElementById(prefix+'-notif-lock');
+  if(lockEl) lockEl.style.display=locked?'block':'none';
+  ['ph','wak','tg'].forEach(suf=>{
+    const el=document.getElementById(prefix+suf);
+    if(el) el.disabled=locked;
+  });
+  const chEl=document.getElementById(prefix+'ch');
+  if(chEl){
+    if(locked) chEl.value='email';
+    chEl.disabled=locked;
+  }
+}
 async function loadAds(){
   try{
     const d=await api('ads.php');
+    CURRENT_PLAN=d.plan||'free';
     ADS_BANNERS=Array.isArray(d.banners)?d.banners:[];
     const strip=document.getElementById('ads-strip');
     const upBtn=document.getElementById('ads-strip-upgrade');
