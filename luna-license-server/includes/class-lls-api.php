@@ -60,11 +60,12 @@ class LLS_Api {
         $telefono = $request->get_param('telefono');
         $dominio  = LLS_License::normalize_domain($request->get_param('dominio'));
         $plan_raw = $request->get_param('plan') ?: 'free';
-        $plan     = in_array($plan_raw, ['free','starter','professional','unlimited'], true) ? $plan_raw : 'free';
+        $plan     = in_array($plan_raw, ['free','starter','pyme','professional','unlimited'], true) ? $plan_raw : 'free';
 
         $plan_labels = [
             'free'         => 'Gratis ($0/mes)',
             'starter'      => 'Emprendedor ($19/mes)',
+            'pyme'         => 'Pyme ($29/mes)',
             'professional' => 'Profesional ($59/mes)',
             'unlimited'    => 'Corporativo ($129/mes)',
         ];

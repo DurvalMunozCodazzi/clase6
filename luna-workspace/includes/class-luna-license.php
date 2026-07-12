@@ -22,6 +22,7 @@ RSA_PUB;
     const PLANS = [
         'free'         => ['label' => 'Gratis',        'max_workspaces' => 1,   'max_sites' => 1],
         'starter'      => ['label' => 'Básico',        'max_workspaces' => 1,   'max_sites' => 1],
+        'pyme'         => ['label' => 'Pyme',          'max_workspaces' => 2,   'max_sites' => 1],
         'professional' => ['label' => 'Profesional',   'max_workspaces' => 3,   'max_sites' => 3],
         'unlimited'    => ['label' => 'Corporativo',   'max_workspaces' => 999, 'max_sites' => 999],
     ];
