@@ -4,6 +4,15 @@ $me = requireAuth();
 $db = getDB();
 
 $wsId = intval($_SERVER['HTTP_X_WORKSPACE_ID'] ?? $_GET['ws'] ?? 1);
+if ($wsId < 1) $wsId = 1;
+
+// Verificar acceso al workspace — sin esto cualquier usuario autenticado
+// podía ver las métricas de cualquier otro workspace cambiando ?ws=
+if ($me['role'] !== 'admin') {
+    $acc = $db->prepare("SELECT role FROM ".tb('workspace_members')." WHERE workspace_id=? AND user_id=?");
+    $acc->execute([$wsId, $me['id']]);
+    if (!$acc->fetch()) jsonErr('Sin acceso a este workspace', 403);
+}
 
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? 'dashboard';

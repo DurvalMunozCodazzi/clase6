@@ -21,6 +21,13 @@ if ($me['role'] !== 'admin') {
     }
 }
 
+// El rol 'visitor' es de solo lectura — bloquear cualquier acción de
+// escritura acá (antes solo create_label/update_label/delete_label lo
+// chequeaban, dejando pasar altas/ediciones/borrados de columnas y tarjetas)
+if ($method !== 'GET' && $me['role'] === 'visitor') {
+    jsonErr('Sin permisos — tu rol es de solo lectura', 403);
+}
+
 // ── GET full board state ──────────────────────────────────────────
 if ($method === 'GET' && $action === 'board') {
     // Columns

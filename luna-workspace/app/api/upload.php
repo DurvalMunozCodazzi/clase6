@@ -24,11 +24,19 @@ if (!file_exists($htaccess)) {
 $cardId = intval($_POST['card_id'] ?? 0);
 if (!$cardId) jsonErr('card_id requerido');
 
-// Verificar que la tarjeta existe
+// Verificar que la tarjeta existe Y que pertenece a un workspace del usuario
+// (antes solo se verificaba que la tarjeta existiera — cualquier usuario
+// autenticado podía adjuntar archivos a tarjetas de otros workspaces)
 $db = getDB();
-$card = $db->prepare("SELECT id FROM ".tb('cards')." WHERE id=?");
+$card = $db->prepare("SELECT id, workspace_id FROM ".tb('cards')." WHERE id=?");
 $card->execute([$cardId]);
-if (!$card->fetch()) jsonErr('Tarjeta no encontrada', 404);
+$cardRow = $card->fetch();
+if (!$cardRow) jsonErr('Tarjeta no encontrada', 404);
+if ($me['role'] !== 'admin') {
+    $acc = $db->prepare("SELECT role FROM ".tb('workspace_members')." WHERE workspace_id=? AND user_id=?");
+    $acc->execute([$cardRow['workspace_id'], $me['id']]);
+    if (!$acc->fetch()) jsonErr('Sin acceso a este workspace', 403);
+}
 
 if (empty($_FILES['file'])) jsonErr('No se recibió ningún archivo');
 

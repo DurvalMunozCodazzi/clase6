@@ -45,8 +45,10 @@ if ($method === 'GET' && $action === 'count') {
     jsonOut(['count' => (int)$count->fetchColumn()]);
 }
 
-// ── POST send WhatsApp via CallMeBot ─────────
+// ── POST send WhatsApp via CallMeBot (solo admin — envía mensajes a
+// costo/nombre de otros usuarios, no puede quedar abierto a cualquier rol) ─
 if ($method === 'POST' && $action === 'send_whatsapp') {
+    if ($me['role'] !== 'admin') jsonErr('Solo el administrador puede enviar notificaciones por WhatsApp', 403);
     try { $lic = getLicenseInfo(); } catch (\Exception $e) { $lic = ['plan' => 'free']; }
     if (($lic['plan'] ?? '') === 'free' || ($lic['notifications'] ?? true) === false) {
         jsonErr('Las notificaciones no están disponibles en el plan Gratis. Actualizá tu licencia.', 403);
@@ -72,7 +74,7 @@ if ($method === 'POST' && $action === 'send_whatsapp') {
         ]);
         $ctx  = stream_context_create(['http' => ['timeout' => 20, 'ignore_errors' => true]]);
         $resp = @file_get_contents($url, false, $ctx);
-        $ok   = ($resp !== false && stripos($resp, 'Message Sent') !== false);
+        $ok   = ($resp !== false && (stripos($resp, 'Message Sent') !== false || stripos($resp, 'Message queued') !== false));
         $results[] = ['id' => $uid, 'name' => $u['name'], 'ok' => $ok, 'error' => $ok ? null : 'CallMeBot no confirmó envío'];
     }
     jsonOut(['results' => $results]);
