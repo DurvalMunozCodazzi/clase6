@@ -91,7 +91,8 @@ class LLS_Api {
         // Notificar a Durval por WhatsApp (CallMeBot)
         $apikey = get_option('lls_callmebot_apikey', '6291539');
         $phone  = get_option('lls_callmebot_phone',  '5491153283558');
-        $texto  = "🌙 Nueva solicitud Luna:\n👤 {$nombre}\n📧 {$email}\n📱 {$telefono}\n🌐 {$dominio}\n💼 Plan: {$plan_label}";
+        $espera_pago = $plan !== 'free' ? "\n⏳ Plan pago — esperar comprobante antes de crear la licencia." : '';
+        $texto  = "🌙 Nueva solicitud Luna:\n👤 {$nombre}\n📧 {$email}\n📱 {$telefono}\n🌐 {$dominio}\n💼 Plan: {$plan_label}{$espera_pago}";
         wp_remote_get(add_query_arg([
             'phone'  => $phone,
             'text'   => urlencode($texto),
@@ -99,9 +100,16 @@ class LLS_Api {
         ], 'https://api.callmebot.com/whatsapp.php'), ['timeout' => 10, 'blocking' => false]);
 
         // Email de confirmación al cliente
+        $pago_info = $plan !== 'free'
+            ? "Para activar tu licencia, transferí el pago por uno de estos medios y mandanos el "
+              . "comprobante por WhatsApp al +54 9 11 5328-3558:\n"
+              . "  • Transferencia bancaria — alias: durvaldemisiones\n"
+              . "  • Mercado Pago — alias: websobreruedascom.mp\n\n"
+            : '';
         $asunto  = '🌙 Recibimos tu solicitud — Luna Workspace';
         $cuerpo  = "Hola {$nombre},\n\n"
             . "Recibimos tu solicitud del plan {$plan_label} para el dominio {$dominio}.\n\n"
+            . $pago_info
             . "En las próximas horas te enviamos:\n"
             . "  • El plugin Luna Workspace por este email\n"
             . "  • Tu clave de activación por WhatsApp al {$telefono}\n\n"

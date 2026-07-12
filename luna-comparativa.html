@@ -1329,7 +1329,13 @@
       });
       const data = await res.json();
       if (data.ok) {
-        msg.textContent = '✓ ¡Solicitud enviada! Revisá tu email y WhatsApp en las próximas horas.';
+        if (plan === 'free') {
+          msg.textContent = '✓ ¡Solicitud enviada! Revisá tu email y WhatsApp en las próximas horas.';
+        } else {
+          msg.innerHTML = '✓ ¡Solicitud recibida! Para activar tu licencia, transferí el pago por uno de estos medios y mandanos el comprobante por WhatsApp:<br>'
+            + '<strong>Transferencia bancaria</strong> — alias: <code>durvaldemisiones</code><br>'
+            + '<strong>Mercado Pago</strong> — alias: <code>websobreruedascom.mp</code>';
+        }
         msg.className = 'modal-msg ok';
         btn.textContent = '¡Listo!';
       } else {

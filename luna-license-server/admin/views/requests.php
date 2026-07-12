@@ -47,7 +47,12 @@
             <td><?= esc_html($req['email']) ?></td>
             <td><?= esc_html($req['telefono']) ?></td>
             <td><span class="lls-domain"><?= esc_html($req['dominio']) ?></span></td>
-            <td><span class="lls-plan lls-plan-<?= esc_attr($req['plan']) ?>"><?= esc_html(LLS_License::plan_label($req['plan'])) ?></span></td>
+            <td>
+              <span class="lls-plan lls-plan-<?= esc_attr($req['plan']) ?>"><?= esc_html(LLS_License::plan_label($req['plan'])) ?></span>
+              <?php if ($req['plan'] !== 'free' && $req['status'] === 'pending'): ?>
+                <br><small style="color:#c62828">⏳ Verificar comprobante antes de aprobar</small>
+              <?php endif; ?>
+            </td>
             <td><span class="lls-meta"><?= esc_html(substr($req['created_at'], 0, 16)) ?></span></td>
             <td><span class="lls-badge lls-badge-<?= $status_cls ?>"><?= esc_html($status_label) ?></span></td>
             <td class="lls-actions">
