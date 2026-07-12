@@ -3,7 +3,7 @@
  * Plugin Name:       Luna Workspace
  * Plugin URI:        https://websobreruedas.com
  * Description:       Pizarra Colaborativa, gestión de tareas, equipos y proyectos. Versión 11.1.53 | Por Web Sobre Ruedas | 2026 | websobreruedas.com
- * Version:           11.1.91
+ * Version:           11.1.92
  * Author:            Web Sobre Ruedas
  * License:           Proprietary
  * Text Domain:       luna-workspace
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('LUNA_VERSION',     '11.1.91');
+define('LUNA_VERSION',     '11.1.92');
 define('LUNA_PLUGIN_DIR',  plugin_dir_path(__FILE__));
 define('LUNA_PLUGIN_URL',  plugin_dir_url(__FILE__));
 define('LUNA_APP_DIR',     LUNA_PLUGIN_DIR . 'app/');
@@ -432,7 +432,7 @@ function luna_ajax_cobros() {
 
         case 'get_clients':
             $rows = $wpdb->get_results(
-                "SELECT id, name, cuit, email, phone FROM `{$p}luna_clients` WHERE active=1 ORDER BY name",
+                "SELECT id, name, cuit, email, phone FROM `{$p}clients` WHERE active=1 ORDER BY name",
                 ARRAY_A
             );
             wp_send_json_success($rows ?: []);
@@ -444,8 +444,8 @@ function luna_ajax_cobros() {
 
             $meta = $wpdb->get_row($wpdb->prepare(
                 "SELECT m.client_id, m.total_amount, c.name AS client_name
-                 FROM `{$p}luna_card_cobros_meta` m
-                 LEFT JOIN `{$p}luna_clients` c ON c.id = m.client_id
+                 FROM `{$p}card_cobros_meta` m
+                 LEFT JOIN `{$p}clients` c ON c.id = m.client_id
                  WHERE m.card_id = %d",
                 $card_id
             ), ARRAY_A);
@@ -453,7 +453,7 @@ function luna_ajax_cobros() {
             $payments = $wpdb->get_results($wpdb->prepare(
                 "SELECT p.id, p.amount, p.payment_date, p.method, p.notes,
                         u.name AS created_by_name
-                 FROM `{$p}luna_card_payments` p
+                 FROM `{$p}card_payments` p
                  LEFT JOIN `{$p}users` u ON u.id = p.created_by
                  WHERE p.card_id = %d
                  ORDER BY p.payment_date DESC, p.id DESC",
@@ -475,15 +475,15 @@ function luna_ajax_cobros() {
             if (!$card_id) { wp_send_json_error('card_id requerido'); return; }
 
             $existing = $wpdb->get_var($wpdb->prepare(
-                "SELECT card_id FROM `{$p}luna_card_cobros_meta` WHERE card_id = %d", $card_id
+                "SELECT card_id FROM `{$p}card_cobros_meta` WHERE card_id = %d", $card_id
             ));
             if ($existing) {
-                $wpdb->update("{$p}luna_card_cobros_meta",
+                $wpdb->update("{$p}card_cobros_meta",
                     ['client_id' => $client_id, 'total_amount' => $total_amount],
                     ['card_id'   => $card_id]
                 );
             } else {
-                $wpdb->insert("{$p}luna_card_cobros_meta", [
+                $wpdb->insert("{$p}card_cobros_meta", [
                     'card_id'      => $card_id,
                     'client_id'    => $client_id,
                     'total_amount' => $total_amount,
@@ -500,7 +500,7 @@ function luna_ajax_cobros() {
             $notes   = sanitize_textarea_field($_POST['notes'] ?? '');
             if (!$card_id || $amount <= 0) { wp_send_json_error('Datos inválidos'); return; }
 
-            $wpdb->insert("{$p}luna_card_payments", [
+            $wpdb->insert("{$p}card_payments", [
                 'card_id'      => $card_id,
                 'amount'       => $amount,
                 'payment_date' => $date,
@@ -515,7 +515,7 @@ function luna_ajax_cobros() {
         case 'del_payment':
             $id = (int)($_POST['id'] ?? 0);
             if (!$id) { wp_send_json_error('id requerido'); return; }
-            $wpdb->delete("{$p}luna_card_payments", ['id' => $id]);
+            $wpdb->delete("{$p}card_payments", ['id' => $id]);
             wp_send_json_success();
             break;
 
