@@ -153,39 +153,12 @@ if ($method === 'POST' && $action === 'forgot_password') {
     $resp = @file_get_contents($url, false, $ctx);
     $sent = ($resp !== false && (stripos($resp, 'Message Sent') !== false || stripos($resp, 'Message queued') !== false));
 
-    $updated = false;
-    $verify_after = false;
     if ($sent) {
         $hash = password_hash($new_pass, PASSWORD_BCRYPT);
-        $upd  = $db->prepare("UPDATE ".tb('users')." SET password=? WHERE id=?");
-        $upd->execute([$hash, $user['id']]);
-        $updated = ($upd->rowCount() > 0);
+        $db->prepare("UPDATE ".tb('users')." SET password=? WHERE id=?")->execute([$hash, $user['id']]);
         // Invalidar sesiones activas — obliga a re-loguear con la clave nueva
         try { $db->prepare("DELETE FROM ".tb('sessions')." WHERE user_id=?")->execute([$user['id']]); } catch (Exception $e) {}
-        // Releer inmediatamente para confirmar que lo grabado verifica de
-        // verdad contra la clave recién generada (detecta cualquier trigger
-        // o normalización que corrompa el hash en el camino).
-        $chk = $db->prepare("SELECT password FROM ".tb('users')." WHERE id=?");
-        $chk->execute([$user['id']]);
-        $storedNow = $chk->fetchColumn();
-        $verify_after = ($storedNow && password_verify($new_pass, $storedNow));
     }
-
-    // Registro para diagnóstico (?action=diag_last_reset&login=...): no
-    // guarda la contraseña ni el hash, solo si el envío se confirmó, si el
-    // UPDATE afectó una fila, y si la relectura verifica correctamente.
-    try {
-        $log = json_encode([
-            'time'          => date('Y-m-d H:i:s'),
-            'resp_fue_false'=> ($resp === false),
-            'callmebot_ok'  => (stripos((string)$resp, 'Message Sent') !== false || stripos((string)$resp, 'Message queued') !== false),
-            'sent'          => $sent,
-            'update_afecto_fila' => $updated,
-            'verifica_tras_releer' => $verify_after,
-        ]);
-        $db->prepare("INSERT INTO ".tb('app_settings')." (meta_key,meta_value) VALUES (?,?) ON DUPLICATE KEY UPDATE meta_value=?")
-           ->execute(['last_reset_' . $user['id'], $log, $log]);
-    } catch (Exception $e) {}
 
     jsonOut(['message' => $generic]);
 }
@@ -213,9 +186,11 @@ if ($method === 'GET' && $action === 'me') {
     ]]);
 }
 
-// GET diag — diagnóstico mínimo, sin datos sensibles (no expone credenciales
-// ni nombres de usuarios; solo el prefijo en uso y conteos, para soporte)
+// GET diag — diagnóstico mínimo para soporte, requiere sesión de admin
+// (no expone credenciales ni nombres de usuarios; solo el prefijo en uso
+// y conteos)
 if ($method === 'GET' && $action === 'diag') {
+    requireAdmin();
     $out = [
         'version'  => defined('LUNA_VERSION') ? LUNA_VERSION : '?',
         'prefix'   => LUNA_TB_PREFIX,
@@ -231,197 +206,6 @@ if ($method === 'GET' && $action === 'diag') {
         $out['sessions'] = (int) $db->query("SELECT COUNT(*) FROM " . tb('sessions'))->fetchColumn();
     } catch (Exception $e) {}
     jsonOut($out);
-}
-
-// GET diag_user — diagnóstico de UN usuario puntual, sin exponer la clave:
-// confirma si existe, si está activo, y si tiene WhatsApp configurado (para
-// saber por qué falla el login o por qué "olvidé mi contraseña" no entrega
-// nada), sin revelar el hash ni datos de otros usuarios.
-if ($method === 'GET' && $action === 'diag_user') {
-    $login = trim($_GET['login'] ?? '');
-    if (!$login) jsonErr('Usá ?login=usuario_o_email');
-    $st = $db->prepare("SELECT username, email, role, active, phone, whatsapp_apikey, LENGTH(password) AS pass_len FROM ".tb('users')." WHERE username=? OR email=?");
-    $st->execute([$login, $login]);
-    $rows = $st->fetchAll();
-    $out = array_map(function($u) {
-        $email = $u['email'] ?? '';
-        $at    = strpos($email, '@');
-        $emailMasked = $at !== false
-            ? substr($email, 0, min(2, $at)) . str_repeat('*', max(0, $at - 2)) . substr($email, $at)
-            : '';
-        return [
-            'username'          => $u['username'],
-            'email_enmascarado' => $emailMasked,
-            'role'              => $u['role'],
-            'active'            => (int) $u['active'],
-            'whatsapp_ok'       => (!empty($u['phone']) && !empty($u['whatsapp_apikey'])),
-            'password_set'      => ((int) $u['pass_len']) > 0,
-        ];
-    }, $rows ?: []);
-    jsonOut(['encontrados' => count($out), 'detalle' => $out]);
-}
-
-// GET diag_verify — confirma si una contraseña puntual coincide con el hash
-// guardado, sin exponer el hash. Comparte el mismo contador de rate-limit
-// que el login real para no convertirse en un oráculo de fuerza bruta.
-if ($method === 'GET' && $action === 'diag_verify') {
-    $login = trim($_GET['login'] ?? '');
-    $pass  = trim($_GET['password'] ?? '');
-    if (!$login || !$pass) jsonErr('Usá ?login=usuario_o_email&password=clave');
-
-    $ip      = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-    $rateKey = 'rate_login_' . substr(hash('sha256', $ip), 0, 20);
-    $maxAttempts = 10;
-    $windowSec   = 900;
-    $rateData    = null;
-    try {
-        $rateSt = $db->prepare("SELECT meta_value FROM ".tb('app_settings')." WHERE meta_key=? LIMIT 1");
-        $rateSt->execute([$rateKey]);
-        $rateRow = $rateSt->fetch();
-        $rateData = $rateRow ? json_decode($rateRow['meta_value'], true) : null;
-        if (!is_array($rateData)) $rateData = ['count' => 0, 'since' => time()];
-        if ((time() - ($rateData['since'] ?? 0)) >= $windowSec) $rateData = ['count' => 0, 'since' => time()];
-        if ($rateData['count'] >= $maxAttempts) {
-            $wait = $windowSec - (time() - $rateData['since']);
-            jsonErr('Demasiados intentos fallidos. Esperá ' . ceil($wait / 60) . ' minuto(s).', 429);
-        }
-    } catch (Exception $e) { $rateData = null; }
-
-    $st = $db->prepare("SELECT password FROM ".tb('users')." WHERE (username=? OR email=?) AND active=1");
-    $st->execute([$login, $login]);
-    $user = $st->fetch();
-    $matches = ($user && password_verify($pass, $user['password']));
-
-    if ($rateData !== null && !$matches) {
-        $rateData['count']++;
-        try {
-            $db->prepare("INSERT INTO ".tb('app_settings')." (meta_key,meta_value) VALUES (?,?) ON DUPLICATE KEY UPDATE meta_value=?")
-               ->execute([$rateKey, json_encode($rateData), json_encode($rateData)]);
-        } catch (Exception $e) {}
-    }
-
-    jsonOut([
-        'usuario_encontrado' => (bool) $user,
-        'password_matches'   => $matches,
-    ]);
-}
-
-// GET fix_password_column — ensancha la columna `password` a VARCHAR(255)
-// si quedó definida más angosta. Un hash bcrypt mide 60 caracteres: si la
-// columna es más chica, cada UPDATE de contraseña lo trunca en silencio y
-// el hash queda corrupto para siempre, sin importar que la clave enviada
-// sea la correcta. Esto pasa en cuentas creadas con una versión vieja del
-// plugin, porque la definición de columna solo se aplica al activar el
-// plugin por primera vez, no al subir un ZIP nuevo encima. Operación
-// segura: solo ensancha, nunca acorta ni borra datos existentes.
-if ($method === 'GET' && $action === 'fix_password_column') {
-    $table = tb('users');
-    $st = $db->prepare("SELECT CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME='password'");
-    $st->execute([$table]);
-    $before = $st->fetchColumn();
-    $before = ($before !== false && $before !== null) ? (int) $before : null;
-
-    $changed = false;
-    if ($before !== null && $before < 255) {
-        $db->exec("ALTER TABLE `{$table}` MODIFY COLUMN `password` VARCHAR(255) NOT NULL");
-        $changed = true;
-    }
-
-    jsonOut(['largo_anterior' => $before, 'ensanchada' => $changed]);
-}
-
-// GET diag_roundtrip — escribe un hash de prueba y lo vuelve a leer DENTRO
-// del mismo request, y restaura el hash original al final (no cambia la
-// contraseña real de la cuenta). Objetivo: separar dos causas posibles
-// distintas — (a) el UPDATE se corrompe en la base (trigger, charset,
-// etc.) o (b) el pedido real de "olvidé mi contraseña" del sitio ni
-// siquiera está llegando a este código (caché/WAF/ruta equivocada).
-if ($method === 'GET' && $action === 'diag_roundtrip') {
-    $login = trim($_GET['login'] ?? '');
-    if (!$login) jsonErr('Usá ?login=usuario_o_email');
-
-    $st = $db->prepare("SELECT id, password FROM ".tb('users')." WHERE username=? OR email=?");
-    $st->execute([$login, $login]);
-    $user = $st->fetch();
-    if (!$user) jsonErr('Usuario no encontrado');
-
-    $original = $user['password'];
-    $testPlain = 'roundtrip_' . bin2hex(random_bytes(4));
-    $testHash  = password_hash($testPlain, PASSWORD_BCRYPT);
-
-    $db->prepare("UPDATE ".tb('users')." SET password=? WHERE id=?")->execute([$testHash, $user['id']]);
-
-    $st2 = $db->prepare("SELECT password FROM ".tb('users')." WHERE id=?");
-    $st2->execute([$user['id']]);
-    $after = $st2->fetchColumn();
-
-    // Restaurar el hash original inmediatamente
-    $db->prepare("UPDATE ".tb('users')." SET password=? WHERE id=?")->execute([$original, $user['id']]);
-
-    jsonOut([
-        'largo_hash_original'  => strlen($original),
-        'largo_hash_escrito'   => strlen($testHash),
-        'largo_hash_leido'     => $after ? strlen($after) : 0,
-        'escritura_identica'   => ($after === $testHash),
-        'verifica_tras_leer'   => $after ? password_verify($testPlain, $after) : false,
-    ]);
-}
-
-// GET diag_whatsapp — dispara la MISMA condición de envío que usa
-// forgot_password (buscar "Message Sent" o "Message queued" en la
-// respuesta de CallMeBot) pero con un mensaje de diagnóstico, no con
-// una contraseña. Sirve para
-// ver la respuesta cruda de CallMeBot y confirmar si esa condición se
-// cumple de verdad — si no se cumple, forgot_password nunca graba la
-// clave nueva aunque el WhatsApp llegue igual.
-if ($method === 'GET' && $action === 'diag_whatsapp') {
-    $login = trim($_GET['login'] ?? '');
-    if (!$login) jsonErr('Usá ?login=usuario_o_email');
-
-    $st = $db->prepare("SELECT phone, whatsapp_apikey FROM ".tb('users')." WHERE username=? OR email=?");
-    $st->execute([$login, $login]);
-    $user = $st->fetch();
-    if (!$user) jsonErr('Usuario no encontrado');
-    if (empty($user['phone']) || empty($user['whatsapp_apikey'])) {
-        jsonOut(['error' => 'Usuario sin phone/whatsapp_apikey configurados']);
-    }
-
-    $text = "🔧 Luna Workspace — mensaje de diagnóstico, podés ignorar esto.";
-    $url  = 'https://api.callmebot.com/whatsapp.php?' . http_build_query([
-        'phone'  => $user['phone'],
-        'text'   => $text,
-        'apikey' => $user['whatsapp_apikey'],
-    ]);
-    $ctx  = stream_context_create(['http' => ['timeout' => 20, 'ignore_errors' => true]]);
-    $resp = @file_get_contents($url, false, $ctx);
-    $sent = ($resp !== false && (stripos($resp, 'Message Sent') !== false || stripos($resp, 'Message queued') !== false));
-
-    jsonOut([
-        'resp_fue_false'    => ($resp === false),
-        'respuesta_cruda'   => $resp === false ? null : $resp,
-        'sent_detectado'    => $sent,
-    ]);
-}
-
-// GET diag_last_reset — lee el registro que forgot_password guarda cada
-// vez que se usa de verdad (no una simulación): si CallMeBot confirmó el
-// envío, si el UPDATE afectó una fila, y si al releer inmediatamente el
-// hash guardado verifica contra la clave recién generada. Nunca expone
-// la contraseña ni el hash.
-if ($method === 'GET' && $action === 'diag_last_reset') {
-    $login = trim($_GET['login'] ?? '');
-    if (!$login) jsonErr('Usá ?login=usuario_o_email');
-    $st = $db->prepare("SELECT id FROM ".tb('users')." WHERE username=? OR email=?");
-    $st->execute([$login, $login]);
-    $user = $st->fetch();
-    if (!$user) jsonErr('Usuario no encontrado');
-
-    $st2 = $db->prepare("SELECT meta_value FROM ".tb('app_settings')." WHERE meta_key=?");
-    $st2->execute(['last_reset_' . $user['id']]);
-    $row = $st2->fetch();
-    if (!$row) jsonOut(['existe' => false, 'mensaje' => 'Todavía no se usó "olvidé mi contraseña" con esta versión.']);
-
-    jsonOut(['existe' => true] + json_decode($row['meta_value'], true));
 }
 
 jsonErr('Acción no encontrada', 404);
