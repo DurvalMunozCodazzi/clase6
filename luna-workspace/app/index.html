@@ -175,6 +175,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 #ads-strip-text{flex:1;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;font-weight:600;cursor:pointer}
 #ads-strip-upgrade{height:24px;padding:0 12px;border-radius:6px;border:none;background:rgba(255,255,255,.25);color:#fff;font-weight:700;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0;font-family:var(--f)}
 #ads-strip-upgrade:hover{background:rgba(255,255,255,.4)}
+.ads-up-short{display:none}
 #inner-app{position:fixed;top:calc(var(--th) + var(--ads-h));left:0;right:0;bottom:0;display:flex;overflow:hidden}
 #tsb{width:var(--sw);flex-shrink:0;background:var(--surf);border-right:1px solid var(--bdr);display:flex;flex-direction:column;align-items:center;padding:6px 0;gap:1px;z-index:10;transition:transform .3s}
 #tsb.off{transform:translateX(calc(-100% - 1px))}
@@ -390,6 +391,10 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
 /* ── MOBILE RESPONSIVE ── */
 @media(max-width:768px){
   :root{--kw:100vw;--th:44px;--sw:44px}
+  .ads-up-full{display:none}
+  .ads-up-short{display:inline}
+  #ads-strip-upgrade{padding:0 8px}
+  #ads-strip{padding:0 10px;gap:8px}
   #topbar{gap:5px;padding:0 8px;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap}
   #topbar::-webkit-scrollbar{display:none}
   .wsname{max-width:80px;font-size:11px}
@@ -937,7 +942,7 @@ html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--t1);
   <div id="ads-strip" style="display:none">
     <img id="ads-strip-logo" onclick="adsBannerClick()" style="display:none">
     <div id="ads-strip-text" onclick="adsBannerClick()"></div>
-    <button id="ads-strip-upgrade" onclick="adsUpgradeClick()"></button>
+    <button id="ads-strip-upgrade" onclick="adsUpgradeClick()"><span class="ads-up-full"></span><span class="ads-up-short">⚡</span></button>
   </div>
   <div id="inner-app">
 
@@ -5112,7 +5117,7 @@ async function loadAds(){
     const strip=document.getElementById('ads-strip');
     const upBtn=document.getElementById('ads-strip-upgrade');
     if(!ADS_BANNERS.length){ strip.style.display='none'; document.documentElement.style.setProperty('--ads-h','0px'); return; }
-    upBtn.textContent=d.upgrade_text||'⚡ Quitar anuncios';
+    upBtn.querySelector('.ads-up-full').textContent=d.upgrade_text||'⚡ Quitar anuncios';
     upBtn.dataset.url=d.upgrade_url||'https://websobreruedas.com/luna-planes';
     strip.style.display='flex';
     document.documentElement.style.setProperty('--ads-h','34px');
