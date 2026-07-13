@@ -2687,13 +2687,16 @@ async function saveUser(){
 }
 async function delUser(){
   if(!isAdmin())return;
-  const u=USERS.find(x=>x.id==editUserId);if(!u)return;
+  const targetId=editUserId; // se fija acá — si el usuario toca "Guardar" mientras
+  // el popup de confirmacion sigue abierto, closeUM() pone editUserId=null y el
+  // pedido de borrado terminaba mandando id=null (bug reportado)
+  const u=USERS.find(x=>x.id==targetId);if(!u)return;
   if(u.id==ME.id){notify('No puedes eliminarte a ti mismo','wa');return}
   conf(`Eliminar a "${u.name}"`,`Se eliminara el usuario y se desasignara de todas las tareas.`,async()=>{
     try{
-      await api(`users.php?action=delete&id=${editUserId}`,'DELETE');
-      USERS=USERS.filter(x=>x.id!=editUserId);
-      ASGN=ASGN.filter(a=>a.user_id!=editUserId);
+      await api(`users.php?action=delete&id=${targetId}`,'DELETE');
+      USERS=USERS.filter(x=>x.id!=targetId);
+      ASGN=ASGN.filter(a=>a.user_id!=targetId);
       closeUM();renderUL('all');updTopTeam();renderKanban();if(S.view==='kn')renderFK();
       notify('Miembro eliminado','ok');
     }catch(e){notify('Error: '+e.message,'er')}

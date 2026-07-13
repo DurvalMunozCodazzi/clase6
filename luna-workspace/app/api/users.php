@@ -148,6 +148,7 @@ if ($method === 'PUT' && $action === 'update') {
 // DELETE user (admin only, can't delete self)
 if ($method === 'DELETE' && $action === 'delete') {
     $me = requireAdmin();
+    if (!$id) jsonErr('No se recibió un id de usuario válido');
     if ($id == $me['id']) jsonErr('No puedes eliminarte a ti mismo');
     $st = $db->prepare("SELECT id,name FROM ".tb('users')." WHERE id=?");
     $st->execute([$id]);
