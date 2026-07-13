@@ -1,0 +1,241 @@
+<!-- ══════════════════════ MODAL SOLICITUD ══════════════════════ -->
+<div class="modal-overlay" id="modalSolicitud" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <button class="modal-close" id="modalClose" aria-label="Cerrar">×</button>
+    <h3 id="modalTitle">🌙 Descargá Luna gratis</h3>
+    <p class="modal-sub">Completá el formulario y te enviamos el plugin por email y tu clave de activación por WhatsApp.</p>
+
+    <form id="solicitudForm" novalidate>
+
+      <div class="form-group">
+        <label>Plan que te interesa</label>
+        <div class="plan-selector">
+          <button type="button" class="plan-btn selected" data-plan="free">
+            <strong>🆓 Gratis</strong>
+            <span class="plan-price">$0 / mes</span>
+          </button>
+          <button type="button" class="plan-btn" data-plan="starter">
+            <strong>⚡ Emprendedor</strong>
+            <span class="plan-price">$19 / mes</span>
+          </button>
+          <button type="button" class="plan-btn" data-plan="pyme">
+            <strong>🧩 Pyme</strong>
+            <span class="plan-price">$29 / mes</span>
+          </button>
+          <button type="button" class="plan-btn" data-plan="professional">
+            <strong>🚀 Profesional</strong>
+            <span class="plan-price">$59 / mes</span>
+          </button>
+          <button type="button" class="plan-btn" data-plan="unlimited">
+            <strong>🏢 Corporativo</strong>
+            <span class="plan-price">$129 / mes</span>
+          </button>
+        </div>
+        <input type="hidden" id="f-plan" name="plan" value="free">
+      </div>
+
+      <div class="form-group">
+        <label for="f-nombre">Nombre completo</label>
+        <input type="text" id="f-nombre" name="nombre" placeholder="Tu nombre y apellido" required autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label for="f-email">Email</label>
+        <input type="email" id="f-email" name="email" placeholder="tu@email.com" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Teléfono WhatsApp</label>
+        <div class="phone-row">
+          <select id="f-pais" name="pais" aria-label="Prefijo de país">
+            <optgroup label="— América Latina —">
+              <option value="+54">🇦🇷 Argentina +54</option>
+              <option value="+591">🇧🇴 Bolivia +591</option>
+              <option value="+55">🇧🇷 Brasil +55</option>
+              <option value="+56">🇨🇱 Chile +56</option>
+              <option value="+57">🇨🇴 Colombia +57</option>
+              <option value="+506">🇨🇷 Costa Rica +506</option>
+              <option value="+53">🇨🇺 Cuba +53</option>
+              <option value="+593">🇪🇨 Ecuador +593</option>
+              <option value="+503">🇸🇻 El Salvador +503</option>
+              <option value="+502">🇬🇹 Guatemala +502</option>
+              <option value="+509">🇭🇹 Haití +509</option>
+              <option value="+504">🇭🇳 Honduras +504</option>
+              <option value="+52">🇲🇽 México +52</option>
+              <option value="+505">🇳🇮 Nicaragua +505</option>
+              <option value="+507">🇵🇦 Panamá +507</option>
+              <option value="+595">🇵🇾 Paraguay +595</option>
+              <option value="+51">🇵🇪 Perú +51</option>
+              <option value="+1-787">🇵🇷 Puerto Rico +1-787</option>
+              <option value="+1-809">🇩🇴 Rep. Dominicana +1-809</option>
+              <option value="+598">🇺🇾 Uruguay +598</option>
+              <option value="+58">🇻🇪 Venezuela +58</option>
+            </optgroup>
+            <optgroup label="— España —">
+              <option value="+34">🇪🇸 España +34</option>
+            </optgroup>
+            <optgroup label="— Resto del mundo —">
+              <option value="+1">🇺🇸 EE.UU. / Canadá +1</option>
+              <option value="+44">🇬🇧 Reino Unido +44</option>
+              <option value="+49">🇩🇪 Alemania +49</option>
+              <option value="+33">🇫🇷 Francia +33</option>
+              <option value="+39">🇮🇹 Italia +39</option>
+              <option value="+351">🇵🇹 Portugal +351</option>
+              <option value="+31">🇳🇱 Países Bajos +31</option>
+              <option value="+32">🇧🇪 Bélgica +32</option>
+              <option value="+41">🇨🇭 Suiza +41</option>
+              <option value="+43">🇦🇹 Austria +43</option>
+              <option value="+48">🇵🇱 Polonia +48</option>
+              <option value="+7">🇷🇺 Rusia +7</option>
+              <option value="+86">🇨🇳 China +86</option>
+              <option value="+81">🇯🇵 Japón +81</option>
+              <option value="+82">🇰🇷 Corea del Sur +82</option>
+              <option value="+91">🇮🇳 India +91</option>
+              <option value="+61">🇦🇺 Australia +61</option>
+              <option value="+27">🇿🇦 Sudáfrica +27</option>
+              <option value="+20">🇪🇬 Egipto +20</option>
+              <option value="+971">🇦🇪 Emiratos Árabes +971</option>
+              <option value="+972">🇮🇱 Israel +972</option>
+              <option value="+90">🇹🇷 Turquía +90</option>
+              <option value="+62">🇮🇩 Indonesia +62</option>
+              <option value="+60">🇲🇾 Malasia +60</option>
+              <option value="+63">🇵🇭 Filipinas +63</option>
+              <option value="+66">🇹🇭 Tailandia +66</option>
+              <option value="+84">🇻🇳 Vietnam +84</option>
+            </optgroup>
+          </select>
+          <input type="tel" id="f-telefono" name="telefono" placeholder="11 2345 6789" required autocomplete="tel-national">
+        </div>
+        <p class="phone-hint">Solo el número local, sin el código de país. Ej: 11 5555 0000</p>
+      </div>
+      <div class="form-group">
+        <label for="f-dominio">Dominio WordPress</label>
+        <input type="text" id="f-dominio" name="dominio" placeholder="miempresa.com" required autocomplete="url">
+      </div>
+      <button type="submit" class="modal-submit" id="modalBtn">Solicitar plugin y clave →</button>
+      <p class="modal-msg" id="modalMsg"></p>
+    </form>
+  </div>
+</div>
+
+<footer>
+  <p>© 2026 <a href="https://websobreruedas.com">Web Sobre Ruedas</a>  ·  Luna Workspace v11.1.6  ·  <a href="https://websobreruedas.com">websobreruedas.com</a></p>
+</footer>
+
+<script>
+(function () {
+  const ENDPOINT = 'https://websobreruedas.com/wp-json/luna-licenses/v1/solicitar';
+
+  const overlay  = document.getElementById('modalSolicitud');
+  const form     = document.getElementById('solicitudForm');
+  const btn      = document.getElementById('modalBtn');
+  const msg      = document.getElementById('modalMsg');
+
+  function openModal() {
+    overlay.classList.add('open');
+    document.getElementById('f-nombre').focus();
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal() {
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+    form.reset();
+    msg.textContent = '';
+    msg.className = 'modal-msg';
+    btn.disabled = false;
+    btn.textContent = 'Solicitar plugin y clave →';
+  }
+
+  // Selector de plan dentro del modal
+  document.querySelectorAll('.plan-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.plan-btn').forEach(b => b.classList.remove('selected'));
+      this.classList.add('selected');
+      document.getElementById('f-plan').value = this.dataset.plan;
+    });
+  });
+
+  function selectPlan(planKey) {
+    document.querySelectorAll('.plan-btn').forEach(b => {
+      b.classList.toggle('selected', b.dataset.plan === planKey);
+    });
+    document.getElementById('f-plan').value = planKey;
+  }
+
+  // Disparadores — hero CTA y botón CTA final (plan: free por defecto)
+  document.querySelectorAll('.hero-cta, .btn-primary').forEach(el => {
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      selectPlan('free');
+      openModal();
+    });
+  });
+
+  // Botones de plan en la sección de precios (preseleccionan el plan)
+  document.querySelectorAll('.plan-cta').forEach(el => {
+    el.addEventListener('click', function () {
+      selectPlan(this.dataset.plan);
+      openModal();
+    });
+  });
+
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) closeModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    msg.textContent = '';
+    msg.className = 'modal-msg';
+
+    const nombre   = document.getElementById('f-nombre').value.trim();
+    const email    = document.getElementById('f-email').value.trim();
+    const pais     = document.getElementById('f-pais').value;
+    const telefono = document.getElementById('f-telefono').value.trim().replace(/\D/g, '');
+    const dominio  = document.getElementById('f-dominio').value.trim().replace(/^https?:\/\//i,'').replace(/\/.*$/,'');
+    const plan     = document.getElementById('f-plan').value;
+
+    if (!nombre || !email || !telefono || !dominio) {
+      msg.textContent = 'Por favor completá todos los campos.';
+      msg.className = 'modal-msg err';
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      msg.textContent = 'El email no parece válido.';
+      msg.className = 'modal-msg err';
+      return;
+    }
+    if (telefono.length < 6) {
+      msg.textContent = 'El número de teléfono es muy corto.';
+      msg.className = 'modal-msg err';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Enviando…';
+
+    try {
+      const res = await fetch(ENDPOINT, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, email, pais, telefono: pais + telefono, dominio, plan }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        msg.textContent = '✓ ¡Solicitud enviada! Revisá tu email y WhatsApp en las próximas horas.';
+        msg.className = 'modal-msg ok';
+        btn.textContent = '¡Listo!';
+      } else {
+        throw new Error(data.message || 'Error del servidor');
+      }
+    } catch (err) {
+      msg.textContent = 'Error al enviar: ' + err.message + '. Escribinos a hola@websobreruedas.com';
+      msg.className = 'modal-msg err';
+      btn.disabled = false;
+      btn.textContent = 'Solicitar plugin y clave →';
+    }
+  });
+})();
+</script>
