@@ -39,7 +39,13 @@
       </section>
 
       <section class="panel">
-        <h2>Clientes y saldos</h2>
+        <div class="panel-header">
+          <h2>Clientes y saldos</h2>
+          <div class="export-buttons">
+            <button id="btn-export-csv" class="btn btn-secondary">Exportar CSV</button>
+            <button id="btn-export-json" class="btn btn-secondary">Exportar backup (JSON)</button>
+          </div>
+        </div>
         <table id="tabla-clientes">
           <thead>
             <tr>
