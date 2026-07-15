@@ -22,13 +22,31 @@ Al iniciar por primera vez se crea `data/reserva-total.sqlite` y se siembran 6 h
 - Buscar habitaciones disponibles por fecha de entrada/salida y cantidad de huéspedes.
 - Reservar una habitación (nombre y email del huésped).
 - Consultar y cancelar reservas propias por email.
+- **Panel de administración** (pestaña "Admin"): crear, editar y eliminar habitaciones, y ver/cancelar todas las reservas del sistema.
+
+## Panel de administración
+
+Protegido por un token simple (no es un sistema de autenticación completo, pensado para uso en clase/demo).
+
+- Token por defecto: `admin123`
+- Se puede cambiar con la variable de entorno `ADMIN_TOKEN` antes de iniciar el servidor:
+  ```bash
+  ADMIN_TOKEN=mi-clave-secreta npm start
+  ```
+- En el frontend, entrá a la pestaña "Admin" e ingresá el token.
 
 ## API
 
-| Método | Endpoint                 | Descripción                                   |
-|--------|---------------------------|-----------------------------------------------|
-| GET    | `/api/rooms`              | Lista habitaciones (filtros: `checkIn`, `checkOut`, `guests`) |
-| GET    | `/api/rooms/:id`          | Detalle de una habitación                     |
-| GET    | `/api/reservations`       | Lista reservas (filtro: `email`)              |
-| POST   | `/api/reservations`       | Crea una reserva                              |
-| DELETE | `/api/reservations/:id`   | Cancela una reserva                           |
+| Método | Endpoint                 | Descripción                                   | Auth |
+|--------|---------------------------|-----------------------------------------------|------|
+| GET    | `/api/rooms`              | Lista habitaciones (filtros: `checkIn`, `checkOut`, `guests`) | - |
+| GET    | `/api/rooms/:id`          | Detalle de una habitación                     | - |
+| POST   | `/api/rooms`              | Crea una habitación                           | admin |
+| PUT    | `/api/rooms/:id`          | Edita una habitación                          | admin |
+| DELETE | `/api/rooms/:id`          | Elimina una habitación (si no tiene reservas) | admin |
+| GET    | `/api/reservations`       | Lista reservas (por `email`, o todas si sos admin) | email o admin |
+| POST   | `/api/reservations`       | Crea una reserva                              | - |
+| DELETE | `/api/reservations/:id`   | Cancela una reserva                           | - |
+| GET    | `/api/admin/verify`       | Valida el token de administrador              | admin |
+
+Las rutas marcadas como `admin` requieren el header `x-admin-token: <ADMIN_TOKEN>`.

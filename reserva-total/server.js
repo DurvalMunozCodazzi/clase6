@@ -6,12 +6,24 @@ import { db } from "./db.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "admin123";
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 function isValidDate(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
+}
+
+function isAdmin(req) {
+  return req.get("x-admin-token") === ADMIN_TOKEN;
+}
+
+function requireAdmin(req, res, next) {
+  if (!isAdmin(req)) {
+    return res.status(403).json({ error: "Acceso de administrador requerido." });
+  }
+  next();
 }
 
 function roomIsAvailable(roomId, checkIn, checkOut, excludeReservationId = null) {
@@ -62,9 +74,70 @@ app.get("/api/rooms/:id", (req, res) => {
   res.json(room);
 });
 
-// GET /api/reservations - lista reservas, opcionalmente filtradas por email
+// POST /api/rooms - crea una habitación (admin)
+app.post("/api/rooms", requireAdmin, (req, res) => {
+  const { name, type, capacity, pricePerNight, description } = req.body;
+
+  if (!name || !type || !capacity || !pricePerNight) {
+    return res.status(400).json({ error: "Faltan datos obligatorios." });
+  }
+  if (Number(capacity) <= 0 || Number(pricePerNight) <= 0) {
+    return res.status(400).json({ error: "Capacidad y precio deben ser mayores a cero." });
+  }
+
+  const result = db.prepare(`
+    INSERT INTO rooms (name, type, capacity, price_per_night, description)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(name, type, Number(capacity), Number(pricePerNight), description || "");
+
+  const room = db.prepare("SELECT * FROM rooms WHERE id = ?").get(result.lastInsertRowid);
+  res.status(201).json(room);
+});
+
+// PUT /api/rooms/:id - edita una habitación (admin)
+app.put("/api/rooms/:id", requireAdmin, (req, res) => {
+  const room = db.prepare("SELECT * FROM rooms WHERE id = ?").get(req.params.id);
+  if (!room) return res.status(404).json({ error: "Habitación no encontrada." });
+
+  const { name, type, capacity, pricePerNight, description } = req.body;
+  if (!name || !type || !capacity || !pricePerNight) {
+    return res.status(400).json({ error: "Faltan datos obligatorios." });
+  }
+  if (Number(capacity) <= 0 || Number(pricePerNight) <= 0) {
+    return res.status(400).json({ error: "Capacidad y precio deben ser mayores a cero." });
+  }
+
+  db.prepare(`
+    UPDATE rooms SET name = ?, type = ?, capacity = ?, price_per_night = ?, description = ?
+    WHERE id = ?
+  `).run(name, type, Number(capacity), Number(pricePerNight), description || "", req.params.id);
+
+  const updated = db.prepare("SELECT * FROM rooms WHERE id = ?").get(req.params.id);
+  res.json(updated);
+});
+
+// DELETE /api/rooms/:id - elimina una habitación (admin), si no tiene reservas
+app.delete("/api/rooms/:id", requireAdmin, (req, res) => {
+  const room = db.prepare("SELECT * FROM rooms WHERE id = ?").get(req.params.id);
+  if (!room) return res.status(404).json({ error: "Habitación no encontrada." });
+
+  const { count } = db.prepare("SELECT COUNT(*) AS count FROM reservations WHERE room_id = ?").get(req.params.id);
+  if (count > 0) {
+    return res.status(409).json({ error: "No se puede eliminar: la habitación tiene reservas asociadas." });
+  }
+
+  db.prepare("DELETE FROM rooms WHERE id = ?").run(req.params.id);
+  res.status(204).end();
+});
+
+// GET /api/reservations - lista reservas propias por email, o todas si es admin
 app.get("/api/reservations", (req, res) => {
   const { email } = req.query;
+
+  if (!email && !isAdmin(req)) {
+    return res.status(400).json({ error: "Indicá un email para consultar tus reservas." });
+  }
+
   let query = `
     SELECT reservations.*, rooms.name AS room_name, rooms.price_per_night
     FROM reservations
@@ -118,6 +191,11 @@ app.post("/api/reservations", (req, res) => {
   `).get(result.lastInsertRowid);
 
   res.status(201).json(reservation);
+});
+
+// GET /api/admin/verify - valida el token de administrador
+app.get("/api/admin/verify", requireAdmin, (req, res) => {
+  res.json({ ok: true });
 });
 
 // DELETE /api/reservations/:id - cancela una reserva

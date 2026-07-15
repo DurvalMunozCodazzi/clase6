@@ -22,8 +22,8 @@ function showToast(message, type = "success") {
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
-    headers: { "Content-Type": "application/json" },
     ...options,
+    headers: { "Content-Type": "application/json", ...options.headers },
   });
   const isJson = res.headers.get("content-type")?.includes("application/json");
   const data = isJson ? await res.json() : null;
@@ -44,7 +44,10 @@ function switchView(view) {
 }
 
 document.querySelectorAll(".nav-link").forEach((btn) => {
-  btn.addEventListener("click", () => switchView(btn.dataset.view));
+  btn.addEventListener("click", () => {
+    switchView(btn.dataset.view);
+    if (btn.dataset.view === "admin") tryShowAdminPanel();
+  });
 });
 
 // ---------- Habitaciones ----------
@@ -226,6 +229,212 @@ async function cancelReservation(id) {
   } catch (err) {
     showToast(err.message, "error");
   }
+}
+
+// ---------- Admin ----------
+
+function getAdminToken() {
+  return localStorage.getItem("adminToken") || "";
+}
+
+async function apiAdmin(path, options = {}) {
+  return api(path, {
+    ...options,
+    headers: { "x-admin-token": getAdminToken() },
+  });
+}
+
+async function tryShowAdminPanel() {
+  const token = getAdminToken();
+  if (!token) return;
+
+  try {
+    await apiAdmin("/api/admin/verify");
+    document.getElementById("admin-login-card").classList.add("hidden");
+    document.getElementById("admin-panel").classList.remove("hidden");
+    loadAdminRooms();
+    loadAdminReservations();
+  } catch {
+    localStorage.removeItem("adminToken");
+  }
+}
+
+document.getElementById("admin-login-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const token = document.getElementById("adminToken").value.trim();
+  localStorage.setItem("adminToken", token);
+
+  try {
+    await apiAdmin("/api/admin/verify");
+    document.getElementById("adminToken").value = "";
+    document.getElementById("admin-login-card").classList.add("hidden");
+    document.getElementById("admin-panel").classList.remove("hidden");
+    loadAdminRooms();
+    loadAdminReservations();
+  } catch (err) {
+    localStorage.removeItem("adminToken");
+    showToast("Token inválido.", "error");
+  }
+});
+
+document.getElementById("admin-logout").addEventListener("click", () => {
+  localStorage.removeItem("adminToken");
+  document.getElementById("admin-panel").classList.add("hidden");
+  document.getElementById("admin-login-card").classList.remove("hidden");
+});
+
+async function loadAdminRooms() {
+  const list = document.getElementById("admin-rooms-list");
+  list.innerHTML = `<p class="empty-state">Cargando...</p>`;
+
+  try {
+    const rooms = await api("/api/rooms");
+    renderAdminRooms(rooms);
+  } catch (err) {
+    list.innerHTML = `<p class="empty-state">${err.message}</p>`;
+  }
+}
+
+function renderAdminRooms(rooms) {
+  const list = document.getElementById("admin-rooms-list");
+
+  if (rooms.length === 0) {
+    list.innerHTML = `<p class="empty-state">No hay habitaciones cargadas.</p>`;
+    return;
+  }
+
+  list.innerHTML = rooms
+    .map(
+      (room) => `
+        <div class="reservation-card">
+          <div class="reservation-info">
+            <h3>${room.name} <span class="room-type">${room.type}</span></h3>
+            <p>Capacidad ${room.capacity} · ${formatCurrency(room.price_per_night)}/noche</p>
+          </div>
+          <div style="display:flex; gap:0.5rem">
+            <button class="btn" data-edit-room="${room.id}">Editar</button>
+            <button class="btn btn-danger" data-delete-room="${room.id}">Eliminar</button>
+          </div>
+        </div>
+      `
+    )
+    .join("");
+
+  list.querySelectorAll("button[data-edit-room]").forEach((btn) => {
+    const room = rooms.find((r) => r.id === Number(btn.dataset.editRoom));
+    btn.addEventListener("click", () => fillRoomForm(room));
+  });
+
+  list.querySelectorAll("button[data-delete-room]").forEach((btn) => {
+    btn.addEventListener("click", () => deleteRoom(btn.dataset.deleteRoom));
+  });
+}
+
+function fillRoomForm(room) {
+  document.getElementById("roomFormId").value = room.id;
+  document.getElementById("roomName").value = room.name;
+  document.getElementById("roomType").value = room.type;
+  document.getElementById("roomCapacity").value = room.capacity;
+  document.getElementById("roomPrice").value = room.price_per_night;
+  document.getElementById("roomDescription").value = room.description || "";
+  document.getElementById("room-form-title").textContent = "Editar habitación";
+  document.getElementById("room-form-cancel").classList.remove("hidden");
+}
+
+function resetRoomForm() {
+  document.getElementById("room-form").reset();
+  document.getElementById("roomFormId").value = "";
+  document.getElementById("room-form-title").textContent = "Nueva habitación";
+  document.getElementById("room-form-cancel").classList.add("hidden");
+}
+
+document.getElementById("room-form-cancel").addEventListener("click", resetRoomForm);
+
+document.getElementById("room-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("roomFormId").value;
+  const payload = {
+    name: document.getElementById("roomName").value.trim(),
+    type: document.getElementById("roomType").value.trim(),
+    capacity: Number(document.getElementById("roomCapacity").value),
+    pricePerNight: Number(document.getElementById("roomPrice").value),
+    description: document.getElementById("roomDescription").value.trim(),
+  };
+
+  try {
+    if (id) {
+      await apiAdmin(`/api/rooms/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+      showToast("Habitación actualizada.", "success");
+    } else {
+      await apiAdmin("/api/rooms", { method: "POST", body: JSON.stringify(payload) });
+      showToast("Habitación creada.", "success");
+    }
+    resetRoomForm();
+    loadAdminRooms();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+async function deleteRoom(id) {
+  if (!confirm("¿Eliminar esta habitación?")) return;
+
+  try {
+    await apiAdmin(`/api/rooms/${id}`, { method: "DELETE" });
+    showToast("Habitación eliminada.", "success");
+    loadAdminRooms();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+async function loadAdminReservations() {
+  const list = document.getElementById("admin-reservations-list");
+  list.innerHTML = `<p class="empty-state">Cargando...</p>`;
+
+  try {
+    const reservations = await apiAdmin("/api/reservations");
+    renderAdminReservations(reservations);
+  } catch (err) {
+    list.innerHTML = `<p class="empty-state">${err.message}</p>`;
+  }
+}
+
+function renderAdminReservations(reservations) {
+  const list = document.getElementById("admin-reservations-list");
+
+  if (reservations.length === 0) {
+    list.innerHTML = `<p class="empty-state">No hay reservas registradas.</p>`;
+    return;
+  }
+
+  list.innerHTML = reservations
+    .map(
+      (r) => `
+        <div class="reservation-card">
+          <div class="reservation-info">
+            <h3>${r.room_name}</h3>
+            <p>${r.guest_name} (${r.guest_email})</p>
+            <p>${formatDate(r.check_in)} → ${formatDate(r.check_out)} · ${r.guests} huésped${r.guests > 1 ? "es" : ""}</p>
+          </div>
+          <button class="btn btn-danger" data-admin-cancel="${r.id}">Cancelar</button>
+        </div>
+      `
+    )
+    .join("");
+
+  list.querySelectorAll("button[data-admin-cancel]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("¿Cancelar esta reserva?")) return;
+      try {
+        await apiAdmin(`/api/reservations/${btn.dataset.adminCancel}`, { method: "DELETE" });
+        showToast("Reserva cancelada.", "success");
+        loadAdminReservations();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  });
 }
 
 // ---------- Init ----------

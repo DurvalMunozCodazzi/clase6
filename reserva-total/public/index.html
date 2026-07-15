@@ -13,6 +13,7 @@
         <nav class="nav">
           <button class="nav-link active" data-view="rooms">Habitaciones</button>
           <button class="nav-link" data-view="my-reservations">Mis reservas</button>
+          <button class="nav-link" data-view="admin">Admin</button>
         </nav>
       </div>
     </header>
@@ -59,6 +60,66 @@
           </form>
         </section>
         <section id="reservations-list" class="reservations-list"></section>
+      </section>
+
+      <!-- Vista: Admin -->
+      <section id="view-admin" class="view hidden">
+        <section id="admin-login-card" class="search-card">
+          <h2>Acceso administrador</h2>
+          <form id="admin-login-form" class="search-form">
+            <div class="field">
+              <label for="adminToken">Token de admin</label>
+              <input type="password" id="adminToken" name="adminToken" required />
+            </div>
+            <button type="submit" class="btn btn-primary">Ingresar</button>
+          </form>
+        </section>
+
+        <div id="admin-panel" class="hidden">
+          <div class="admin-header">
+            <p>Sesión de administrador activa.</p>
+            <button id="admin-logout" class="btn btn-danger">Salir</button>
+          </div>
+
+          <section class="search-card">
+            <h2 id="room-form-title">Nueva habitación</h2>
+            <form id="room-form" class="search-form">
+              <input type="hidden" id="roomFormId" />
+              <div class="field">
+                <label for="roomName">Nombre</label>
+                <input type="text" id="roomName" required />
+              </div>
+              <div class="field">
+                <label for="roomType">Tipo</label>
+                <input type="text" id="roomType" required />
+              </div>
+              <div class="field">
+                <label for="roomCapacity">Capacidad</label>
+                <input type="number" id="roomCapacity" min="1" required />
+              </div>
+              <div class="field">
+                <label for="roomPrice">Precio/noche</label>
+                <input type="number" id="roomPrice" min="1" step="1" required />
+              </div>
+              <div class="field" style="flex: 1 1 220px">
+                <label for="roomDescription">Descripción</label>
+                <input type="text" id="roomDescription" />
+              </div>
+              <button type="submit" class="btn btn-primary">Guardar</button>
+              <button type="button" id="room-form-cancel" class="btn hidden">Cancelar edición</button>
+            </form>
+          </section>
+
+          <section>
+            <h2 class="section-title">Habitaciones</h2>
+            <div id="admin-rooms-list" class="reservations-list"></div>
+          </section>
+
+          <section>
+            <h2 class="section-title">Todas las reservas</h2>
+            <div id="admin-reservations-list" class="reservations-list"></div>
+          </section>
+        </div>
       </section>
     </main>
 

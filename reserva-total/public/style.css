@@ -319,6 +319,24 @@ main {
   background: #15803d;
 }
 
+/* Admin */
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.section-title {
+  font-size: 1.1rem;
+  margin: 1.5rem 0 1rem;
+}
+
+.btn:not(.btn-primary):not(.btn-danger) {
+  background: #e2e8f0;
+  color: var(--text);
+}
+
 /* Footer */
 .footer {
   text-align: center;
