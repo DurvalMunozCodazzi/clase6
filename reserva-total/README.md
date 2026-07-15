@@ -2,6 +2,8 @@
 
 Sistema de reservas de habitaciones. Backend en Node.js/Express con SQLite (`node:sqlite`) y frontend en HTML/CSS/JS puro.
 
+Versión actual: **1.2.0** — ver [`CHANGELOG.md`](../CHANGELOG.md) en la raíz del repo para el historial de cambios (incluye también el [plugin de WordPress](../wordpress-plugin/reserva-total/)).
+
 ## Requisitos
 
 - Node.js 22.5+ (usa el módulo nativo `node:sqlite`)

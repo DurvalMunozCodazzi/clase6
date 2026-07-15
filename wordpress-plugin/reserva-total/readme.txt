@@ -4,7 +4,7 @@ Tags: reservas, habitaciones, hotel, booking
 Requires at least: 5.8
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -38,5 +38,14 @@ Cualquier usuario con el permiso `manage_options` (administradores del sitio, po
 
 == Changelog ==
 
+El número de versión se mantiene sincronizado con el de la app Node.js standalone
+de Reserva Total (ver `CHANGELOG.md` en la raíz del repositorio).
+
+= 1.2.0 =
+* Primera versión del plugin de WordPress: shortcode `[reserva_total]`, panel de administración en `wp-admin` y API REST propia.
+
+= 1.1.0 =
+* (Solo app Node.js) Panel de administración de habitaciones y reservas.
+
 = 1.0.0 =
-* Versión inicial: búsqueda de disponibilidad, reservas, panel de administración de habitaciones y reservas.
+* (Solo app Node.js) Versión inicial: búsqueda de disponibilidad, reservas, y consulta/cancelación por email.
