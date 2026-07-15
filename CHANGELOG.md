@@ -1,42 +1,48 @@
-# Changelog — Reserva Total
+# Changelog — ReservaTotal
 
 Todos los cambios notables de este proyecto se documentan acá. El formato sigue
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/) y el versionado es
 [Semántico](https://semver.org/lang/es/) (MAJOR.MINOR.PATCH).
 
-Reserva Total se distribuye en dos formatos que comparten versión y funcionalidad:
+El plugin vive en `wordpress-plugin/reservatotal/`.
 
-- `reserva-total/` — app standalone (Node.js/Express + SQLite)
-- `wordpress-plugin/reserva-total/` — plugin de WordPress (PHP)
-
-## [1.2.0] - 2026-07-15
-
-### Agregado
-- Plugin de WordPress instalable (`wordpress-plugin/reserva-total/`), reescritura
-  completa en PHP de la app Node.js para poder correr dentro de cualquier sitio
-  WordPress:
-  - Shortcode `[reserva_total]` con buscador de disponibilidad, reserva y
-    consulta/cancelación de "Mis reservas" por email.
-  - Panel "Reserva Total" en `wp-admin` para gestionar habitaciones y reservas,
-    usando las capacidades nativas de WordPress (`manage_options`).
-  - API REST propia bajo `/wp-json/reserva-total/v1/`.
-  - Tablas propias vía `$wpdb`, creadas y sembradas al activar el plugin.
-
-## [1.1.0] - 2026-07-15
-
-### Agregado
-- Panel de administración en la app Node.js: alta, edición y eliminación de
-  habitaciones, y vista de todas las reservas del sistema.
-- Protección de las rutas de administración con token (`ADMIN_TOKEN`).
+## [2.3.1] - 2026-07-15
 
 ### Corregido
-- `GET /api/reservations` sin filtro exponía las reservas de todos los usuarios;
-  ahora exige email propio o token de administrador.
 
-## [1.0.0] - 2026-07-15
+- **AJAX público completamente roto**: `is_admin()` de WordPress también es
+  `true` en pedidos a `wp-admin/admin-ajax.php`, así que el plugin nunca
+  cargaba `RT_Public` (y por lo tanto nunca registraba los handlers
+  `wp_ajax_rt_public_action` / `wp_ajax_nopriv_rt_public_action`) durante una
+  llamada AJAX. Esto bloqueaba **todo** el formulario público: verificar
+  disponibilidad y crear una reserva no funcionaban para ningún visitante.
+  Ahora `reservatotal.php` usa `wp_doing_ajax()` para cargar los dos módulos
+  (admin y público) durante requests AJAX.
+- **Error fatal al ver el detalle de una reserva**: faltaba el archivo
+  `admin/views/booking-detail.php`. Se agregó la vista.
+- **Error fatal en el shortcode `[reservatotal_disponibilidad]`**: faltaba
+  `templates/availability-calendar.php`. Se agregó la vista.
+- **Respuestas AJAX inconsistentes**: `check_availability` (público) y
+  `get_occupied_dates` (admin) devolvían JSON plano con `wp_send_json(...)`,
+  pero el JS esperaba la respuesta envuelta en `data` (formato de
+  `wp_send_json_success`). Se corrigieron ambos endpoints.
+- **Función indefinida si se entraba directo a "Reservas"**:
+  `rt_booking_status_badge()` y `rt_payment_badge()` estaban definidas dentro
+  de `dashboard.php` y `bookings-list.php` respectivamente, así que si se
+  visitaba una página sin haber cargado la otra antes, WordPress tiraba
+  "Call to undefined function". Se extrajeron a `includes/rt-helpers.php`,
+  cargado siempre desde `reservatotal.php`.
 
-### Agregado
-- Primera versión del sistema de reservas de habitaciones (Node.js/Express +
-  SQLite, frontend HTML/CSS/JS): búsqueda de disponibilidad por fecha y
-  huéspedes, creación de reservas con validación de solapamientos y capacidad,
-  y consulta/cancelación de reservas propias por email.
+Todo lo anterior se probó de punta a punta en una instalación real de
+WordPress (WP 6.4.3 + MariaDB): activación, alta de habitación, calendario
+con fechas ocupadas y bloqueadas, tarifas por temporada, creación de reserva
+completa (búsqueda → disponibilidad → reserva), cambio de estado, y el
+detalle de reserva que antes rompía.
+
+## [2.3] y anteriores
+
+Versión original entregada por Durval Muñoz Codazzi: habitaciones/cabañas
+como custom post type, tarifas por temporada, calendario de bloqueos,
+reservas con pago por MercadoPago (preferencias + webhook), licencia anual
+por dominio, notificaciones por email. Sin historial de changelog previo a
+esta fecha.
