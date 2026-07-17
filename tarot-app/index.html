@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tirada de Tarot — Pasado, Presente y Futuro</title>
+<style>
+  #tarotApp, #tarotApp * { box-sizing: border-box; }
+  #tarotApp [hidden] { display: none !important; }
+  #tarotApp {
+    --bg-deep: #120a1f;
+    --bg-panel: #1c1230;
+    --gold: #d4af37;
+    --gold-soft: #f1d98b;
+    --purple: #6b3fa0;
+    --text: #f3ecff;
+    --text-dim: #b9a9d9;
+    --mayor-a: #4a2a7a; --mayor-b: #8a4fd6;
+    --bastos-a: #7a2e0e; --bastos-b: #d9622b;
+    --copas-a: #0e4a6b; --copas-b: #2fa8d9;
+    --espadas-a: #3a3f4a; --espadas-b: #9aa5b5;
+    --oros-a: #5a4a0e; --oros-b: #d4af37;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 3rem;
+    background: radial-gradient(circle at 50% 0%, var(--bg-panel), var(--bg-deep) 70%);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    border-radius: 1rem;
+  }
+  #tarotApp h1, #tarotApp h2, #tarotApp h3 { font-family: Georgia, 'Times New Roman', serif; margin: 0 0 0.5rem; }
+  #tarotApp .tarot-header { text-align: center; margin-bottom: 1.5rem; }
+  #tarotApp .tarot-header h1 { color: var(--gold-soft); font-size: 1.8rem; }
+  #tarotApp .subtitle { color: var(--text-dim); margin: 0; }
+
+  #tarotApp .question-step { max-width: 480px; margin: 0 auto; text-align: center; }
+  #tarotApp label { display: block; margin-bottom: 0.5rem; color: var(--text-dim); }
+  #tarotApp textarea {
+    width: 100%; border-radius: 0.6rem; border: 1px solid var(--purple);
+    background: rgba(255,255,255,0.05); color: var(--text); padding: 0.7rem;
+    font-size: 1rem; resize: vertical; margin-bottom: 1rem;
+  }
+  #tarotApp .btn-primary, #tarotApp .btn-secondary {
+    font-size: 1rem; padding: 0.7rem 1.4rem; border-radius: 2rem; border: none;
+    cursor: pointer; font-weight: 600; transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+  #tarotApp .btn-primary { background: linear-gradient(135deg, var(--gold-soft), var(--gold)); color: #241533; }
+  #tarotApp .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--purple); }
+  #tarotApp .btn-primary:hover, #tarotApp .btn-secondary:hover { transform: translateY(-2px); }
+  #tarotApp .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  #tarotApp .spread { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 2rem 0; }
+  #tarotApp .slot { background: rgba(255,255,255,0.04); border: 1px dashed var(--purple); border-radius: 0.8rem; padding: 0.8rem; text-align: center; }
+  #tarotApp .slot-label { color: var(--gold-soft); font-weight: 600; margin-bottom: 0.6rem; display: block; }
+  #tarotApp .slot-placeholder {
+    width: 100%; aspect-ratio: 2 / 3; border-radius: 0.6rem; margin: 0 auto 0.6rem;
+    background: repeating-linear-gradient(135deg, #2a1a45, #2a1a45 8px, #241338 8px, #241338 16px);
+    border: 1px solid var(--purple); display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem; color: var(--text-dim);
+  }
+  #tarotApp .slot-name { font-size: 0.85rem; color: var(--text-dim); min-height: 1.2em; margin-top: 0.3rem; }
+
+  #tarotApp .card-face { width: 100%; aspect-ratio: 2 / 3; margin: 0 auto; perspective: 600px; }
+  #tarotApp .card-inner {
+    position: relative; width: 100%; height: 100%; border-radius: 0.6rem; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.25); transition: transform 0.4s ease;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+  }
+  #tarotApp .card-inner.is-reversed { transform: rotate(180deg); }
+  #tarotApp .arcana-mayor .card-inner { background: linear-gradient(160deg, var(--mayor-a), var(--mayor-b)); }
+  #tarotApp .suit-bastos .card-inner { background: linear-gradient(160deg, var(--bastos-a), var(--bastos-b)); }
+  #tarotApp .suit-copas .card-inner { background: linear-gradient(160deg, var(--copas-a), var(--copas-b)); }
+  #tarotApp .suit-espadas .card-inner { background: linear-gradient(160deg, var(--espadas-a), var(--espadas-b)); }
+  #tarotApp .suit-oros .card-inner { background: linear-gradient(160deg, var(--oros-a), var(--oros-b)); }
+  #tarotApp .card-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #tarotApp .card-symbolic {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+    justify-content: space-between; padding: 0.4rem; text-align: center;
+  }
+  #tarotApp .card-tag { font-size: 0.75rem; font-weight: 700; color: rgba(255,255,255,0.85); align-self: flex-start; }
+  #tarotApp .card-icon { font-size: 1.8rem; }
+  #tarotApp .card-name-mini { font-size: 0.72rem; font-weight: 600; line-height: 1.15; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+
+  #tarotApp .reading { background: rgba(255,255,255,0.04); border-radius: 0.8rem; padding: 1.2rem; margin-top: 1.5rem; }
+  #tarotApp .reading-question { font-style: italic; color: var(--gold-soft); }
+  #tarotApp .reading-line { margin: 1rem 0; padding-left: 0.8rem; border-left: 3px solid var(--purple); }
+  #tarotApp .reading-line h3 { color: var(--gold-soft); font-size: 1.05rem; }
+  #tarotApp .reading-synthesis { margin-top: 1.2rem; padding: 1rem; background: rgba(212,175,55,0.08); border-radius: 0.6rem; border: 1px solid rgba(212,175,55,0.3); }
+  #tarotApp .reading footer-actions { text-align: center; }
+
+  #tarotApp .modal-overlay {
+    position: fixed; inset: 0; background: rgba(5,2,15,0.85); backdrop-filter: blur(3px);
+    display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 1rem;
+  }
+  #tarotApp .modal {
+    background: var(--bg-panel); border: 1px solid var(--purple); border-radius: 1rem;
+    width: 100%; max-width: 640px; max-height: 88vh; display: flex; flex-direction: column;
+    padding: 1rem; color: var(--text);
+  }
+  #tarotApp .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.8rem; }
+  #tarotApp .modal-close { background: none; border: none; color: var(--text); font-size: 1.3rem; cursor: pointer; }
+  #tarotApp .card-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 6px;
+    overflow-y: auto; padding: 0.3rem; flex: 1;
+  }
+  #tarotApp .card-mini-btn {
+    aspect-ratio: 2 / 3; border-radius: 0.3rem; border: 1px solid var(--purple); cursor: pointer;
+    background: repeating-linear-gradient(135deg, #2a1a45, #2a1a45 6px, #241338 6px, #241338 12px);
+    transition: transform 0.15s ease;
+  }
+  #tarotApp .card-mini-btn:hover { transform: scale(1.08); border-color: var(--gold); }
+  #tarotApp .reveal-panel {
+    display: flex; gap: 1rem; align-items: center; margin-top: 1rem; padding-top: 1rem;
+    border-top: 1px solid rgba(255,255,255,0.15); animation: flipReveal 0.35s ease;
+  }
+  @keyframes flipReveal { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+  #tarotApp .reveal-card { width: 110px; flex-shrink: 0; }
+  #tarotApp .reveal-info { flex: 1; }
+  #tarotApp .reveal-info h3 { color: var(--gold-soft); margin-bottom: 0.3rem; }
+  #tarotApp .reveal-info p { color: var(--text-dim); font-size: 0.9rem; margin: 0 0 0.7rem; }
+  #tarotApp .reveal-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+  @media (max-width: 560px) {
+    #tarotApp .spread { grid-template-columns: 1fr; }
+    #tarotApp .reveal-panel { flex-direction: column; }
+    #tarotApp .reveal-card { width: 140px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="tarot-app" id="tarotApp">
+  <header class="tarot-header">
+    <h1>🔮 Tirada de las 3 Cartas</h1>
+    <p class="subtitle">Concéntrate en tu pregunta y deja que tu intuición elija.</p>
+  </header>
+
+  <section class="question-step" id="questionStep">
+    <label for="questionInput">¿Qué quieres consultarle al tarot?</label>
+    <textarea id="questionInput" rows="2" placeholder="Ej: ¿Cómo va a evolucionar mi situación laboral?"></textarea>
+    <button id="startBtn" class="btn-primary">Comenzar tirada</button>
+  </section>
+
+  <section class="spread" id="spreadSection" hidden>
+    <div class="slot" data-pos="0">
+      <span class="slot-label">⏳ Pasado</span>
+      <div class="slot-visual"><div class="slot-placeholder">?</div></div>
+      <div class="slot-name"></div>
+      <button class="btn-secondary slot-btn" data-pos="0">Elegir carta</button>
+    </div>
+    <div class="slot" data-pos="1">
+      <span class="slot-label">🌙 Presente</span>
+      <div class="slot-visual"><div class="slot-placeholder">?</div></div>
+      <div class="slot-name"></div>
+      <button class="btn-secondary slot-btn" data-pos="1">Elegir carta</button>
+    </div>
+    <div class="slot" data-pos="2">
+      <span class="slot-label">✨ Futuro</span>
+      <div class="slot-visual"><div class="slot-placeholder">?</div></div>
+      <div class="slot-name"></div>
+      <button class="btn-secondary slot-btn" data-pos="2">Elegir carta</button>
+    </div>
+  </section>
+
+  <section class="reading" id="readingSection" hidden>
+    <h2>🔮 Tu lectura</h2>
+    <div id="readingContent"></div>
+    <div class="footer-actions" style="text-align:center; margin-top:1rem;">
+      <button id="resetBtn" class="btn-secondary">Nueva tirada</button>
+    </div>
+  </section>
+
+  <div class="modal-overlay" id="modalOverlay" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalTitle"></h2>
+        <button id="modalClose" class="modal-close" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="card-grid" id="cardGrid"></div>
+      <div class="reveal-panel" id="revealPanel" hidden>
+        <div class="reveal-card" id="revealCardVisual"></div>
+        <div class="reveal-info">
+          <h3 id="revealCardName"></h3>
+          <p id="revealCardOrientation"></p>
+          <div class="reveal-actions">
+            <button id="confirmCardBtn" class="btn-primary">Confirmar esta carta</button>
+            <button id="pickAnotherBtn" class="btn-secondary">Elegir otra</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // Cambia esto por la carpeta donde subas las 78 fotos, ej:
+  // "https://tusitio.com/wp-content/uploads/tarot-cartas/"
+  // Si una imagen no existe, la carta cae automáticamente en el diseño simbólico.
+  var IMAGE_BASE_URL = "assets/cards/";
+  var REVERSED_PROBABILITY = 0.25;
+
+  /* ===================== DATOS ===================== */
+
+  var SUITS = [
+    { key: "bastos", name: "Bastos", icon: "🔥",
+      domainUp: "acción, trabajo, pasión, energía, proyectos",
+      domainRev: "proyectos estancados, agotamiento, frustración creativa" },
+    { key: "copas", name: "Copas", icon: "💧",
+      domainUp: "emociones, amor, relaciones, intuición, arte",
+      domainRev: "emociones bloqueadas, desconexión, decepción amorosa" },
+    { key: "espadas", name: "Espadas", icon: "💨",
+      domainUp: "mente, pensamientos, conflictos, decisiones, dolor",
+      domainRev: "confusión mental, conflictos sin resolver, pensamientos negativos" },
+    { key: "oros", name: "Oros", icon: "🌍",
+      domainUp: "dinero, salud, trabajo físico, lo material, lo práctico",
+      domainRev: "problemas económicos, inseguridad material, salud descuidada" }
+  ];
+
+  var NUMBERS = [
+    { key: "as", label: "As", upTag: "Inicio, semilla, oportunidad", revTag: "Oportunidad perdida, falso comienzo, dudas al empezar" },
+    { key: "2", label: "2", upTag: "Equilibrio, decisión, unión", revTag: "Desequilibrio, indecisión, desunión" },
+    { key: "3", label: "3", upTag: "Expansión, crecimiento, grupo", revTag: "Estancamiento, aislamiento, plan que no despega" },
+    { key: "4", label: "4", upTag: "Estabilidad, estructura, posesión", revTag: "Inestabilidad, pérdida de estructura, apego excesivo" },
+    { key: "5", label: "5", upTag: "Conflicto, pérdida, cambio brusco", revTag: "Resolución del conflicto, evitar una pérdida mayor" },
+    { key: "6", label: "6", upTag: "Ayuda, armonía, solución", revTag: "Desequilibrio en la ayuda, deudas emocionales, favoritismo" },
+    { key: "7", label: "7", upTag: "Evaluación, desafío, esfuerzo", revTag: "Duda, falta de esfuerzo, evaluación equivocada" },
+    { key: "8", label: "8", upTag: "Movimiento, práctica, trabajo duro", revTag: "Estancamiento, lentitud, trabajo sin frutos" },
+    { key: "9", label: "9", upTag: "Clausura, culminación, soledad", revTag: "Aislamiento excesivo, cansancio, cierre casi listo" },
+    { key: "10", label: "10", upTag: "Final de ciclo, plenitud, exceso", revTag: "Final que se alarga, carga excesiva, cierre incompleto" }
+  ];
+
+  var COURT_FIGURES = [
+    { key: "paje", name: "Paje", upDesc: "Mensajero, noticias, aprendizaje, energía joven y exploradora", revDesc: "Inmadurez, malas noticias, bloqueo en el aprendizaje" },
+    { key: "caballo", name: "Caballo", upDesc: "Movimiento rápido, viaje, acción intensa, impulso", revDesc: "Prisa imprudente, retrasos, acción sin dirección" },
+    { key: "reina", name: "Reina", upDesc: "Intuición, observación, interioridad, energía receptiva y sabia", revDesc: "Inseguridad emocional, sobreprotección o frialdad" },
+    { key: "rey", name: "Rey", upDesc: "Autoridad, control, estabilidad, energía activa y protectora", revDesc: "Autoritarismo, rigidez, abuso de poder" }
+  ];
+
+  var MAJOR_DATA = [
+    ["el-loco", "0. El Loco", "0", "Nuevo comienzo, espontaneidad, fe ciega, viaje.", "Impulsividad, locura, riesgo tonto, miedo al cambio."],
+    ["el-mago", "I. El Mago", "I", "Acción, voluntad, poder de manifestar, tienes todas las herramientas.", "Manipulación, bloqueo de energía, falta de dirección."],
+    ["la-sacerdotisa", "II. La Sacerdotisa", "II", "Intuición, silencio, misterio, confía en tu voz interior.", "Ignorar tu intuición, secretos ocultos, superficialidad."],
+    ["la-emperatriz", "III. La Emperatriz", "III", "Abundancia, creatividad, embarazo (físico o de ideas), naturaleza.", "Esterilidad creativa, dependencia, falta de crecimiento."],
+    ["el-emperador", "IV. El Emperador", "IV", "Estructura, orden, autoridad, protección, lógica.", "Tiranía, rigidez, exceso de control, falta de disciplina."],
+    ["el-hierofante", "V. El Hierofante", "V", "Tradición, educación, creencias, consejo de un experto.", "Rebelión, romper con lo establecido, dogmatismo."],
+    ["los-enamorados", "VI. Los Enamorados", "VI", "Decisiones importantes, amor, unión, elección con el corazón.", "Desamor, desacuerdo, indecisión, evitar el compromiso."],
+    ["el-carro", "VII. El Carro", "VII", "Voluntad, determinación, control de emociones, victoria.", "Falta de control, agresividad, ir sin dirección."],
+    ["la-fuerza", "VIII. La Fuerza", "VIII", "Coraje interior, domar instintos, paciencia, persuasión.", "Inseguridad, debilidad, dejarse llevar por los impulsos."],
+    ["el-ermitano", "IX. El Ermitaño", "IX", "Introspección, buscar respuestas dentro, retiro, guía interna.", "Soledad, aislamiento, negarse a ver la verdad."],
+    ["la-rueda", "X. La Rueda de la Fortuna", "X", "Cambio de ciclo, destino, suerte, giro inesperado.", "Mala suerte, resistencia al cambio, patrones que se repiten."],
+    ["la-justicia", "XI. La Justicia", "XI", "Verdad, consecuencias, equilibrio, decisiones legales.", "Injusticia, evasión de responsabilidad, culpa."],
+    ["el-colgado", "XII. El Colgado", "XII", "Pausa, rendirse para ganar, nueva perspectiva, sacrificio.", "Estancamiento, no aprender la lección, víctima."],
+    ["la-muerte", "XIII. La Muerte", "XIII", "Transformación, dejar ir, final necesario, renacimiento.", "Resistencia al cambio, duelo estancado, no soltar el pasado."],
+    ["la-templanza", "XIV. La Templanza", "XIV", "Equilibrio, paciencia, mezclar opuestos, salud, fluir.", "Desequilibrio, impaciencia, caos, no encontrar el punto medio."],
+    ["el-diablo", "XV. El Diablo", "XV", "Ataduras, adicciones, obsesiones, materialismo, sombra.", "Romper ataduras, liberarse, superar las adicciones."],
+    ["la-torre", "XVI. La Torre", "XVI", "Caos, derrumbe, revelación impactante, cambio brusco.", "Evitar el desastre, retrasar lo inevitable, miedo al cambio."],
+    ["la-estrella", "XVII. La Estrella", "XVII", "Esperanza, sanación, inspiración, calma después de la tormenta.", "Desesperanza, falta de fe, bloqueo creativo."],
+    ["la-luna", "XVIII. La Luna", "XVIII", "Ilusiones, miedos ocultos, confusión, el subconsciente.", "Engaño, ansiedad, ver la verdad oculta, miedo superado."],
+    ["el-sol", "XIX. El Sol", "XIX", "Éxito, alegría, claridad, vitalidad, logro.", "Exceso de optimismo, retrasos, falta de vitalidad."],
+    ["el-juicio", "XX. El Juicio", "XX", "Llamado interior, renacimiento, evaluar tu vida, perdón.", "Negar el llamado, autocrítica dura, miedo al cambio."],
+    ["el-mundo", "XXI. El Mundo", "XXI", "Plenitud, culminación, viaje completado, sentirte completo.", "Sin finalizar, falta de logro, sentirte fuera de lugar."]
+  ];
+
+  function buildAllCards() {
+    var cards = [];
+
+    MAJOR_DATA.forEach(function (row) {
+      cards.push({
+        id: row[0], name: row[1], numeral: row[2], icon: "✨",
+        arcanaType: "mayor", suit: null, number: null,
+        up: row[3], rev: row[4]
+      });
+    });
+
+    SUITS.forEach(function (suit) {
+      NUMBERS.forEach(function (num) {
+        cards.push({
+          id: suit.key + "-" + num.key,
+          name: num.label + " de " + suit.name,
+          numeral: num.label, icon: suit.icon,
+          arcanaType: "menor", suit: suit.key, number: num.key,
+          up: num.upTag + ", en el terreno de " + suit.domainUp + ".",
+          rev: num.revTag + ", en el terreno de " + suit.domainRev + "."
+        });
+      });
+      COURT_FIGURES.forEach(function (figure) {
+        cards.push({
+          id: suit.key + "-" + figure.key,
+          name: figure.name + " de " + suit.name,
+          numeral: figure.name, icon: suit.icon,
+          arcanaType: "corte", suit: suit.key, number: null,
+          up: figure.upDesc + ", orientada hacia " + suit.domainUp + ".",
+          rev: figure.revDesc + ", en el terreno de " + suit.domainRev + "."
+        });
+      });
+    });
+
+    return cards;
+  }
+
+  var ALL_CARDS = buildAllCards(); // 22 + 40 + 16 = 78
+  var CARDS_BY_ID = {};
+  ALL_CARDS.forEach(function (c) { CARDS_BY_ID[c.id] = c; });
+
+  var POSITIONS = [
+    { label: "Pasado", icon: "⏳" },
+    { label: "Presente", icon: "🌙" },
+    { label: "Futuro", icon: "✨" }
+  ];
+
+  /* ===================== ESTADO ===================== */
+
+  var state = {
+    question: "",
+    reversedMap: {},
+    usedIds: {},
+    picks: [null, null, null],
+    currentPos: null,
+    pendingCardId: null
+  };
+
+  /* ===================== HELPERS DOM ===================== */
+
+  var $ = function (id) { return document.getElementById(id); };
+  function escapeHtml(str) {
+    var div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+  }
+
+  function cardFaceHTML(card, reversed) {
+    return (
+      '<div class="card-face arcana-' + card.arcanaType + (card.suit ? " suit-" + card.suit : "") + '">' +
+        '<div class="card-inner' + (reversed ? " is-reversed" : "") + '">' +
+          '<img class="card-photo" src="' + IMAGE_BASE_URL + card.id + '.jpg" alt="" onerror="this.style.display=\'none\'">' +
+          '<div class="card-symbolic">' +
+            '<span class="card-tag">' + escapeHtml(card.numeral || "") + '</span>' +
+            '<span class="card-icon">' + card.icon + '</span>' +
+            '<span class="card-name-mini">' + escapeHtml(card.name) + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  /* ===================== FLUJO PRINCIPAL ===================== */
+
+  $("startBtn").addEventListener("click", function () {
+    state.question = $("questionInput").value.trim();
+    state.reversedMap = {};
+    ALL_CARDS.forEach(function (c) {
+      state.reversedMap[c.id] = Math.random() < REVERSED_PROBABILITY;
+    });
+    state.usedIds = {};
+    state.picks = [null, null, null];
+
+    $("questionStep").hidden = true;
+    $("spreadSection").hidden = false;
+    $("readingSection").hidden = true;
+    $("readingContent").innerHTML = "";
+    document.querySelectorAll("#tarotApp .slot").forEach(function (slot) {
+      slot.querySelector(".slot-visual").innerHTML = '<div class="slot-placeholder">?</div>';
+      slot.querySelector(".slot-name").textContent = "";
+      var btn = slot.querySelector(".slot-btn");
+      btn.disabled = false;
+      btn.textContent = "Elegir carta";
+    });
+  });
+
+  document.querySelectorAll(".slot-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      openModal(parseInt(btn.dataset.pos, 10));
+    });
+  });
+
+  $("resetBtn").addEventListener("click", function () {
+    $("readingSection").hidden = true;
+    $("spreadSection").hidden = true;
+    $("questionStep").hidden = false;
+    $("questionInput").value = "";
+  });
+
+  /* ===================== MODAL DE SELECCIÓN ===================== */
+
+  function openModal(posIndex) {
+    state.currentPos = posIndex;
+    state.pendingCardId = null;
+    $("modalTitle").textContent = "Elige tu carta para: " + POSITIONS[posIndex].label;
+    $("revealPanel").hidden = true;
+
+    var available = ALL_CARDS.filter(function (c) { return !state.usedIds[c.id]; });
+    var shuffled = shuffle(available);
+    var grid = $("cardGrid");
+    grid.innerHTML = "";
+    shuffled.forEach(function (card) {
+      var b = document.createElement("button");
+      b.className = "card-mini-btn";
+      b.setAttribute("aria-label", "Carta boca abajo");
+      b.dataset.id = card.id;
+      b.addEventListener("click", function () { revealCard(card.id); });
+      grid.appendChild(b);
+    });
+
+    $("modalOverlay").hidden = false;
+  }
+
+  function closeModal() {
+    $("modalOverlay").hidden = true;
+  }
+  $("modalClose").addEventListener("click", closeModal);
+  $("modalOverlay").addEventListener("click", function (e) {
+    if (e.target === $("modalOverlay")) closeModal();
+  });
+
+  function revealCard(cardId) {
+    state.pendingCardId = cardId;
+    var card = CARDS_BY_ID[cardId];
+    var reversed = state.reversedMap[cardId];
+
+    $("revealCardVisual").innerHTML = cardFaceHTML(card, reversed);
+    $("revealCardName").textContent = card.name + (reversed ? " (invertida)" : "");
+    $("revealCardOrientation").textContent = reversed ? card.rev : card.up;
+    $("revealPanel").hidden = false;
+  }
+
+  $("pickAnotherBtn").addEventListener("click", function () {
+    $("revealPanel").hidden = true;
+    state.pendingCardId = null;
+  });
+
+  $("confirmCardBtn").addEventListener("click", function () {
+    if (!state.pendingCardId) return;
+    var card = CARDS_BY_ID[state.pendingCardId];
+    var reversed = state.reversedMap[state.pendingCardId];
+    state.usedIds[card.id] = true;
+    state.picks[state.currentPos] = { card: card, reversed: reversed };
+
+    updateSlotUI(state.currentPos);
+    closeModal();
+
+    if (state.picks.every(function (p) { return p !== null; })) {
+      renderReading();
+    }
+  });
+
+  function updateSlotUI(posIndex) {
+    var slot = document.querySelector('.slot[data-pos="' + posIndex + '"]');
+    var pick = state.picks[posIndex];
+    slot.querySelector(".slot-visual").innerHTML = cardFaceHTML(pick.card, pick.reversed);
+    slot.querySelector(".slot-name").textContent = pick.card.name + (pick.reversed ? " (invertida)" : "");
+    var btn = slot.querySelector(".slot-btn");
+    btn.textContent = "✓ Elegida";
+    btn.disabled = true;
+  }
+
+  /* ===================== MOTOR DE INTERPRETACIÓN ===================== */
+
+  function buildSynthesis(picks) {
+    var sentences = [];
+    var majors = picks.filter(function (p) { return p.card.arcanaType === "mayor"; }).length;
+    var allCourt = picks.every(function (p) { return p.card.arcanaType === "corte"; });
+    var reversedCount = picks.filter(function (p) { return p.reversed; }).length;
+    var suitsPresent = picks.map(function (p) { return p.card.suit; }).filter(Boolean);
+    var allSameSuit = suitsPresent.length === 3 && new Set(suitsPresent).size === 1;
+    var numbersPresent = picks.map(function (p) { return p.card.number; }).filter(function (n) { return n; });
+    var hasRepeatedNumber = numbersPresent.length >= 2 && new Set(numbersPresent).size < numbersPresent.length;
+
+    if (majors >= 2) {
+      sentences.push("Hay " + majors + " Arcanos Mayores en tu tirada: el tema que consultas es importante y trasciende lo cotidiano, probablemente forme parte de un aprendizaje o ciclo más grande de tu vida.");
+    } else if (majors === 0) {
+      sentences.push("No aparece ningún Arcano Mayor: esta tirada habla más de tu día a día y de decisiones concretas que de un destino ineludible, tienes bastante margen de acción.");
+    }
+
+    if (allSameSuit) {
+      var suit = SUITS.filter(function (s) { return s.key === suitsPresent[0]; })[0];
+      sentences.push("Las tres cartas comparten el palo de " + suit.name + ", así que el foco real de esta situación está en " + suit.domainUp + ".");
+    }
+
+    if (hasRepeatedNumber) {
+      sentences.push("Hay un número que se repite entre tus cartas: no es casualidad, es un tema que insiste y conviene prestarle atención.");
+    }
+
+    if (allCourt) {
+      sentences.push("Las tres cartas son figuras de la Corte: esta situación gira mucho en torno a personas y a los roles o actitudes que tú u otros están representando, más que en hechos aislados.");
+    }
+
+    if (reversedCount === 0) {
+      sentences.push("Ninguna carta salió invertida: las energías de esta tirada fluyen sin grandes bloqueos.");
+    } else if (reversedCount === 1) {
+      sentences.push("Una de las tres cartas salió invertida: hay un punto concreto de fricción o resistencia que conviene vigilar.");
+    } else {
+      sentences.push(reversedCount + " de las tres cartas salieron invertidas: hay bastante resistencia o bloqueo en juego, vale la pena mirar hacia adentro antes de actuar.");
+    }
+
+    return sentences.join(" ");
+  }
+
+  function renderReading() {
+    var html = "";
+    if (state.question) {
+      html += '<p class="reading-question">Sobre tu pregunta: "' + escapeHtml(state.question) + '", esto es lo que dicen las cartas:</p>';
+    }
+    state.picks.forEach(function (pick, i) {
+      html +=
+        '<div class="reading-line">' +
+          "<h3>" + POSITIONS[i].icon + " " + POSITIONS[i].label + ": " + escapeHtml(pick.card.name) + (pick.reversed ? " (invertida)" : "") + "</h3>" +
+          "<p>" + escapeHtml(pick.reversed ? pick.card.rev : pick.card.up) + "</p>" +
+        "</div>";
+    });
+    html +=
+      '<div class="reading-synthesis">' +
+        "<h3>🔮 Síntesis de la tirada</h3>" +
+        "<p>" + escapeHtml(buildSynthesis(state.picks)) + "</p>" +
+      "</div>";
+
+    $("readingContent").innerHTML = html;
+    $("readingSection").hidden = false;
+    $("readingSection").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+})();
+</script>
+
+</body>
+</html>
