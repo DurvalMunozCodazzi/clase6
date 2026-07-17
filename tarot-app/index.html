@@ -661,6 +661,73 @@
 
   /* ===================== MOTOR DE INTERPRETACIÓN ===================== */
 
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function inlinePhrase(str) {
+    var s = str.trim();
+    if (s.charAt(s.length - 1) === ".") s = s.slice(0, -1);
+    return s.charAt(0).toLowerCase() + s.slice(1);
+  }
+
+  var OPENERS_WITH_Q = [
+    'Sobre tu pregunta — "{q}" — esto es lo que revelan las cartas:',
+    'Dejaste que tu intuición eligiera, y esto fue lo que salió para tu pregunta: "{q}".',
+    'Las cartas ya hablaron. Esto es lo que tienen para decirte sobre "{q}":',
+    'Con "{q}" en mente, así se despliega tu tirada:'
+  ];
+  var OPENERS_NO_Q = [
+    "Esto es lo que revelan tus cartas:",
+    "Así se despliega tu tirada:",
+    "Las cartas ya hablaron, esto es lo que tienen para decirte:"
+  ];
+
+  var POSITION_INTROS = {
+    "Pasado": ["Todo esto arranca con algo del pasado", "Ahí están las raíces de tu consulta", "Ese fue tu punto de partida"],
+    "Presente": ["Así se ve tu momento actual", "Hoy estás atravesando esto", "El presente se resume en"],
+    "Futuro": ["El camino apunta hacia esto", "Si seguís este rumbo, esto es lo que se perfila", "Hacia adelante, esto es lo que se asoma"]
+  };
+
+  var SYNTH_MAJORS_MANY = [
+    function (n) { return "Hay " + n + " Arcanos Mayores en tu tirada: el tema que consultás es importante y trasciende lo cotidiano, probablemente forme parte de un aprendizaje o ciclo más grande de tu vida."; },
+    function (n) { return "Con " + n + " Arcanos Mayores presentes, esto no es un tema menor — hay algo aquí que tiene peso en tu historia, no solo en tu semana."; }
+  ];
+  var SYNTH_MAJORS_NONE = [
+    "No aparece ningún Arcano Mayor: esta tirada habla más de tu día a día y de decisiones concretas que de un destino ineludible, tenés bastante margen de acción.",
+    "Sin Arcanos Mayores en juego, esto está más en tus manos de lo que parece: son decisiones cotidianas, no un mandato del destino."
+  ];
+  var SYNTH_SAME_SUIT = [
+    function (suit) { return "Las tres cartas comparten el palo de " + suit.name + ", así que el foco real de esta situación está en " + suit.domainUp + "."; },
+    function (suit) { return "Que las tres sean de " + suit.name + " no es casualidad: todo en esta tirada gira en torno a " + suit.domainUp + "."; }
+  ];
+  var SYNTH_REPEATED_NUMBER = [
+    "Hay un número que se repite entre tus cartas: no es casualidad, es un tema que insiste y conviene prestarle atención.",
+    "Un mismo número aparece más de una vez — cuando eso pasa, suele ser la vida subrayando algo que no podés seguir ignorando."
+  ];
+  var SYNTH_ALL_COURT = [
+    "Las tres cartas son figuras de la Corte: esta situación gira mucho en torno a personas y a los roles o actitudes que tú u otros están representando, más que en hechos aislados.",
+    "Al ser todas cartas de Corte, esto tiene mucho de vínculos y actitudes: mirá quién está jugando qué papel en esta historia."
+  ];
+  var SYNTH_REVERSED_NONE = [
+    "Ninguna carta salió invertida: las energías de esta tirada fluyen sin grandes bloqueos.",
+    "Todas tus cartas cayeron derechas: el camino está relativamente despejado."
+  ];
+  var SYNTH_REVERSED_ONE = [
+    "Una de las tres cartas salió invertida: hay un punto concreto de fricción o resistencia que conviene vigilar.",
+    "Con una carta invertida en la mezcla, hay un freno puntual: no es toda la tirada, pero merece atención."
+  ];
+  var SYNTH_REVERSED_MANY = [
+    function (n) { return n + " de las tres cartas salieron invertidas: hay bastante resistencia o bloqueo en juego."; },
+    function (n) { return "Con " + n + " cartas invertidas, esta tirada trae bastante fricción interna."; }
+  ];
+  var CLOSING_FLOWING = [
+    "Es un buen momento para avanzar con confianza.",
+    "Dejate llevar: por ahora, las señales acompañan."
+  ];
+  var CLOSING_BLOCKED = [
+    "Antes de actuar, vale la pena hacer una pausa y mirar hacia adentro.",
+    "No fuerces nada: hay algo que primero necesita resolverse internamente."
+  ];
+
   function buildSynthesis(picks) {
     var sentences = [];
     var majors = picks.filter(function (p) { return p.card.arcanaType === "mayor"; }).length;
@@ -672,51 +739,59 @@
     var hasRepeatedNumber = numbersPresent.length >= 2 && new Set(numbersPresent).size < numbersPresent.length;
 
     if (majors >= 2) {
-      sentences.push("Hay " + majors + " Arcanos Mayores en tu tirada: el tema que consultas es importante y trasciende lo cotidiano, probablemente forme parte de un aprendizaje o ciclo más grande de tu vida.");
+      sentences.push(pick(SYNTH_MAJORS_MANY)(majors));
     } else if (majors === 0) {
-      sentences.push("No aparece ningún Arcano Mayor: esta tirada habla más de tu día a día y de decisiones concretas que de un destino ineludible, tienes bastante margen de acción.");
+      sentences.push(pick(SYNTH_MAJORS_NONE));
     }
 
     if (allSameSuit) {
       var suit = SUITS.filter(function (s) { return s.key === suitsPresent[0]; })[0];
-      sentences.push("Las tres cartas comparten el palo de " + suit.name + ", así que el foco real de esta situación está en " + suit.domainUp + ".");
+      sentences.push(pick(SYNTH_SAME_SUIT)(suit));
     }
 
     if (hasRepeatedNumber) {
-      sentences.push("Hay un número que se repite entre tus cartas: no es casualidad, es un tema que insiste y conviene prestarle atención.");
+      sentences.push(pick(SYNTH_REPEATED_NUMBER));
     }
 
     if (allCourt) {
-      sentences.push("Las tres cartas son figuras de la Corte: esta situación gira mucho en torno a personas y a los roles o actitudes que tú u otros están representando, más que en hechos aislados.");
+      sentences.push(pick(SYNTH_ALL_COURT));
     }
 
     if (reversedCount === 0) {
-      sentences.push("Ninguna carta salió invertida: las energías de esta tirada fluyen sin grandes bloqueos.");
+      sentences.push(pick(SYNTH_REVERSED_NONE));
     } else if (reversedCount === 1) {
-      sentences.push("Una de las tres cartas salió invertida: hay un punto concreto de fricción o resistencia que conviene vigilar.");
+      sentences.push(pick(SYNTH_REVERSED_ONE));
     } else {
-      sentences.push(reversedCount + " de las tres cartas salieron invertidas: hay bastante resistencia o bloqueo en juego, vale la pena mirar hacia adentro antes de actuar.");
+      sentences.push(pick(SYNTH_REVERSED_MANY)(reversedCount));
     }
+
+    sentences.push(pick(reversedCount === 0 ? CLOSING_FLOWING : CLOSING_BLOCKED));
 
     return sentences.join(" ");
   }
 
   function renderReading() {
     var html = "";
-    if (state.question) {
-      html += '<p class="reading-question">Sobre tu pregunta: "' + escapeHtml(state.question) + '", esto es lo que dicen las cartas:</p>';
-    }
-    state.picks.forEach(function (pick, i) {
+    var opener = state.question
+      ? pick(OPENERS_WITH_Q).replace("{q}", escapeHtml(state.question))
+      : pick(OPENERS_NO_Q);
+    html += '<p class="reading-question">' + opener + "</p>";
+
+    state.picks.forEach(function (pick_, i) {
+      var label = POSITIONS[i].label;
+      var keywords = escapeHtml(inlinePhrase(pick_.reversed ? pick_.card.rev : pick_.card.up));
+      var intro = pick(POSITION_INTROS[label]);
       html +=
         '<div class="reading-line">' +
-          "<h3>" + POSITIONS[i].icon + " " + POSITIONS[i].label + ": " + escapeHtml(pick.card.name) + (pick.reversed ? " (invertida)" : "") + "</h3>" +
-          "<p>" + escapeHtml(pick.reversed ? pick.card.rev : pick.card.up) + "</p>" +
+          "<h3>" + POSITIONS[i].icon + " " + label + ": " + escapeHtml(pick_.card.name) + (pick_.reversed ? " (invertida)" : "") + "</h3>" +
+          "<p>" + intro + ": " + keywords + ".</p>" +
         "</div>";
     });
+
     html +=
       '<div class="reading-synthesis">' +
         "<h3>🔮 Síntesis de la tirada</h3>" +
-        "<p>" + escapeHtml(buildSynthesis(state.picks)) + "</p>" +
+        "<p>" + buildSynthesis(state.picks) + "</p>" +
       "</div>";
 
     $("readingContent").innerHTML = html;
