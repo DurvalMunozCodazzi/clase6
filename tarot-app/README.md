@@ -22,17 +22,14 @@ Todo el motor de interpretación es local (reglas + plantillas combinando númer
 
 Si prefieres un shortcode, se puede envolver este mismo HTML en una función de `functions.php` con `add_shortcode`; avísame si quieres que te prepare esa versión.
 
-## Añadir las 78 fotos de las cartas
+## Fotos de las cartas
 
-Ahora mismo la app usa un diseño simbólico (icono del palo + número/nombre) porque no hay fotos todavía. Para añadirlas más adelante **no hace falta tocar el código**:
+Las 78 ya están incluidas en `assets/cards/` (formato `.png`, nombradas por id: `el-loco.png`, `bastos-as.png`, `copas-reina.png`, etc. — ver `assets/cards/README.md` para la lista completa y su origen/licencia). Si falta alguna, esa carta cae automáticamente en el diseño simbólico (icono del palo + número/nombre) sin romper nada.
 
-1. Sube tus 78 imágenes a una carpeta accesible por URL (por ejemplo, un álbum en la Biblioteca de medios de WordPress, o una carpeta `tarot-cartas` dentro de `wp-content/uploads/`).
-2. Nombra cada archivo exactamente igual al **id** de la carta (ver `assets/cards/README.md` para la lista completa de 78 ids), por ejemplo:
-   - `0-el-loco.jpg`, `1-el-mago.jpg` (nota: el Mago es `el-mago`, revisa la lista completa)
-   - `bastos-as.jpg`, `bastos-2.jpg`, ... `bastos-10.jpg`
-   - `bastos-paje.jpg`, `bastos-caballo.jpg`, `bastos-reina.jpg`, `bastos-rey.jpg`
-   - Igual para `copas-`, `espadas-`, `oros-`
-3. En `index.html`, busca la línea (cerca del inicio del `<script>`):
+**Si vas a alojarlas en tu propio WordPress** (recomendado en vez de servirlas desde esta carpeta):
+
+1. Sube el contenido de `assets/cards/` a tu Biblioteca de medios (o a una carpeta `tarot-cartas` dentro de `wp-content/uploads/`), manteniendo los mismos nombres de archivo.
+2. En `index.html`, busca la línea (cerca del inicio del `<script>`):
    ```js
    var IMAGE_BASE_URL = "assets/cards/";
    ```
@@ -40,9 +37,9 @@ Ahora mismo la app usa un diseño simbólico (icono del palo + número/nombre) p
    ```js
    var IMAGE_BASE_URL = "https://tusitio.com/wp-content/uploads/tarot-cartas/";
    ```
-4. Guarda y pega de nuevo el HTML actualizado en el bloque de WordPress.
+3. Guarda y pega de nuevo el HTML actualizado en el bloque de WordPress.
 
-Si falta una foto puntual, esa carta sigue funcionando con el diseño simbólico automáticamente (no rompe nada).
+Si en algún momento quieres reemplazarlas por tus propias fotos (otro mazo, diseño propio, etc.), solo sobrescribe los archivos manteniendo los mismos nombres — el código no cambia.
 
 ## Personalizar posiciones o probabilidad de invertidas
 

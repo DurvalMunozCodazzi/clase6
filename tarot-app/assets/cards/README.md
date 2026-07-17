@@ -1,33 +1,40 @@
-# Nombres de archivo para las 78 cartas
+# Fotos de las 78 cartas
 
-Cuando tengas las fotos, nómbralas **exactamente** así (mismo id + `.jpg`) y súbelas a esta carpeta (o a la URL que configures en `IMAGE_BASE_URL` dentro de `index.html`). Si usas `.png` o `.webp`, avísame y ajusto la extensión en el código.
+Las imágenes de esta carpeta son las ilustraciones clásicas del mazo **Rider–Waite–Smith** (publicado originalmente en 1909, ilustrado por Pamela Colman Smith).
 
-## Arcanos Mayores (22)
+## Origen de estos archivos
+
+Se obtuvieron del paquete público de npm [`@cometpisces/tarot-kit-images`](https://www.npmjs.com/package/@cometpisces/tarot-kit-images) (código MIT) y se renombraron para que coincidan con los ids que usa `index.html`. No fueron descargadas directamente de internet en esta sesión (el entorno de desarrollo no tiene acceso general a internet, solo a registros de paquetes como npm).
+
+## Nota sobre licencia — léela antes de publicar
+
+El propio paquete de origen lo indica así, y aplica igual aquí:
+
+> Las imágenes del Rider-Waite se consideran de dominio público en muchas jurisdicciones, pero su estatus de derechos de autor puede variar según el país y el uso. Eres responsable de verificar los requisitos de licencia en tu jurisdicción y, si el uso es comercial, de confirmar que no necesitas permisos adicionales.
+
+En la práctica: la edición de 1909 es de dominio público en EE. UU. y se usa así en miles de sitios y apps (Wikipedia, Wikimedia Commons, etc.), así que el riesgo para un blog/app personal es mínimo. Si tu proyecto es comercial o vas a distribuirlo ampliamente, vale la pena una revisión rápida por tu cuenta.
+
+## Nomenclatura (por si necesitas reemplazar alguna)
+
+### Arcanos Mayores (22)
 
 ```
-el-loco.jpg          el-mago.jpg           la-sacerdotisa.jpg    la-emperatriz.jpg
-el-emperador.jpg      el-hierofante.jpg     los-enamorados.jpg    el-carro.jpg
-la-fuerza.jpg         el-ermitano.jpg       la-rueda.jpg          la-justicia.jpg
-el-colgado.jpg        la-muerte.jpg         la-templanza.jpg      el-diablo.jpg
-la-torre.jpg          la-estrella.jpg       la-luna.jpg           el-sol.jpg
-el-juicio.jpg         el-mundo.jpg
+el-loco.png          el-mago.png           la-sacerdotisa.png    la-emperatriz.png
+el-emperador.png      el-hierofante.png     los-enamorados.png    el-carro.png
+la-fuerza.png         el-ermitano.png       la-rueda.png          la-justicia.png
+el-colgado.png        la-muerte.png         la-templanza.png      el-diablo.png
+la-torre.png          la-estrella.png       la-luna.png           el-sol.png
+el-juicio.png         el-mundo.png
 ```
 
-## Arcanos Menores (40) — patrón: `{palo}-{numero}.jpg`
+### Arcanos Menores (40) — patrón: `{palo}-{numero}.png`
 
-Palos: `bastos`, `copas`, `espadas`, `oros`
-Números: `as`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `10`
+Palos: `bastos`, `copas`, `espadas`, `oros` · Números: `as`, `2`...`10`
 
-Ejemplos: `bastos-as.jpg`, `bastos-2.jpg`, ... `bastos-10.jpg`, `copas-as.jpg`, ... `oros-10.jpg`
-(10 números × 4 palos = 40 archivos)
-
-## Cartas de la Corte (16) — patrón: `{palo}-{figura}.jpg`
+### Cartas de la Corte (16) — patrón: `{palo}-{figura}.png`
 
 Figuras: `paje`, `caballo`, `reina`, `rey`
 
-Ejemplos: `bastos-paje.jpg`, `bastos-caballo.jpg`, `bastos-reina.jpg`, `bastos-rey.jpg`
-(4 figuras × 4 palos = 16 archivos)
+## Total: 78 archivos, todos presentes en esta carpeta.
 
-## Total: 22 + 40 + 16 = 78 archivos
-
-No hace falta subir las 78 de una vez: la carta que no tenga foto simplemente se muestra con su diseño simbólico (icono de palo + número/nombre) sin romper nada.
+Si quieres usar otro mazo o tus propias fotos más adelante, solo sobrescribe estos archivos manteniendo los mismos nombres — el código de `index.html` no necesita ningún cambio.
