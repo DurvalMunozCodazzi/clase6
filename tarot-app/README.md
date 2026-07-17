@@ -4,10 +4,28 @@ App autocontenida (HTML + CSS + JS en un solo archivo) para hacer tiradas de tar
 
 ## Cómo funciona
 
+Al entrar, primero se elige el **modo de tirada**:
+
+### 1) Tirada digital
+
+Para quien hace la consulta directamente en la web, sin cartas físicas de por medio.
+
 1. El visitante escribe su pregunta.
-2. Se abre un popup con las 78 cartas boca abajo (mezcladas) y elige una para **Pasado**. Se repite para **Presente** y **Futuro** (las cartas ya elegidas no vuelven a aparecer).
-3. Cada carta tiene ~25% de probabilidad de salir invertida (se decide al azar apenas empieza la tirada, no cuando se hace clic).
-4. Al completar las 3 cartas, se genera automáticamente una lectura debajo: el significado de cada carta según su posición, más una **síntesis** que cruza patrones entre las 3 (mayoría de Arcanos Mayores, mismo palo, número repetido, cuántas invertidas, etc.).
+2. Pantalla de **mezclado**: un mazo virtual con botón "🔀 Mezclar cartas" y una animación de barajado antes de empezar a elegir (le da ritual a la tirada, no es solo un clic instantáneo).
+3. Se abre un popup con las 78 cartas boca abajo (mezcladas) y elige una para **Pasado**. Se repite para **Presente** y **Futuro** (las cartas ya elegidas no vuelven a aparecer).
+4. Cada carta tiene ~25% de probabilidad de salir invertida, decidida al azar apenas se mezcla el mazo (no cuando se hace clic sobre ella).
+
+### 2) Tirada física
+
+Para cuando el operador ya tiró las cartas reales, físicamente, sobre la mesa, y quiere usar la app solo para obtener la lectura escrita.
+
+1. Se escribe la pregunta igual que en el modo digital, pero **no hay paso de mezclado** (la baraja ya se mezcló en la mesa).
+2. Para cada posición (Pasado/Presente/Futuro) se abre un buscador con las 78 cartas visibles (no boca abajo) y un campo de texto para filtrar por nombre — pensado para encontrar rápido la carta que salió en la mesa durante una lectura en vivo.
+3. Al seleccionar una carta, el operador indica manualmente si salió **derecha o invertida** (esto lo decide la mesa, no el azar de la app).
+
+### En ambos modos
+
+Al completar las 3 cartas se genera automáticamente una lectura debajo: el significado de cada carta según su posición, más una **síntesis** que cruza patrones entre las 3 (mayoría de Arcanos Mayores, mismo palo, número repetido, cuántas invertidas, etc.).
 
 Todo el motor de interpretación es local (reglas + plantillas combinando número + palo, tal como se armó la "chuleta" original). No depende de ninguna API externa ni de conexión a internet.
 

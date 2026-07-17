@@ -33,6 +33,25 @@
   #tarotApp .tarot-header h1 { color: var(--gold-soft); font-size: 1.8rem; }
   #tarotApp .subtitle { color: var(--text-dim); margin: 0; }
 
+  #tarotApp .step-intro { color: var(--text-dim); margin: 0 0 1rem; }
+  #tarotApp .link-btn {
+    background: none; border: none; color: var(--text-dim); cursor: pointer;
+    font-size: 0.8rem; text-decoration: underline; padding: 0; margin-bottom: 0.8rem;
+  }
+  #tarotApp .link-btn:hover { color: var(--gold-soft); }
+
+  #tarotApp .mode-step { max-width: 580px; margin: 0 auto; text-align: center; }
+  #tarotApp .mode-options { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  #tarotApp .mode-card {
+    background: rgba(255,255,255,0.04); border: 1px solid var(--purple); border-radius: 0.8rem;
+    padding: 1.2rem; cursor: pointer; text-align: left; color: var(--text);
+    transition: transform 0.15s ease, border-color 0.15s ease; font: inherit;
+  }
+  #tarotApp .mode-card:hover { transform: translateY(-3px); border-color: var(--gold); }
+  #tarotApp .mode-icon { font-size: 1.8rem; display: block; margin-bottom: 0.5rem; }
+  #tarotApp .mode-card h3 { color: var(--gold-soft); font-size: 1.05rem; }
+  #tarotApp .mode-card p { color: var(--text-dim); font-size: 0.82rem; margin: 0; line-height: 1.4; }
+
   #tarotApp .question-step { max-width: 480px; margin: 0 auto; text-align: center; }
   #tarotApp label { display: block; margin-bottom: 0.5rem; color: var(--text-dim); }
   #tarotApp textarea {
@@ -49,6 +68,33 @@
   #tarotApp .btn-primary:hover, #tarotApp .btn-secondary:hover { transform: translateY(-2px); }
   #tarotApp .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
+  #tarotApp .shuffle-step { max-width: 400px; margin: 0 auto; text-align: center; }
+  #tarotApp .shuffle-deck { position: relative; width: 130px; height: 195px; margin: 1.2rem auto 1.6rem; }
+  #tarotApp .deck-card {
+    position: absolute; inset: 0; border-radius: 0.6rem; border: 1px solid var(--purple);
+    background: repeating-linear-gradient(135deg, #2a1a45, #2a1a45 8px, #241338 8px, #241338 16px);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+  }
+  #tarotApp .deck-card:nth-child(2) { transform: translate(3px, -3px); }
+  #tarotApp .deck-card:nth-child(3) { transform: translate(6px, -6px); }
+  #tarotApp .deck-card:nth-child(4) { transform: translate(9px, -9px); }
+  #tarotApp .deck-card:nth-child(5) { transform: translate(12px, -12px); }
+  @keyframes shuffleMove {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    25% { transform: translate(-16px, -8px) rotate(-9deg); }
+    50% { transform: translate(14px, 4px) rotate(7deg); }
+    75% { transform: translate(-8px, 6px) rotate(-4deg); }
+  }
+  #tarotApp .shuffle-deck.is-shuffling .deck-card { animation: shuffleMove 0.9s ease-in-out; }
+  #tarotApp .shuffle-deck.is-shuffling .deck-card:nth-child(1) { animation-delay: 0s; }
+  #tarotApp .shuffle-deck.is-shuffling .deck-card:nth-child(2) { animation-delay: 0.06s; }
+  #tarotApp .shuffle-deck.is-shuffling .deck-card:nth-child(3) { animation-delay: 0.12s; }
+  #tarotApp .shuffle-deck.is-shuffling .deck-card:nth-child(4) { animation-delay: 0.18s; }
+  #tarotApp .shuffle-deck.is-shuffling .deck-card:nth-child(5) { animation-delay: 0.24s; }
+  @media (prefers-reduced-motion: reduce) {
+    #tarotApp .shuffle-deck.is-shuffling .deck-card { animation: none; }
+  }
+
   #tarotApp .spread { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 2rem 0; }
   #tarotApp .slot { background: rgba(255,255,255,0.04); border: 1px dashed var(--purple); border-radius: 0.8rem; padding: 0.8rem; text-align: center; }
   #tarotApp .slot-label { color: var(--gold-soft); font-weight: 600; margin-bottom: 0.6rem; display: block; }
@@ -60,7 +106,7 @@
   }
   #tarotApp .slot-name { font-size: 0.85rem; color: var(--text-dim); min-height: 1.2em; margin-top: 0.3rem; }
 
-  #tarotApp .card-face { width: 100%; aspect-ratio: 2 / 3; margin: 0 auto; perspective: 600px; }
+  #tarotApp .card-face { width: 100%; aspect-ratio: 2 / 3; margin: 0 auto; }
   #tarotApp .card-inner {
     position: relative; width: 100%; height: 100%; border-radius: 0.6rem; overflow: hidden;
     border: 1px solid rgba(255,255,255,0.25); transition: transform 0.4s ease;
@@ -86,7 +132,7 @@
   #tarotApp .reading-line { margin: 1rem 0; padding-left: 0.8rem; border-left: 3px solid var(--purple); }
   #tarotApp .reading-line h3 { color: var(--gold-soft); font-size: 1.05rem; }
   #tarotApp .reading-synthesis { margin-top: 1.2rem; padding: 1rem; background: rgba(212,175,55,0.08); border-radius: 0.6rem; border: 1px solid rgba(212,175,55,0.3); }
-  #tarotApp .reading footer-actions { text-align: center; }
+  #tarotApp .footer-actions { text-align: center; margin-top: 1rem; display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; }
 
   #tarotApp .modal-overlay {
     position: fixed; inset: 0; background: rgba(5,2,15,0.85); backdrop-filter: blur(3px);
@@ -99,16 +145,27 @@
   }
   #tarotApp .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.8rem; }
   #tarotApp .modal-close { background: none; border: none; color: var(--text); font-size: 1.3rem; cursor: pointer; }
+  #tarotApp .card-search-input {
+    width: 100%; padding: 0.55rem 0.8rem; border-radius: 0.5rem; border: 1px solid var(--purple);
+    background: rgba(255,255,255,0.05); color: var(--text); margin-bottom: 0.6rem; font-size: 0.9rem;
+  }
   #tarotApp .card-grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 6px;
     overflow-y: auto; padding: 0.3rem; flex: 1;
   }
+  #tarotApp .card-grid.card-grid--browse { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
   #tarotApp .card-mini-btn {
     aspect-ratio: 2 / 3; border-radius: 0.3rem; border: 1px solid var(--purple); cursor: pointer;
     background: repeating-linear-gradient(135deg, #2a1a45, #2a1a45 6px, #241338 6px, #241338 12px);
     transition: transform 0.15s ease;
   }
   #tarotApp .card-mini-btn:hover { transform: scale(1.08); border-color: var(--gold); }
+  #tarotApp .card-search-btn {
+    display: block; width: 100%; padding: 0; border: none; background: transparent;
+    cursor: pointer; border-radius: 0.4rem; transition: transform 0.15s ease;
+  }
+  #tarotApp .card-search-btn:hover { transform: scale(1.06); }
+  #tarotApp .card-search-empty { color: var(--text-dim); text-align: center; padding: 2rem 1rem; grid-column: 1 / -1; }
   #tarotApp .reveal-panel {
     display: flex; gap: 1rem; align-items: center; margin-top: 1rem; padding-top: 1rem;
     border-top: 1px solid rgba(255,255,255,0.15); animation: flipReveal 0.35s ease;
@@ -118,9 +175,16 @@
   #tarotApp .reveal-info { flex: 1; }
   #tarotApp .reveal-info h3 { color: var(--gold-soft); margin-bottom: 0.3rem; }
   #tarotApp .reveal-info p { color: var(--text-dim); font-size: 0.9rem; margin: 0 0 0.7rem; }
+  #tarotApp .orientation-toggle { display: flex; gap: 0.5rem; margin-bottom: 0.7rem; }
+  #tarotApp .orientation-btn {
+    flex: 1; padding: 0.4rem 0.6rem; border-radius: 0.5rem; border: 1px solid var(--purple);
+    background: transparent; color: var(--text-dim); cursor: pointer; font-size: 0.82rem; font-weight: 600;
+  }
+  #tarotApp .orientation-btn.active { background: linear-gradient(135deg, var(--gold-soft), var(--gold)); color: #241533; border-color: transparent; }
   #tarotApp .reveal-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
 
   @media (max-width: 560px) {
+    #tarotApp .mode-options { grid-template-columns: 1fr; }
     #tarotApp .spread { grid-template-columns: 1fr; }
     #tarotApp .reveal-panel { flex-direction: column; }
     #tarotApp .reveal-card { width: 140px; }
@@ -135,10 +199,39 @@
     <p class="subtitle">Concéntrate en tu pregunta y deja que tu intuición elija.</p>
   </header>
 
-  <section class="question-step" id="questionStep">
+  <section class="mode-step" id="modeStep">
+    <p class="step-intro">¿Cómo quieres hacer esta tirada?</p>
+    <div class="mode-options">
+      <button type="button" class="mode-card" data-mode="digital">
+        <span class="mode-icon">🔮</span>
+        <h3>Tirada digital</h3>
+        <p>Baraja virtual mezclada al azar. Elige tus 3 cartas por intuición, aquí mismo.</p>
+      </button>
+      <button type="button" class="mode-card" data-mode="fisica">
+        <span class="mode-icon">🃏</span>
+        <h3>Tirada física</h3>
+        <p>Ya tiraste las cartas reales sobre la mesa. Búscalas aquí una por una para registrar la lectura.</p>
+      </button>
+    </div>
+  </section>
+
+  <section class="question-step" id="questionStep" hidden>
+    <button type="button" id="backToModeBtn" class="link-btn">‹ Cambiar modo</button>
     <label for="questionInput">¿Qué quieres consultarle al tarot?</label>
     <textarea id="questionInput" rows="2" placeholder="Ej: ¿Cómo va a evolucionar mi situación laboral?"></textarea>
     <button id="startBtn" class="btn-primary">Comenzar tirada</button>
+  </section>
+
+  <section class="shuffle-step" id="shuffleStep" hidden>
+    <p class="step-intro">Mezcla tu mazo virtual antes de elegir tus cartas.</p>
+    <div class="shuffle-deck" id="shuffleDeck">
+      <div class="deck-card"></div>
+      <div class="deck-card"></div>
+      <div class="deck-card"></div>
+      <div class="deck-card"></div>
+      <div class="deck-card"></div>
+    </div>
+    <button type="button" id="shuffleBtn" class="btn-primary">🔀 Mezclar cartas</button>
   </section>
 
   <section class="spread" id="spreadSection" hidden>
@@ -165,8 +258,9 @@
   <section class="reading" id="readingSection" hidden>
     <h2>🔮 Tu lectura</h2>
     <div id="readingContent"></div>
-    <div class="footer-actions" style="text-align:center; margin-top:1rem;">
+    <div class="footer-actions">
       <button id="resetBtn" class="btn-secondary">Nueva tirada</button>
+      <button id="changeModeBtn" class="btn-secondary">Cambiar modo</button>
     </div>
   </section>
 
@@ -176,11 +270,16 @@
         <h2 id="modalTitle"></h2>
         <button id="modalClose" class="modal-close" aria-label="Cerrar">✕</button>
       </div>
+      <input type="text" id="cardSearch" class="card-search-input" placeholder="Buscar carta (ej. &quot;Rey de Copas&quot;, &quot;Torre&quot;)..." hidden />
       <div class="card-grid" id="cardGrid"></div>
       <div class="reveal-panel" id="revealPanel" hidden>
         <div class="reveal-card" id="revealCardVisual"></div>
         <div class="reveal-info">
           <h3 id="revealCardName"></h3>
+          <div class="orientation-toggle" id="orientationToggle" hidden>
+            <button type="button" class="orientation-btn active" data-val="false">Derecha</button>
+            <button type="button" class="orientation-btn" data-val="true">Invertida</button>
+          </div>
           <p id="revealCardOrientation"></p>
           <div class="reveal-actions">
             <button id="confirmCardBtn" class="btn-primary">Confirmar esta carta</button>
@@ -196,9 +295,6 @@
 (function () {
   "use strict";
 
-  // Cambia esto por la carpeta donde subas las 78 fotos, ej:
-  // "https://tusitio.com/wp-content/uploads/tarot-cartas/"
-  // Si una imagen no existe, la carta cae automáticamente en el diseño simbólico.
   var IMAGE_BASE_URL = "assets/cards/";
   var REVERSED_PROBABILITY = 0.25;
 
@@ -301,7 +397,7 @@
     return cards;
   }
 
-  var ALL_CARDS = buildAllCards(); // 22 + 40 + 16 = 78
+  var ALL_CARDS = buildAllCards(); // 22 + 40 + 16 = 78, ya en orden lógico (mayores, luego cada palo)
   var CARDS_BY_ID = {};
   ALL_CARDS.forEach(function (c) { CARDS_BY_ID[c.id] = c; });
 
@@ -314,12 +410,14 @@
   /* ===================== ESTADO ===================== */
 
   var state = {
+    mode: null, // "digital" | "fisica"
     question: "",
     reversedMap: {},
     usedIds: {},
     picks: [null, null, null],
     currentPos: null,
-    pendingCardId: null
+    pendingCardId: null,
+    pendingReversed: false
   };
 
   /* ===================== HELPERS DOM ===================== */
@@ -354,21 +452,32 @@
     );
   }
 
+  /* ===================== SELECCIÓN DE MODO ===================== */
+
+  document.querySelectorAll(".mode-card").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      state.mode = btn.dataset.mode;
+      $("modeStep").hidden = true;
+      $("questionStep").hidden = false;
+    });
+  });
+
+  $("backToModeBtn").addEventListener("click", function () {
+    $("questionStep").hidden = true;
+    $("modeStep").hidden = false;
+  });
+
+  $("changeModeBtn").addEventListener("click", function () {
+    $("readingSection").hidden = true;
+    $("spreadSection").hidden = true;
+    $("shuffleStep").hidden = true;
+    $("questionStep").hidden = true;
+    $("modeStep").hidden = false;
+  });
+
   /* ===================== FLUJO PRINCIPAL ===================== */
 
-  $("startBtn").addEventListener("click", function () {
-    state.question = $("questionInput").value.trim();
-    state.reversedMap = {};
-    ALL_CARDS.forEach(function (c) {
-      state.reversedMap[c.id] = Math.random() < REVERSED_PROBABILITY;
-    });
-    state.usedIds = {};
-    state.picks = [null, null, null];
-
-    $("questionStep").hidden = true;
-    $("spreadSection").hidden = false;
-    $("readingSection").hidden = true;
-    $("readingContent").innerHTML = "";
+  function resetSlotsUI() {
     document.querySelectorAll("#tarotApp .slot").forEach(function (slot) {
       slot.querySelector(".slot-visual").innerHTML = '<div class="slot-placeholder">?</div>';
       slot.querySelector(".slot-name").textContent = "";
@@ -376,6 +485,40 @@
       btn.disabled = false;
       btn.textContent = "Elegir carta";
     });
+  }
+
+  $("startBtn").addEventListener("click", function () {
+    state.question = $("questionInput").value.trim();
+    state.usedIds = {};
+    state.picks = [null, null, null];
+    resetSlotsUI();
+
+    $("questionStep").hidden = true;
+    $("readingSection").hidden = true;
+    $("readingContent").innerHTML = "";
+
+    if (state.mode === "digital") {
+      state.reversedMap = {};
+      ALL_CARDS.forEach(function (c) {
+        state.reversedMap[c.id] = Math.random() < REVERSED_PROBABILITY;
+      });
+      $("shuffleDeck").classList.remove("is-shuffling");
+      $("shuffleBtn").disabled = false;
+      $("shuffleStep").hidden = false;
+    } else {
+      $("spreadSection").hidden = false;
+    }
+  });
+
+  $("shuffleBtn").addEventListener("click", function () {
+    $("shuffleBtn").disabled = true;
+    $("shuffleDeck").classList.add("is-shuffling");
+    var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setTimeout(function () {
+      $("shuffleDeck").classList.remove("is-shuffling");
+      $("shuffleStep").hidden = true;
+      $("spreadSection").hidden = false;
+    }, reduced ? 150 : 950);
   });
 
   document.querySelectorAll(".slot-btn").forEach(function (btn) {
@@ -387,6 +530,7 @@
   $("resetBtn").addEventListener("click", function () {
     $("readingSection").hidden = true;
     $("spreadSection").hidden = true;
+    $("shuffleStep").hidden = true;
     $("questionStep").hidden = false;
     $("questionInput").value = "";
   });
@@ -396,24 +540,53 @@
   function openModal(posIndex) {
     state.currentPos = posIndex;
     state.pendingCardId = null;
-    $("modalTitle").textContent = "Elige tu carta para: " + POSITIONS[posIndex].label;
+    var verb = state.mode === "digital" ? "Elige tu carta para: " : "Busca la carta que salió para: ";
+    $("modalTitle").textContent = verb + POSITIONS[posIndex].label;
     $("revealPanel").hidden = true;
 
+    var searchInput = $("cardSearch");
+    searchInput.hidden = state.mode !== "fisica";
+    searchInput.value = "";
+    $("cardGrid").classList.toggle("card-grid--browse", state.mode === "fisica");
+
+    renderGrid("");
+    $("modalOverlay").hidden = false;
+    if (state.mode === "fisica") searchInput.focus();
+  }
+
+  function renderGrid(query) {
     var available = ALL_CARDS.filter(function (c) { return !state.usedIds[c.id]; });
-    var shuffled = shuffle(available);
+    var list = state.mode === "digital" ? shuffle(available) : available.filter(function (c) {
+      return !query || c.name.toLowerCase().indexOf(query.toLowerCase()) !== -1;
+    });
+
     var grid = $("cardGrid");
     grid.innerHTML = "";
-    shuffled.forEach(function (card) {
+
+    if (state.mode === "fisica" && list.length === 0) {
+      grid.innerHTML = '<p class="card-search-empty">Ninguna carta coincide con la búsqueda.</p>';
+      return;
+    }
+
+    list.forEach(function (card) {
       var b = document.createElement("button");
-      b.className = "card-mini-btn";
-      b.setAttribute("aria-label", "Carta boca abajo");
+      b.type = "button";
       b.dataset.id = card.id;
+      if (state.mode === "digital") {
+        b.className = "card-mini-btn";
+        b.setAttribute("aria-label", "Carta boca abajo");
+      } else {
+        b.className = "card-search-btn";
+        b.innerHTML = cardFaceHTML(card, false);
+      }
       b.addEventListener("click", function () { revealCard(card.id); });
       grid.appendChild(b);
     });
-
-    $("modalOverlay").hidden = false;
   }
+
+  $("cardSearch").addEventListener("input", function (e) {
+    renderGrid(e.target.value.trim());
+  });
 
   function closeModal() {
     $("modalOverlay").hidden = true;
@@ -423,28 +596,50 @@
     if (e.target === $("modalOverlay")) closeModal();
   });
 
+  /* ===================== REVELACIÓN Y ORIENTACIÓN ===================== */
+
+  function updateOrientationButtons() {
+    document.querySelectorAll("#orientationToggle .orientation-btn").forEach(function (b) {
+      var isRev = b.dataset.val === "true";
+      b.classList.toggle("active", isRev === state.pendingReversed);
+    });
+  }
+
+  function renderRevealVisual() {
+    var card = CARDS_BY_ID[state.pendingCardId];
+    $("revealCardVisual").innerHTML = cardFaceHTML(card, state.pendingReversed);
+    $("revealCardName").textContent = card.name + (state.pendingReversed ? " (invertida)" : "");
+    $("revealCardOrientation").textContent = state.pendingReversed ? card.rev : card.up;
+  }
+
   function revealCard(cardId) {
     state.pendingCardId = cardId;
-    var card = CARDS_BY_ID[cardId];
-    var reversed = state.reversedMap[cardId];
-
-    $("revealCardVisual").innerHTML = cardFaceHTML(card, reversed);
-    $("revealCardName").textContent = card.name + (reversed ? " (invertida)" : "");
-    $("revealCardOrientation").textContent = reversed ? card.rev : card.up;
+    state.pendingReversed = state.mode === "digital" ? !!state.reversedMap[cardId] : false;
+    $("orientationToggle").hidden = state.mode !== "fisica";
+    updateOrientationButtons();
+    renderRevealVisual();
     $("revealPanel").hidden = false;
   }
+
+  document.querySelectorAll("#orientationToggle .orientation-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      state.pendingReversed = btn.dataset.val === "true";
+      updateOrientationButtons();
+      renderRevealVisual();
+    });
+  });
 
   $("pickAnotherBtn").addEventListener("click", function () {
     $("revealPanel").hidden = true;
     state.pendingCardId = null;
+    if (state.mode === "fisica") $("cardSearch").focus();
   });
 
   $("confirmCardBtn").addEventListener("click", function () {
     if (!state.pendingCardId) return;
     var card = CARDS_BY_ID[state.pendingCardId];
-    var reversed = state.reversedMap[state.pendingCardId];
     state.usedIds[card.id] = true;
-    state.picks[state.currentPos] = { card: card, reversed: reversed };
+    state.picks[state.currentPos] = { card: card, reversed: state.pendingReversed };
 
     updateSlotUI(state.currentPos);
     closeModal();
