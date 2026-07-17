@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LandingCraft — Generador de Landing Pages</title>
+  <link rel="icon" href="data:," />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="topbar-brand">
+        <span class="logo-dot"></span>
+        <div>
+          LandingCraft
+          <small>Generador de landing pages</small>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <span id="save-indicator" class="save-indicator">Guardado ✓</span>
+        <div class="device-toggle">
+          <button type="button" data-device="desktop" class="active" title="Escritorio">🖥️</button>
+          <button type="button" data-device="tablet" title="Tablet">📟</button>
+          <button type="button" data-device="mobile" title="Móvil">📱</button>
+        </div>
+        <button id="btn-reset" class="tb-btn danger">Reiniciar</button>
+        <button id="btn-fullscreen" class="tb-btn">Pantalla completa</button>
+        <button id="btn-download" class="tb-btn primary">⬇ Descargar HTML</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <!-- Form panel -->
+      <aside class="form-panel">
+
+        <div class="form-section">
+          <h4>Estilo visual</h4>
+          <p class="hint">Elegí la paleta y tono de tu landing page.</p>
+          <div id="theme-picker"></div>
+        </div>
+
+        <div class="form-section">
+          <h4>Información del negocio</h4>
+          <label class="field-label" for="field-businessName">Nombre del negocio</label>
+          <input type="text" id="field-businessName" placeholder="Nova" />
+
+          <label class="field-label" for="field-eyebrow">Etiqueta superior</label>
+          <input type="text" id="field-eyebrow" placeholder="Nuevo" />
+
+          <label class="field-label" for="field-tagline">Título principal (headline)</label>
+          <input type="text" id="field-tagline" placeholder="Lanzá tu producto al mundo en minutos" />
+
+          <label class="field-label" for="field-description">Descripción</label>
+          <textarea id="field-description" rows="3" placeholder="Descripción breve de tu producto o servicio"></textarea>
+
+          <label class="field-label" for="field-ctaButtonText">Texto del botón principal</label>
+          <input type="text" id="field-ctaButtonText" placeholder="Empezar gratis" />
+
+          <label class="field-label" for="field-ctaButtonLink">Link del botón principal</label>
+          <input type="text" id="field-ctaButtonLink" placeholder="#contacto" />
+
+          <label class="field-label" for="field-secondaryButtonText">Texto botón secundario (opcional)</label>
+          <input type="text" id="field-secondaryButtonText" placeholder="Ver beneficios" />
+
+          <label class="field-label" for="field-contactEmail">Email de contacto</label>
+          <input type="email" id="field-contactEmail" placeholder="hola@tuempresa.com" />
+        </div>
+
+        <div class="form-section">
+          <h4>Secciones</h4>
+          <p class="hint">Activá o desactivá secciones de tu landing page.</p>
+
+          <div class="toggle-row">
+            <span>Beneficios / Features</span>
+            <label class="switch"><input type="checkbox" data-section-toggle="features" /><span class="slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <span>Testimonios</span>
+            <label class="switch"><input type="checkbox" data-section-toggle="testimonials" /><span class="slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <span>Precios</span>
+            <label class="switch"><input type="checkbox" data-section-toggle="pricing" /><span class="slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <span>Preguntas frecuentes</span>
+            <label class="switch"><input type="checkbox" data-section-toggle="faq" /><span class="slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <span>Llamado a la acción final</span>
+            <label class="switch"><input type="checkbox" data-section-toggle="cta" /><span class="slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <span>Footer</span>
+            <label class="switch"><input type="checkbox" data-section-toggle="footer" /><span class="slider"></span></label>
+          </div>
+        </div>
+
+        <fieldset class="form-section" data-section-fields="features">
+          <h4>Beneficios</h4>
+          <div id="features-list"></div>
+          <button type="button" id="add-feature" class="add-btn">+ Agregar beneficio</button>
+        </fieldset>
+
+        <fieldset class="form-section" data-section-fields="testimonials">
+          <h4>Testimonios</h4>
+          <div id="testimonials-list"></div>
+          <button type="button" id="add-testimonial" class="add-btn">+ Agregar testimonio</button>
+        </fieldset>
+
+        <fieldset class="form-section" data-section-fields="pricing">
+          <h4>Planes de precios</h4>
+          <div id="pricing-list"></div>
+          <button type="button" id="add-plan" class="add-btn">+ Agregar plan</button>
+        </fieldset>
+
+        <fieldset class="form-section" data-section-fields="faq">
+          <h4>Preguntas frecuentes</h4>
+          <div id="faq-list"></div>
+          <button type="button" id="add-faq" class="add-btn">+ Agregar pregunta</button>
+        </fieldset>
+
+        <fieldset class="form-section" data-section-fields="cta">
+          <h4>Llamado a la acción final</h4>
+          <label class="field-label" for="field-ctaHeadline">Título</label>
+          <input type="text" id="field-ctaHeadline" placeholder="¿Listo para lanzar tu landing page?" />
+          <label class="field-label" for="field-ctaSubtext">Subtexto</label>
+          <textarea id="field-ctaSubtext" rows="2" placeholder="Sumate hoy y tené tu página publicada en minutos."></textarea>
+        </fieldset>
+
+      </aside>
+
+      <!-- Preview panel -->
+      <main class="preview-panel">
+        <div id="preview-wrapper" data-device="desktop">
+          <iframe id="preview-frame" title="Vista previa de la landing page"></iframe>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="templates.js"></script>
+  <script src="generator.js"></script>
+</body>
+</html>
