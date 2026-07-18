@@ -4,7 +4,7 @@ Tags: tarot, tirada, cartas, adivinacion, shortcode
 Requires at least: 5.0
 Tested up to: 6.6
 Requires PHP: 7.0
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Author: Durval Muñoz Codazzi
@@ -48,6 +48,9 @@ El plugin está pensado para un solo widget por página. Si necesitás varias ti
 No. Toda la interpretación se genera localmente en el navegador del visitante.
 
 == Changelog ==
+
+= 1.0.2 =
+* Cartas más grandes (~40%) en la grilla de búsqueda, la grilla de selección y la vista al revelar, para que se distingan mejor.
 
 = 1.0.1 =
 * Corrige el contraste de "Tu lectura" y "Síntesis de la tirada" cuando el plugin se inserta dentro de temas/builders (Divi, etc.) que fuerzan su propio color de encabezados.

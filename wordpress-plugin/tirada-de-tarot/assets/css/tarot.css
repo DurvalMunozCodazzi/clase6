@@ -116,9 +116,9 @@
     position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
     justify-content: space-between; padding: 0.4rem; text-align: center;
   }
-  #tarotApp .card-tag { font-size: 0.75rem; font-weight: 700; color: rgba(255,255,255,0.85) !important; align-self: flex-start; }
-  #tarotApp .card-icon { font-size: 1.8rem; }
-  #tarotApp .card-name-mini { font-size: 0.72rem; font-weight: 600; line-height: 1.15; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+  #tarotApp .card-tag { font-size: 0.85rem; font-weight: 700; color: rgba(255,255,255,0.85) !important; align-self: flex-start; }
+  #tarotApp .card-icon { font-size: 2.2rem; }
+  #tarotApp .card-name-mini { font-size: 0.8rem; font-weight: 600; line-height: 1.2; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
 
   #tarotApp .reading { background: rgba(255,255,255,0.04); border-radius: 0.8rem; padding: 1.2rem; margin-top: 1.5rem; }
   #tarotApp .reading-question { font-style: italic; color: var(--gold-soft) !important; }
@@ -145,10 +145,10 @@
     background: rgba(255,255,255,0.05); color: var(--text) !important; margin-bottom: 0.6rem; font-size: 0.9rem;
   }
   #tarotApp .card-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 6px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(67px, 1fr)); gap: 8px;
     overflow-y: auto; padding: 0.3rem; flex: 1;
   }
-  #tarotApp .card-grid.card-grid--browse { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
+  #tarotApp .card-grid.card-grid--browse { grid-template-columns: repeat(auto-fill, minmax(106px, 1fr)); gap: 10px; }
   #tarotApp .card-mini-btn {
     aspect-ratio: 2 / 3; border-radius: 0.3rem; border: 1px solid var(--purple); cursor: pointer;
     background: repeating-linear-gradient(135deg, #2a1a45, #2a1a45 6px, #241338 6px, #241338 12px);
@@ -166,7 +166,7 @@
     border-top: 1px solid rgba(255,255,255,0.15); animation: flipReveal 0.35s ease;
   }
   @keyframes flipReveal { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
-  #tarotApp .reveal-card { width: 110px; flex-shrink: 0; }
+  #tarotApp .reveal-card { width: 154px; flex-shrink: 0; }
   #tarotApp .reveal-info { flex: 1; }
   #tarotApp .reveal-info h3 { color: var(--gold-soft) !important; margin-bottom: 0.3rem; }
   #tarotApp .reveal-info p { color: var(--text-dim) !important; font-size: 0.9rem; margin: 0 0 0.7rem; }
@@ -182,5 +182,5 @@
     #tarotApp .mode-options { grid-template-columns: 1fr; }
     #tarotApp .spread { grid-template-columns: 1fr; }
     #tarotApp .reveal-panel { flex-direction: column; }
-    #tarotApp .reveal-card { width: 140px; }
+    #tarotApp .reveal-card { width: 196px; }
   }
