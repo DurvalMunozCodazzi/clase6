@@ -498,7 +498,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     html +=
       '<div class="reading-synthesis">' +
-        "<h3>🔮 Síntesis de la tirada</h3>" +
+        "<h3>🎴🎴🎴 Síntesis de la tirada</h3>" +
         "<p>" + buildSynthesis(state.picks) + "</p>" +
       "</div>";
 

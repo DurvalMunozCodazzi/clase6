@@ -1,12 +1,14 @@
 === Tirada de Tarot — 3 Cartas ===
-Contributors:
+Contributors: Durval Muñoz Codazzi (websobreruedas.com)
 Tags: tarot, tirada, cartas, adivinacion, shortcode
 Requires at least: 5.0
 Tested up to: 6.6
 Requires PHP: 7.0
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
+Author: Durval Muñoz Codazzi
+Author URI: https://websobreruedas.com
 
 Widget de tirada de tarot de 3 cartas (Pasado / Presente / Futuro), con modo digital y modo físico, para insertar en cualquier página o entrada con un shortcode.
 
@@ -46,6 +48,11 @@ El plugin está pensado para un solo widget por página. Si necesitás varias ti
 No. Toda la interpretación se genera localmente en el navegador del visitante.
 
 == Changelog ==
+
+= 1.0.1 =
+* Corrige el contraste de "Tu lectura" y "Síntesis de la tirada" cuando el plugin se inserta dentro de temas/builders (Divi, etc.) que fuerzan su propio color de encabezados.
+* Cambia el ícono de bola de cristal por tres cartas.
+* Fotos de las cartas comprimidas a JPEG (~83% más livianas), para que el .zip instale sin problemas de tamaño.
 
 = 1.0.0 =
 * Versión inicial: modo digital + modo físico, 78 cartas con arte incluido, motor de lectura narrado.
