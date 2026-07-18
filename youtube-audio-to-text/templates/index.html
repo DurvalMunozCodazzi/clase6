@@ -49,17 +49,29 @@
     {% if text %}
       <p class="saved">Guardado en: {{ saved_path }}</p>
       <a href="/" class="button-like">↩ Nueva transcripción</a>
+      <button type="button" id="copyBtn" class="button-like" style="background:#1a7f37;border:none;">📋 Copiar transcripción</button>
     {% endif %}
   </div>
 
   {% if text %}
-    <textarea readonly>{{ text }}</textarea>
+    <textarea id="transcriptText" readonly>{{ text }}</textarea>
   {% endif %}
 
   <script>
     document.getElementById("form").addEventListener("submit", function () {
       document.getElementById("loading").style.display = "block";
     });
+
+    var copyBtn = document.getElementById("copyBtn");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", function () {
+        var text = document.getElementById("transcriptText").value;
+        navigator.clipboard.writeText(text).then(function () {
+          copyBtn.textContent = "✅ Copiado";
+          setTimeout(function () { copyBtn.textContent = "📋 Copiar transcripción"; }, 2000);
+        });
+      });
+    }
   </script>
 </body>
 </html>
