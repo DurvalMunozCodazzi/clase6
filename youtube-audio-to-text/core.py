@@ -10,7 +10,7 @@ _model_cache = {}
 
 
 def download_audio(url: str, output_dir: str, browser: Optional[str], node_path: Optional[str]) -> str:
-    output_template = os.path.join(output_dir, "%(id)s.%(ext)s")
+    output_template = os.path.join(output_dir, "%(title)s [%(id)s].%(ext)s")
     cmd = [
         "yt-dlp",
         "-f", "bestaudio/best",

@@ -33,12 +33,12 @@ def transcribir():
     try:
         with tempfile.TemporaryDirectory() as tmp_dir:
             audio_path = download_audio(url, tmp_dir, DEFAULT_BROWSER, DEFAULT_NODE_PATH)
-            video_id = os.path.splitext(os.path.basename(audio_path))[0]
+            video_label = os.path.splitext(os.path.basename(audio_path))[0]
             text = transcribe_audio(audio_path, model, language)
     except Exception as e:
         return render_template("index.html", text=None, error=f"Error: {e}", saved_path=None)
 
-    saved_path = os.path.join(DOWNLOADS_DIR, f"transcripcion_{video_id}.txt")
+    saved_path = os.path.join(DOWNLOADS_DIR, f"transcripcion_{video_label}.txt")
     with open(saved_path, "w", encoding="utf-8") as f:
         f.write(text)
 
