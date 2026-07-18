@@ -35,12 +35,27 @@ Esto genera `transcripcion.txt` con el texto transcrito.
 | `-m`, `--model` | Tamaño del modelo Whisper: `tiny`, `base`, `small`, `medium`, `large` | `base` |
 | `-l`, `--language` | Código de idioma (ej: `es`, `en`). Si se omite, se detecta automáticamente | auto |
 | `--keep-audio` | Conserva el mp3 descargado en el directorio actual | desactivado |
+| `-b`, `--browser` | Navegador (`chrome`, `safari`, `firefox`, `edge`, `brave`) del que tomar cookies de sesión, para evitar el bloqueo "Sign in to confirm you're not a bot" de YouTube | ninguno |
+| `-n`, `--node` | Ruta al ejecutable de Node.js, necesaria para que `yt-dlp` resuelva el challenge JS que protege los formatos de audio/video de YouTube | ninguno |
 
 ### Ejemplo con más precisión y en español
 
 ```bash
-python youtube_audio_to_text.py "https://youtu.be/XXXXXXXXXXX" -m small -l es -o clase.txt
+python youtube_audio_to_text.py "https://youtu.be/XXXXXXXXXXX" -m small -l es -o clase.txt -b chrome -n /Users/tu_usuario/Downloads/node-v24.14.1-darwin-x64/bin/node
 ```
+
+### Sobre `--browser` y `--node`
+
+YouTube protege sus videos con dos capas que suelen requerir estas opciones:
+
+1. **Verificación de bot**: si `yt-dlp` recibe "Sign in to confirm you're not a bot", pasale `-b` con el navegador donde tenés una sesión de YouTube abierta.
+2. **Challenge JS**: YouTube ofusca las URLs reales de audio/video con JavaScript. `yt-dlp` necesita un motor de JS (Node.js) para resolverlo. Si no tenés Node instalado, bajá el binario oficial precompilado (no requiere compilar nada):
+   ```bash
+   cd ~/Downloads
+   curl -O https://nodejs.org/dist/v24.14.1/node-v24.14.1-darwin-x64.tar.gz
+   tar -xzf node-v24.14.1-darwin-x64.tar.gz
+   ```
+   Y pasá la ruta al binario con `-n ~/Downloads/node-v24.14.1-darwin-x64/bin/node`.
 
 ## Notas
 

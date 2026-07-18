@@ -3,33 +3,34 @@
 
 import argparse
 import os
+import subprocess
 import tempfile
 from typing import Optional
 
 import whisper
-import yt_dlp
 
 
-def download_audio(url: str, output_dir: str, browser: Optional[str]) -> str:
+def download_audio(url: str, output_dir: str, browser: Optional[str], node_path: Optional[str]) -> str:
     output_template = os.path.join(output_dir, "%(id)s.%(ext)s")
-    ydl_opts = {
-        "format": "bestaudio/best",
-        "outtmpl": output_template,
-        "postprocessors": [
-            {
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "mp3",
-                "preferredquality": "192",
-            }
-        ],
-        "quiet": True,
-        "no_warnings": True,
-    }
+    cmd = [
+        "yt-dlp",
+        "-f", "bestaudio/best",
+        "-x", "--audio-format", "mp3", "--audio-quality", "192K",
+        "-o", output_template,
+        "--quiet", "--no-warnings",
+    ]
     if browser:
-        ydl_opts["cookiesfrombrowser"] = (browser,)
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-    return os.path.join(output_dir, f"{info['id']}.mp3")
+        cmd += ["--cookies-from-browser", browser]
+    if node_path:
+        cmd += ["--js-runtimes", f"node:{node_path}", "--remote-components", "ejs:github"]
+    cmd.append(url)
+
+    subprocess.run(cmd, check=True)
+
+    mp3_files = [f for f in os.listdir(output_dir) if f.endswith(".mp3")]
+    if not mp3_files:
+        raise RuntimeError("yt-dlp no generó ningún archivo de audio")
+    return os.path.join(output_dir, mp3_files[0])
 
 
 def transcribe_audio(audio_path: str, model_size: str, language: Optional[str]) -> str:
@@ -65,11 +66,17 @@ def main():
         help="Usar las cookies de sesión de este navegador para evitar el "
              "bloqueo 'Sign in to confirm you're not a bot' de YouTube.",
     )
+    parser.add_argument(
+        "-n", "--node", default=None,
+        help="Ruta al ejecutable de Node.js, necesaria para resolver el "
+             "challenge JS de YouTube (ej: /Users/tu_usuario/Downloads/"
+             "node-vXX.X.X-darwin-x64/bin/node).",
+    )
     args = parser.parse_args()
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         print(f"Descargando audio de: {args.url}")
-        audio_path = download_audio(args.url, tmp_dir, args.browser)
+        audio_path = download_audio(args.url, tmp_dir, args.browser, args.node)
 
         print(f"Transcribiendo con el modelo '{args.model}'...")
         text = transcribe_audio(audio_path, args.model, args.language)
