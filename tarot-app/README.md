@@ -42,7 +42,7 @@ Si prefieres un shortcode, se puede envolver este mismo HTML en una función de 
 
 ## Fotos de las cartas
 
-Las 78 ya están incluidas en `assets/cards/` (formato `.png`, nombradas por id: `el-loco.png`, `bastos-as.png`, `copas-reina.png`, etc. — ver `assets/cards/README.md` para la lista completa y su origen/licencia). Si falta alguna, esa carta cae automáticamente en el diseño simbólico (icono del palo + número/nombre) sin romper nada.
+Las 78 ya están incluidas en `assets/cards/` (formato `.jpg`, nombradas por id: `el-loco.jpg`, `bastos-as.jpg`, `copas-reina.jpg`, etc. — ver `assets/cards/README.md` para la lista completa y su origen/licencia). Si falta alguna, esa carta cae automáticamente en el diseño simbólico (icono del palo + número/nombre) sin romper nada.
 
 **Si vas a alojarlas en tu propio WordPress** (recomendado en vez de servirlas desde esta carpeta):
 

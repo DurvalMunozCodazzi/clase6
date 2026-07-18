@@ -47,7 +47,7 @@ cards_src = "/home/user/clase6/tarot-app/assets/cards"
 cards_dest = os.path.join(PLUGIN_DIR, "assets/images/cards")
 count = 0
 for fname in os.listdir(cards_src):
-    if fname.endswith(".png"):
+    if fname.endswith(".jpg"):
         shutil.copyfile(os.path.join(cards_src, fname), os.path.join(cards_dest, fname))
         count += 1
 

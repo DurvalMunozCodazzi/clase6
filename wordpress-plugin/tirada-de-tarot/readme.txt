@@ -35,7 +35,7 @@ Incluye las 78 ilustraciones clásicas del mazo Rider-Waite-Smith (edición de 1
 
 = ¿Puedo usar mis propias fotos de cartas? =
 
-Sí. Reemplaza los archivos dentro de `assets/images/cards/` manteniendo exactamente los mismos nombres de archivo (por ejemplo `el-loco.png`, `bastos-as.png`, `copas-reina.png`). No hace falta tocar ningún código.
+Sí. Reemplaza los archivos dentro de `assets/images/cards/` manteniendo exactamente los mismos nombres de archivo (por ejemplo `el-loco.jpg`, `bastos-as.jpg`, `copas-reina.jpg`). No hace falta tocar ningún código.
 
 = ¿Puedo poner el shortcode más de una vez en la misma página? =
 

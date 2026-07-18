@@ -19,19 +19,19 @@ En la práctica: la edición de 1909 es de dominio público en EE. UU. y se usa 
 ### Arcanos Mayores (22)
 
 ```
-el-loco.png          el-mago.png           la-sacerdotisa.png    la-emperatriz.png
-el-emperador.png      el-hierofante.png     los-enamorados.png    el-carro.png
-la-fuerza.png         el-ermitano.png       la-rueda.png          la-justicia.png
-el-colgado.png        la-muerte.png         la-templanza.png      el-diablo.png
-la-torre.png          la-estrella.png       la-luna.png           el-sol.png
-el-juicio.png         el-mundo.png
+el-loco.jpg          el-mago.jpg           la-sacerdotisa.jpg    la-emperatriz.jpg
+el-emperador.jpg      el-hierofante.jpg     los-enamorados.jpg    el-carro.jpg
+la-fuerza.jpg         el-ermitano.jpg       la-rueda.jpg          la-justicia.jpg
+el-colgado.jpg        la-muerte.jpg         la-templanza.jpg      el-diablo.jpg
+la-torre.jpg          la-estrella.jpg       la-luna.jpg           el-sol.jpg
+el-juicio.jpg         el-mundo.jpg
 ```
 
-### Arcanos Menores (40) — patrón: `{palo}-{numero}.png`
+### Arcanos Menores (40) — patrón: `{palo}-{numero}.jpg`
 
 Palos: `bastos`, `copas`, `espadas`, `oros` · Números: `as`, `2`...`10`
 
-### Cartas de la Corte (16) — patrón: `{palo}-{figura}.png`
+### Cartas de la Corte (16) — patrón: `{palo}-{figura}.jpg`
 
 Figuras: `paje`, `caballo`, `reina`, `rey`
 

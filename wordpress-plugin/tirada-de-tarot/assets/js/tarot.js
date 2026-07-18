@@ -149,7 +149,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return (
       '<div class="card-face arcana-' + card.arcanaType + (card.suit ? " suit-" + card.suit : "") + '">' +
         '<div class="card-inner' + (reversed ? " is-reversed" : "") + '">' +
-          '<img class="card-photo" src="' + IMAGE_BASE_URL + card.id + '.png" alt="" onerror="this.style.display=\'none\'">' +
+          '<img class="card-photo" src="' + IMAGE_BASE_URL + card.id + '.jpg" alt="" onerror="this.style.display=\'none\'">' +
           '<div class="card-symbolic">' +
             '<span class="card-tag">' + escapeHtml(card.numeral || "") + '</span>' +
             '<span class="card-icon">' + card.icon + '</span>' +
