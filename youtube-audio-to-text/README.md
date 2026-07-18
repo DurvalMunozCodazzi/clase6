@@ -1,8 +1,9 @@
 # YouTube audio a texto
 
-Script de línea de comandos que descarga el audio de un video de YouTube y lo
-transcribe a texto usando [yt-dlp](https://github.com/yt-dlp/yt-dlp) y
-[Whisper](https://github.com/openai/whisper) (OpenAI).
+Descarga el audio de un video de YouTube y lo transcribe a texto usando
+[yt-dlp](https://github.com/yt-dlp/yt-dlp) y [Whisper](https://github.com/openai/whisper)
+(OpenAI). Incluye un script de línea de comandos (`youtube_audio_to_text.py`)
+y una app web local (`app.py`) para pegar el link desde el navegador.
 
 ## Requisitos
 
@@ -19,7 +20,19 @@ cd youtube-audio-to-text
 pip install -r requirements.txt
 ```
 
-## Uso
+## Uso: app web local (recomendado para uso personal)
+
+```bash
+python app.py
+```
+
+Abrí `http://localhost:5000` en el navegador, pegá el link de YouTube y
+apretá "Transcribir". El navegador, cookies y ruta de Node quedan
+configurados como constantes al principio de `app.py` (`DEFAULT_BROWSER`,
+`DEFAULT_NODE_PATH`) — ajustalas ahí si cambia la ruta de tu instalación de
+Node o si usás otro navegador.
+
+## Uso: línea de comandos
 
 ```bash
 python youtube_audio_to_text.py "https://www.youtube.com/watch?v=XXXXXXXXXXX"
