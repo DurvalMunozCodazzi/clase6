@@ -29,7 +29,14 @@ def download_audio(url: str, output_dir: str, browser: Optional[str], node_path:
     mp3_files = [f for f in os.listdir(output_dir) if f.endswith(".mp3")]
     if not mp3_files:
         raise RuntimeError("yt-dlp no generó ningún archivo de audio")
-    return os.path.join(output_dir, mp3_files[0])
+
+    audio_path = os.path.join(output_dir, mp3_files[0])
+    if os.path.getsize(audio_path) < 10_000:
+        raise RuntimeError(
+            "El audio descargado quedó vacío o incompleto (posible corte de red "
+            "o problema con este video). Probá de nuevo."
+        )
+    return audio_path
 
 
 def transcribe_audio(audio_path: str, model_size: str, language: Optional[str]) -> str:
