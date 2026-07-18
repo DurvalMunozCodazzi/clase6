@@ -24,47 +24,47 @@
     margin: 0 auto;
     padding: 1.5rem 1rem 3rem;
     background: radial-gradient(circle at 50% 0%, var(--bg-panel), var(--bg-deep) 70%);
-    color: var(--text);
+    color: var(--text) !important;
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     border-radius: 1rem;
   }
-  #tarotApp h1, #tarotApp h2, #tarotApp h3 { font-family: Georgia, 'Times New Roman', serif; margin: 0 0 0.5rem; }
+  #tarotApp h1, #tarotApp h2, #tarotApp h3 { font-family: Georgia, 'Times New Roman', serif; margin: 0 0 0.5rem; color: var(--text) !important; }
   #tarotApp .tarot-header { text-align: center; margin-bottom: 1.5rem; }
-  #tarotApp .tarot-header h1 { color: var(--gold-soft); font-size: 1.8rem; }
-  #tarotApp .subtitle { color: var(--text-dim); margin: 0; }
+  #tarotApp .tarot-header h1 { color: var(--gold-soft) !important; font-size: 1.8rem; }
+  #tarotApp .subtitle { color: var(--text-dim) !important; margin: 0; }
 
-  #tarotApp .step-intro { color: var(--text-dim); margin: 0 0 1rem; }
+  #tarotApp .step-intro { color: var(--text-dim) !important; margin: 0 0 1rem; }
   #tarotApp .link-btn {
-    background: none; border: none; color: var(--text-dim); cursor: pointer;
+    background: none; border: none; color: var(--text-dim) !important; cursor: pointer;
     font-size: 0.8rem; text-decoration: underline; padding: 0; margin-bottom: 0.8rem;
   }
-  #tarotApp .link-btn:hover { color: var(--gold-soft); }
+  #tarotApp .link-btn:hover { color: var(--gold-soft) !important; }
 
   #tarotApp .mode-step { max-width: 580px; margin: 0 auto; text-align: center; }
   #tarotApp .mode-options { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
   #tarotApp .mode-card {
     background: rgba(255,255,255,0.04); border: 1px solid var(--purple); border-radius: 0.8rem;
-    padding: 1.2rem; cursor: pointer; text-align: left; color: var(--text);
+    padding: 1.2rem; cursor: pointer; text-align: left; color: var(--text) !important;
     transition: transform 0.15s ease, border-color 0.15s ease; font: inherit;
   }
-  #tarotApp .mode-card:hover { transform: translateY(-3px); border-color: var(--gold); }
+  #tarotApp .mode-card:hover { transform: translateY(-3px); border-color: var(--gold) !important; }
   #tarotApp .mode-icon { font-size: 1.8rem; display: block; margin-bottom: 0.5rem; }
-  #tarotApp .mode-card h3 { color: var(--gold-soft); font-size: 1.05rem; }
-  #tarotApp .mode-card p { color: var(--text-dim); font-size: 0.82rem; margin: 0; line-height: 1.4; }
+  #tarotApp .mode-card h3 { color: var(--gold-soft) !important; font-size: 1.05rem; }
+  #tarotApp .mode-card p { color: var(--text-dim) !important; font-size: 0.82rem; margin: 0; line-height: 1.4; }
 
   #tarotApp .question-step { max-width: 480px; margin: 0 auto; text-align: center; }
-  #tarotApp label { display: block; margin-bottom: 0.5rem; color: var(--text-dim); }
+  #tarotApp label { display: block; margin-bottom: 0.5rem; color: var(--text-dim) !important; }
   #tarotApp textarea {
     width: 100%; border-radius: 0.6rem; border: 1px solid var(--purple);
-    background: rgba(255,255,255,0.05); color: var(--text); padding: 0.7rem;
+    background: rgba(255,255,255,0.05); color: var(--text) !important; padding: 0.7rem;
     font-size: 1rem; resize: vertical; margin-bottom: 1rem;
   }
   #tarotApp .btn-primary, #tarotApp .btn-secondary {
     font-size: 1rem; padding: 0.7rem 1.4rem; border-radius: 2rem; border: none;
     cursor: pointer; font-weight: 600; transition: transform 0.15s ease, opacity 0.15s ease;
   }
-  #tarotApp .btn-primary { background: linear-gradient(135deg, var(--gold-soft), var(--gold)); color: #241533; }
-  #tarotApp .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--purple); }
+  #tarotApp .btn-primary { background: linear-gradient(135deg, var(--gold-soft), var(--gold)); color: #241533 !important; }
+  #tarotApp .btn-secondary { background: transparent; color: var(--text) !important; border: 1px solid var(--purple); }
   #tarotApp .btn-primary:hover, #tarotApp .btn-secondary:hover { transform: translateY(-2px); }
   #tarotApp .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
@@ -97,14 +97,14 @@
 
   #tarotApp .spread { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 2rem 0; }
   #tarotApp .slot { background: rgba(255,255,255,0.04); border: 1px dashed var(--purple); border-radius: 0.8rem; padding: 0.8rem; text-align: center; }
-  #tarotApp .slot-label { color: var(--gold-soft); font-weight: 600; margin-bottom: 0.6rem; display: block; }
+  #tarotApp .slot-label { color: var(--gold-soft) !important; font-weight: 600; margin-bottom: 0.6rem; display: block; }
   #tarotApp .slot-placeholder {
     width: 100%; aspect-ratio: 2 / 3; border-radius: 0.6rem; margin: 0 auto 0.6rem;
     background: repeating-linear-gradient(135deg, #2a1a45, #2a1a45 8px, #241338 8px, #241338 16px);
     border: 1px solid var(--purple); display: flex; align-items: center; justify-content: center;
-    font-size: 1.6rem; color: var(--text-dim);
+    font-size: 1.6rem; color: var(--text-dim) !important;
   }
-  #tarotApp .slot-name { font-size: 0.85rem; color: var(--text-dim); min-height: 1.2em; margin-top: 0.3rem; }
+  #tarotApp .slot-name { font-size: 0.85rem; color: var(--text-dim) !important; min-height: 1.2em; margin-top: 0.3rem; }
 
   #tarotApp .card-face { width: 100%; aspect-ratio: 2 / 3; margin: 0 auto; }
   #tarotApp .card-inner {
@@ -123,15 +123,17 @@
     position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
     justify-content: space-between; padding: 0.4rem; text-align: center;
   }
-  #tarotApp .card-tag { font-size: 0.75rem; font-weight: 700; color: rgba(255,255,255,0.85); align-self: flex-start; }
+  #tarotApp .card-tag { font-size: 0.75rem; font-weight: 700; color: rgba(255,255,255,0.85) !important; align-self: flex-start; }
   #tarotApp .card-icon { font-size: 1.8rem; }
   #tarotApp .card-name-mini { font-size: 0.72rem; font-weight: 600; line-height: 1.15; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
 
   #tarotApp .reading { background: rgba(255,255,255,0.04); border-radius: 0.8rem; padding: 1.2rem; margin-top: 1.5rem; }
-  #tarotApp .reading-question { font-style: italic; color: var(--gold-soft); }
+  #tarotApp .reading-question { font-style: italic; color: var(--gold-soft) !important; }
   #tarotApp .reading-line { margin: 1rem 0; padding-left: 0.8rem; border-left: 3px solid var(--purple); }
-  #tarotApp .reading-line h3 { color: var(--gold-soft); font-size: 1.05rem; }
+  #tarotApp .reading h2 { color: var(--gold-soft) !important; }
+  #tarotApp .reading-line h3 { color: var(--gold-soft) !important; font-size: 1.05rem; }
   #tarotApp .reading-synthesis { margin-top: 1.2rem; padding: 1rem; background: rgba(212,175,55,0.08); border-radius: 0.6rem; border: 1px solid rgba(212,175,55,0.3); }
+  #tarotApp .reading-synthesis h3 { color: var(--gold-soft) !important; }
   #tarotApp .footer-actions { text-align: center; margin-top: 1rem; display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; }
 
   #tarotApp .modal-overlay {
@@ -141,13 +143,13 @@
   #tarotApp .modal {
     background: var(--bg-panel); border: 1px solid var(--purple); border-radius: 1rem;
     width: 100%; max-width: 640px; max-height: 88vh; display: flex; flex-direction: column;
-    padding: 1rem; color: var(--text);
+    padding: 1rem; color: var(--text) !important;
   }
   #tarotApp .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.8rem; }
-  #tarotApp .modal-close { background: none; border: none; color: var(--text); font-size: 1.3rem; cursor: pointer; }
+  #tarotApp .modal-close { background: none; border: none; color: var(--text) !important; font-size: 1.3rem; cursor: pointer; }
   #tarotApp .card-search-input {
     width: 100%; padding: 0.55rem 0.8rem; border-radius: 0.5rem; border: 1px solid var(--purple);
-    background: rgba(255,255,255,0.05); color: var(--text); margin-bottom: 0.6rem; font-size: 0.9rem;
+    background: rgba(255,255,255,0.05); color: var(--text) !important; margin-bottom: 0.6rem; font-size: 0.9rem;
   }
   #tarotApp .card-grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 6px;
@@ -159,13 +161,13 @@
     background: repeating-linear-gradient(135deg, #2a1a45, #2a1a45 6px, #241338 6px, #241338 12px);
     transition: transform 0.15s ease;
   }
-  #tarotApp .card-mini-btn:hover { transform: scale(1.08); border-color: var(--gold); }
+  #tarotApp .card-mini-btn:hover { transform: scale(1.08); border-color: var(--gold) !important; }
   #tarotApp .card-search-btn {
     display: block; width: 100%; padding: 0; border: none; background: transparent;
     cursor: pointer; border-radius: 0.4rem; transition: transform 0.15s ease;
   }
   #tarotApp .card-search-btn:hover { transform: scale(1.06); }
-  #tarotApp .card-search-empty { color: var(--text-dim); text-align: center; padding: 2rem 1rem; grid-column: 1 / -1; }
+  #tarotApp .card-search-empty { color: var(--text-dim) !important; text-align: center; padding: 2rem 1rem; grid-column: 1 / -1; }
   #tarotApp .reveal-panel {
     display: flex; gap: 1rem; align-items: center; margin-top: 1rem; padding-top: 1rem;
     border-top: 1px solid rgba(255,255,255,0.15); animation: flipReveal 0.35s ease;
@@ -173,14 +175,14 @@
   @keyframes flipReveal { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
   #tarotApp .reveal-card { width: 110px; flex-shrink: 0; }
   #tarotApp .reveal-info { flex: 1; }
-  #tarotApp .reveal-info h3 { color: var(--gold-soft); margin-bottom: 0.3rem; }
-  #tarotApp .reveal-info p { color: var(--text-dim); font-size: 0.9rem; margin: 0 0 0.7rem; }
+  #tarotApp .reveal-info h3 { color: var(--gold-soft) !important; margin-bottom: 0.3rem; }
+  #tarotApp .reveal-info p { color: var(--text-dim) !important; font-size: 0.9rem; margin: 0 0 0.7rem; }
   #tarotApp .orientation-toggle { display: flex; gap: 0.5rem; margin-bottom: 0.7rem; }
   #tarotApp .orientation-btn {
     flex: 1; padding: 0.4rem 0.6rem; border-radius: 0.5rem; border: 1px solid var(--purple);
-    background: transparent; color: var(--text-dim); cursor: pointer; font-size: 0.82rem; font-weight: 600;
+    background: transparent; color: var(--text-dim) !important; cursor: pointer; font-size: 0.82rem; font-weight: 600;
   }
-  #tarotApp .orientation-btn.active { background: linear-gradient(135deg, var(--gold-soft), var(--gold)); color: #241533; border-color: transparent; }
+  #tarotApp .orientation-btn.active { background: linear-gradient(135deg, var(--gold-soft), var(--gold)); color: #241533 !important; border-color: transparent !important; }
   #tarotApp .reveal-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
 
   @media (max-width: 560px) {
