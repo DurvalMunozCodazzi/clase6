@@ -22,6 +22,19 @@ pip install -r requirements.txt
 
 ## Uso: app web local (recomendado para uso personal)
 
+### Uso diario (doble clic)
+
+Hacé doble clic en `iniciar_app.command` — arranca el servidor y te abre el
+navegador solo en `http://localhost:5000`. Para cerrar la app, cerrá la
+ventana de Terminal que se abrió (o `Ctrl+C`).
+
+Truco: arrastrá `iniciar_app.command` a tu Escritorio (o hacé un alias) para
+tenerlo siempre a mano. La primera vez que lo abras, macOS puede pedirte
+confirmar en Preferencias del Sistema → Privacidad y Seguridad que confiás
+en el archivo.
+
+### Uso manual
+
 ```bash
 python app.py
 ```
