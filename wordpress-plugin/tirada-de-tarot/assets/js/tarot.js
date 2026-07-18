@@ -160,6 +160,21 @@ document.addEventListener("DOMContentLoaded", function () {
     );
   }
 
+  var ICON_CARD_IDS = ["el-mago", "la-estrella", "el-sol"];
+
+  function cardFanHTML() {
+    return (
+      '<img class="tarot-icon-card c1" src="' + IMAGE_BASE_URL + ICON_CARD_IDS[0] + '.jpg" alt="">' +
+      '<img class="tarot-icon-card c2" src="' + IMAGE_BASE_URL + ICON_CARD_IDS[1] + '.jpg" alt="">' +
+      '<img class="tarot-icon-card c3" src="' + IMAGE_BASE_URL + ICON_CARD_IDS[2] + '.jpg" alt="">'
+    );
+  }
+
+  ["headerIcon", "modeDigitalIcon", "modeFisicaIcon", "readingIcon"].forEach(function (id) {
+    var el = $(id);
+    if (el) el.innerHTML = cardFanHTML();
+  });
+
   /* ===================== SELECCIÓN DE MODO ===================== */
 
   document.querySelectorAll(".mode-card").forEach(function (btn) {
@@ -498,7 +513,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     html +=
       '<div class="reading-synthesis">' +
-        "<h3>🎴🎴🎴 Síntesis de la tirada</h3>" +
+        '<h3><span class="tarot-icon tarot-icon--md" aria-hidden="true">' + cardFanHTML() + "</span>Síntesis de la tirada</h3>" +
         "<p>" + buildSynthesis(state.picks) + "</p>" +
       "</div>";
 

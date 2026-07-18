@@ -30,7 +30,23 @@
   }
   #tarotApp h1, #tarotApp h2, #tarotApp h3 { font-family: Georgia, 'Times New Roman', serif; margin: 0 0 0.5rem; color: var(--text) !important; }
   #tarotApp .tarot-header { text-align: center; margin-bottom: 1.5rem; }
-  #tarotApp .tarot-header h1 { color: var(--gold-soft) !important; font-size: 1.8rem; }
+  #tarotApp .tarot-header h1 { color: var(--gold-soft) !important; font-size: 1.8rem; display: flex; align-items: center; justify-content: center; gap: 0.3rem; }
+
+  #tarotApp .tarot-icon { position: relative; display: inline-block; vertical-align: middle; flex-shrink: 0; }
+  #tarotApp .tarot-icon-card {
+    position: absolute; border-radius: 3px; aspect-ratio: 2 / 3; object-fit: cover;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.35);
+  }
+  #tarotApp .tarot-icon-card.c1 { left: 0; top: 16%; transform: rotate(-14deg); z-index: 1; }
+  #tarotApp .tarot-icon-card.c2 { left: 30%; top: 0; transform: rotate(0deg); z-index: 2; }
+  #tarotApp .tarot-icon-card.c3 { left: 60%; top: 16%; transform: rotate(14deg); z-index: 1; }
+
+  #tarotApp .tarot-icon--lg { width: 96px; height: 66px; }
+  #tarotApp .tarot-icon--lg .tarot-icon-card { width: 38px; }
+  #tarotApp .tarot-icon--md { width: 68px; height: 48px; }
+  #tarotApp .tarot-icon--md .tarot-icon-card { width: 27px; }
+  #tarotApp .tarot-icon--sm { width: 54px; height: 38px; margin-bottom: 0.4rem; }
+  #tarotApp .tarot-icon--sm .tarot-icon-card { width: 21px; }
   #tarotApp .subtitle { color: var(--text-dim) !important; margin: 0; }
 
   #tarotApp .step-intro { color: var(--text-dim) !important; margin: 0 0 1rem; }
@@ -48,7 +64,6 @@
     transition: transform 0.15s ease, border-color 0.15s ease; font: inherit;
   }
   #tarotApp .mode-card:hover { transform: translateY(-3px); border-color: var(--gold) !important; }
-  #tarotApp .mode-icon { font-size: 1.8rem; display: block; margin-bottom: 0.5rem; }
   #tarotApp .mode-card h3 { color: var(--gold-soft) !important; font-size: 1.05rem; }
   #tarotApp .mode-card p { color: var(--text-dim) !important; font-size: 0.82rem; margin: 0; line-height: 1.4; }
 
@@ -130,10 +145,10 @@
   #tarotApp .reading { background: rgba(255,255,255,0.04); border-radius: 0.8rem; padding: 1.2rem; margin-top: 1.5rem; }
   #tarotApp .reading-question { font-style: italic; color: var(--gold-soft) !important; }
   #tarotApp .reading-line { margin: 1rem 0; padding-left: 0.8rem; border-left: 3px solid var(--purple); }
-  #tarotApp .reading h2 { color: var(--gold-soft) !important; }
+  #tarotApp .reading h2 { color: var(--gold-soft) !important; display: flex; align-items: center; gap: 0.4rem; }
   #tarotApp .reading-line h3 { color: var(--gold-soft) !important; font-size: 1.05rem; }
   #tarotApp .reading-synthesis { margin-top: 1.2rem; padding: 1rem; background: rgba(212,175,55,0.08); border-radius: 0.6rem; border: 1px solid rgba(212,175,55,0.3); }
-  #tarotApp .reading-synthesis h3 { color: var(--gold-soft) !important; }
+  #tarotApp .reading-synthesis h3 { color: var(--gold-soft) !important; display: flex; align-items: center; gap: 0.4rem; }
   #tarotApp .footer-actions { text-align: center; margin-top: 1rem; display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; }
 
   #tarotApp .modal-overlay {
@@ -197,7 +212,7 @@
 
 <div class="tarot-app" id="tarotApp">
   <header class="tarot-header">
-    <h1>🎴🎴🎴 Tirada de las 3 Cartas</h1>
+    <h1><span class="tarot-icon tarot-icon--lg" id="headerIcon" aria-hidden="true"></span>Tirada de las 3 Cartas</h1>
     <p class="subtitle">Concéntrate en tu pregunta y deja que tu intuición elija.</p>
   </header>
 
@@ -205,12 +220,12 @@
     <p class="step-intro">¿Cómo quieres hacer esta tirada?</p>
     <div class="mode-options">
       <button type="button" class="mode-card" data-mode="digital">
-        <span class="mode-icon">🎴🎴🎴</span>
+        <span class="tarot-icon tarot-icon--sm" id="modeDigitalIcon" aria-hidden="true"></span>
         <h3>Tirada digital</h3>
         <p>Baraja virtual mezclada al azar. Elige tus 3 cartas por intuición, aquí mismo.</p>
       </button>
       <button type="button" class="mode-card" data-mode="fisica">
-        <span class="mode-icon">🃏</span>
+        <span class="tarot-icon tarot-icon--sm" id="modeFisicaIcon" aria-hidden="true"></span>
         <h3>Tirada física</h3>
         <p>Ya tiraste las cartas reales sobre la mesa. Búscalas aquí una por una para registrar la lectura.</p>
       </button>
@@ -258,7 +273,7 @@
   </section>
 
   <section class="reading" id="readingSection" hidden>
-    <h2>🎴🎴🎴 Tu lectura</h2>
+    <h2><span class="tarot-icon tarot-icon--md" id="readingIcon" aria-hidden="true"></span>Tu lectura</h2>
     <div id="readingContent"></div>
     <div class="footer-actions">
       <button id="resetBtn" class="btn-secondary">Nueva tirada</button>
@@ -453,6 +468,21 @@
       '</div>'
     );
   }
+
+  var ICON_CARD_IDS = ["el-mago", "la-estrella", "el-sol"];
+
+  function cardFanHTML() {
+    return (
+      '<img class="tarot-icon-card c1" src="' + IMAGE_BASE_URL + ICON_CARD_IDS[0] + '.jpg" alt="">' +
+      '<img class="tarot-icon-card c2" src="' + IMAGE_BASE_URL + ICON_CARD_IDS[1] + '.jpg" alt="">' +
+      '<img class="tarot-icon-card c3" src="' + IMAGE_BASE_URL + ICON_CARD_IDS[2] + '.jpg" alt="">'
+    );
+  }
+
+  ["headerIcon", "modeDigitalIcon", "modeFisicaIcon", "readingIcon"].forEach(function (id) {
+    var el = $(id);
+    if (el) el.innerHTML = cardFanHTML();
+  });
 
   /* ===================== SELECCIÓN DE MODO ===================== */
 
@@ -792,7 +822,7 @@
 
     html +=
       '<div class="reading-synthesis">' +
-        "<h3>🎴🎴🎴 Síntesis de la tirada</h3>" +
+        '<h3><span class="tarot-icon tarot-icon--md" aria-hidden="true">' + cardFanHTML() + "</span>Síntesis de la tirada</h3>" +
         "<p>" + buildSynthesis(state.picks) + "</p>" +
       "</div>";
 

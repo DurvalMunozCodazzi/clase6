@@ -4,7 +4,7 @@ Tags: tarot, tirada, cartas, adivinacion, shortcode
 Requires at least: 5.0
 Tested up to: 6.6
 Requires PHP: 7.0
-Stable tag: 1.0.2
+Stable tag: 1.0.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Author: Durval Muñoz Codazzi
@@ -48,6 +48,12 @@ El plugin está pensado para un solo widget por página. Si necesitás varias ti
 No. Toda la interpretación se genera localmente en el navegador del visitante.
 
 == Changelog ==
+
+= 1.0.4 =
+* Reemplaza los íconos de emoji por un abanico de 3 cartas reales del propio mazo (El Mago, La Estrella, El Sol), en el título principal, "Tirada digital", "Tirada física", "Tu lectura" y "Síntesis de la tirada".
+
+= 1.0.3 =
+* Cambia el emoji de ícono (🎴, con mal soporte en muchas fuentes/sistemas y que podía verse como un cuadrado sin sentido) por 🃏, que renderiza de forma confiable como una carta.
 
 = 1.0.2 =
 * Cartas más grandes (~40%) en la grilla de búsqueda, la grilla de selección y la vista al revelar, para que se distingan mejor.
