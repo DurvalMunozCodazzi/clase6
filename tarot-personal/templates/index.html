@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Tarot Personal — Lecturas con Claude</title>
+<style>
+  body { font-family: -apple-system, Arial, sans-serif; max-width: 900px; margin: 30px auto; padding: 0 20px; background: #1b1024; color: #f0e9f7; }
+  h1 { color: #d9b3ff; }
+  h2 { color: #ffd97a; font-size: 1.1rem; margin-top: 1.6rem; }
+  fieldset { border: 1px solid #4a2a66; border-radius: 8px; margin-bottom: 14px; padding: 12px 16px; }
+  legend { padding: 0 6px; color: #b892d6; }
+  label { display: inline-block; margin-right: 16px; }
+  select, input[type=text] { background: #241332; color: #f0e9f7; border: 1px solid #4a2a66; border-radius: 6px; padding: 6px 8px; }
+  button { background: #7b2ff7; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 15px; cursor: pointer; margin: 6px 6px 6px 0; }
+  button:hover { background: #9450ff; }
+  button:disabled { background: #555; cursor: not-allowed; }
+  .oculto { display: none; }
+  #status { margin: 10px 0; color: #b892d6; }
+  .posicion-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .posicion-row .label { min-width: 220px; color: #ffd97a; }
+  .carta-tirada { background: #241332; border: 1px solid #4a2a66; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; }
+  #resultado { background: #120a1a; padding: 16px; border-radius: 8px; margin-top: 16px; }
+  #resultado h4 { color: #ffd97a; margin: 1rem 0 0.4rem; }
+  #resultado p { line-height: 1.5; }
+  #resultado table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px; }
+  #resultado th, #resultado td { border: 1px solid #4a2a66; padding: 6px 10px; text-align: left; vertical-align: top; }
+  #resultado th { background: #2a1a45; color: #ffd97a; }
+</style>
+</head>
+<body>
+  <h1>🔮 Tarot Personal — Lecturas con Claude</h1>
+  <p>Uso personal y local. Consulta puntual (3 cartas) o lectura ampliada (10 cartas: Amor + Trabajo).</p>
+
+  <fieldset>
+    <legend>1. Tipo de lectura</legend>
+    <label><input type="radio" name="spread" value="puntual" checked> Consulta puntual (3 cartas)</label>
+    <label><input type="radio" name="spread" value="ampliada"> Lectura ampliada (10 cartas: Amor + Trabajo)</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>2. Cómo elegís las cartas</legend>
+    <label><input type="radio" name="metodo" value="digital" checked> Barajo digital (al azar)</label>
+    <label><input type="radio" name="metodo" value="fisica"> Tirada física (las cargo yo)</label>
+  </fieldset>
+
+  <div id="temaBox">
+    <h2>Tema de la consulta</h2>
+    <input type="text" id="temaInput" placeholder="Ej: ¿Cómo va a evolucionar mi situación laboral?" style="width:100%;box-sizing:border-box;">
+  </div>
+
+  <div id="digitalBox">
+    <button id="tirarDigitalBtn">🔀 Barajar y tirar</button>
+    <div id="cartasDigitalPreview"></div>
+  </div>
+
+  <div id="fisicaBox" class="oculto">
+    <h2>Cargá tu tirada física</h2>
+    <div id="fisicaPosiciones"></div>
+  </div>
+
+  <button id="generarBtn" class="oculto">✨ Generar lectura con Claude</button>
+  <div id="status"></div>
+  <div id="resultado" class="oculto"></div>
+
+<script>
+const CARD_NAMES = {{ card_names | tojson }};
+const SPREADS = {{ spreads | tojson }};
+
+const temaBox = document.getElementById('temaBox');
+const digitalBox = document.getElementById('digitalBox');
+const fisicaBox = document.getElementById('fisicaBox');
+const generarBtn = document.getElementById('generarBtn');
+const statusDiv = document.getElementById('status');
+const resultadoDiv = document.getElementById('resultado');
+const cartasDigitalPreview = document.getElementById('cartasDigitalPreview');
+const fisicaPosiciones = document.getElementById('fisicaPosiciones');
+
+let tiradaActual = null; // lista de {position_key, card_id, reversed}
+
+function spreadActual() {
+  return document.querySelector('input[name=spread]:checked').value;
+}
+function metodoActual() {
+  return document.querySelector('input[name=metodo]:checked').value;
+}
+
+function actualizarVista() {
+  const spread = spreadActual();
+  const metodo = metodoActual();
+  temaBox.classList.toggle('oculto', spread !== 'puntual');
+  digitalBox.classList.toggle('oculto', metodo !== 'digital');
+  fisicaBox.classList.toggle('oculto', metodo !== 'fisica');
+  generarBtn.classList.add('oculto');
+  resultadoDiv.classList.add('oculto');
+  cartasDigitalPreview.innerHTML = '';
+  tiradaActual = null;
+
+  if (metodo === 'fisica') {
+    renderFormularioFisica(spread);
+  }
+}
+
+const CARD_NAME_BY_ID = Object.fromEntries(CARD_NAMES);
+
+function optionsCartas(selected) {
+  return CARD_NAMES.map(([id, name]) =>
+    `<option value="${id}" ${id === selected ? 'selected' : ''}>${name}</option>`
+  ).join('');
+}
+
+function renderFormularioFisica(spread) {
+  const posiciones = SPREADS[spread];
+  fisicaPosiciones.innerHTML = posiciones.map((pos, i) => `
+    <div class="posicion-row" data-key="${pos.key}">
+      <span class="label">${pos.label}</span>
+      <select class="carta-select">${optionsCartas(CARD_NAMES[i][0])}</select>
+      <label><input type="radio" name="orient_${pos.key}" value="up" checked> Derecha</label>
+      <label><input type="radio" name="orient_${pos.key}" value="rev"> Invertida</label>
+    </div>
+  `).join('');
+  generarBtn.classList.remove('oculto');
+}
+
+function leerTiradaFisica() {
+  const spread = spreadActual();
+  const posiciones = SPREADS[spread];
+  return posiciones.map(pos => {
+    const row = fisicaPosiciones.querySelector(`[data-key="${pos.key}"]`);
+    const cardId = row.querySelector('.carta-select').value;
+    const reversed = row.querySelector(`input[name=orient_${pos.key}]:checked`).value === 'rev';
+    return { position_key: pos.key, card_id: cardId, reversed };
+  });
+}
+
+document.querySelectorAll('input[name=spread], input[name=metodo]').forEach(el => {
+  el.addEventListener('change', actualizarVista);
+});
+
+document.getElementById('tirarDigitalBtn').addEventListener('click', async () => {
+  const spread = spreadActual();
+  statusDiv.textContent = 'Barajando...';
+  const resp = await fetch('/tirar_digital', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ spread })
+  });
+  const data = await resp.json();
+  tiradaActual = data.tirada.map(t => ({
+    position_key: t.position.key, card_id: t.card_id, reversed: t.reversed
+  }));
+  cartasDigitalPreview.innerHTML = data.tirada.map(t =>
+    `<div class="carta-tirada"><strong>${t.position.label}:</strong> ${CARD_NAME_BY_ID[t.card_id] || t.card_id} ${t.reversed ? '(invertida)' : '(derecha)'}</div>`
+  ).join('');
+  statusDiv.textContent = '';
+  generarBtn.classList.remove('oculto');
+});
+
+function formatearResultado(texto) {
+  const lineas = texto.split('\n');
+  let html = '';
+  let filaTabla = [];
+  let enTabla = false;
+
+  function cerrarTabla() {
+    if (!filaTabla.length) return;
+    html += '<table>';
+    filaTabla.forEach((celdas, i) => {
+      if (i === 1 && celdas.every(c => /^-+$/.test(c.trim()))) return;
+      const tag = i === 0 ? 'th' : 'td';
+      html += '<tr>' + celdas.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
+    });
+    html += '</table>';
+    filaTabla = [];
+  }
+
+  lineas.forEach(linea => {
+    const l = linea.trim();
+    if (!l) return;
+    if (l.charAt(0) === '|') {
+      enTabla = true;
+      filaTabla.push(l.split('|').slice(1, -1));
+      return;
+    }
+    if (enTabla) { cerrarTabla(); enTabla = false; }
+    if (/^(💼|❤️|⚠️|🌟|⏳|🌙|✨|🔮)/.test(l)) {
+      html += `<h4>${l}</h4>`;
+    } else {
+      html += `<p>${l}</p>`;
+    }
+  });
+  if (enTabla) cerrarTabla();
+  return html;
+}
+
+generarBtn.addEventListener('click', async () => {
+  const spread = spreadActual();
+  const metodo = metodoActual();
+  const tirada = metodo === 'digital' ? tiradaActual : leerTiradaFisica();
+  if (!tirada) { statusDiv.textContent = 'Primero tirá las cartas.'; return; }
+
+  const payload = { spread, tirada };
+  if (spread === 'puntual') payload.tema = document.getElementById('temaInput').value;
+
+  generarBtn.disabled = true;
+  statusDiv.textContent = 'Consultando a Claude (puede tardar un minuto)...';
+  try {
+    const resp = await fetch('/generar_lectura', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    resultadoDiv.innerHTML = formatearResultado(data.texto);
+    resultadoDiv.classList.remove('oculto');
+    statusDiv.textContent = `Listo. Se guardó una copia en ${data.archivo_guardado}`;
+  } catch (err) {
+    statusDiv.textContent = 'Error: ' + err.message;
+  } finally {
+    generarBtn.disabled = false;
+  }
+});
+
+actualizarVista();
+</script>
+</body>
+</html>
