@@ -23,6 +23,7 @@
   <p>Calcula posiciones planetarias reales (Swiss Ephemeris) y genera la interpretación de los 12 signos para hoy y mañana.</p>
 
   <button id="generarBtn">Generar horóscopo de hoy</button>
+  <button id="regenerarBtn" class="oculto">🔄 Regenerar</button>
   <button id="copyJsonBtn" class="oculto">Copiar JSON para WordPress</button>
   <div id="status"></div>
 
@@ -40,19 +41,22 @@
     <div id="signosManana" class="oculto"></div>
 
     <h2>📋 JSON para importar en WordPress</h2>
-    <p>Pega este bloque en el panel admin del plugin de tarot (sección Horóscopo → Importar).</p>
-    <pre id="jsonWp"></pre>
+    <p>Pega este bloque en el panel admin del plugin de tarot (sección Horóscopo → Importar). Apretá "Copiar JSON" — es más seguro que seleccionarlo a mano.</p>
+    <textarea id="jsonWp" readonly rows="14" style="width:100%;font-family:monospace;font-size:12px;background:#120a1a;color:#f0e9f7;border:1px solid #4a2a66;border-radius:8px;padding:10px;box-sizing:border-box;"></textarea>
   </div>
 
 <script>
 const generarBtn = document.getElementById('generarBtn');
+const regenerarBtn = document.getElementById('regenerarBtn');
 const copyJsonBtn = document.getElementById('copyJsonBtn');
 const statusDiv = document.getElementById('status');
 const resultadoDiv = document.getElementById('resultado');
+const jsonWpBox = document.getElementById('jsonWp');
 let ultimoJson = '';
 
-generarBtn.addEventListener('click', async () => {
+async function generarHoroscopo(btnQueDisparo) {
   generarBtn.disabled = true;
+  regenerarBtn.disabled = true;
   statusDiv.textContent = 'Calculando posiciones planetarias y generando interpretación...';
   try {
     const resp = await fetch('/generar', { method: 'POST' });
@@ -76,20 +80,32 @@ generarBtn.addEventListener('click', async () => {
     renderSignos(data.manana, 'signosManana');
 
     ultimoJson = data.wp_import_json;
-    document.getElementById('jsonWp').textContent = ultimoJson;
+    jsonWpBox.value = ultimoJson;
 
     resultadoDiv.classList.remove('oculto');
     copyJsonBtn.classList.remove('oculto');
+    regenerarBtn.classList.remove('oculto');
+    generarBtn.classList.add('oculto');
     statusDiv.textContent = `Listo. También se guardó una copia en ${data.archivo_guardado}`;
   } catch (err) {
     statusDiv.textContent = 'Error: ' + err.message;
   } finally {
     generarBtn.disabled = false;
+    regenerarBtn.disabled = false;
   }
-});
+}
+
+generarBtn.addEventListener('click', () => generarHoroscopo());
+regenerarBtn.addEventListener('click', () => generarHoroscopo());
 
 copyJsonBtn.addEventListener('click', async () => {
-  await navigator.clipboard.writeText(ultimoJson);
+  jsonWpBox.select();
+  jsonWpBox.setSelectionRange(0, 999999);
+  try {
+    await navigator.clipboard.writeText(ultimoJson);
+  } catch (err) {
+    document.execCommand('copy');
+  }
   copyJsonBtn.textContent = '¡Copiado!';
   setTimeout(() => { copyJsonBtn.textContent = 'Copiar JSON para WordPress'; }, 1500);
 });
