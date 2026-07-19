@@ -23,8 +23,10 @@
   <p>Calcula posiciones planetarias reales (Swiss Ephemeris) y genera la interpretación de los 12 signos para hoy y mañana.</p>
 
   <button id="generarBtn">Generar horóscopo de hoy</button>
+  <button id="generarIaBtn">✨ Generar versión analítica (con Claude)</button>
   <button id="regenerarBtn" class="oculto">🔄 Regenerar</button>
   <button id="copyJsonBtn" class="oculto">Copiar JSON para WordPress</button>
+  <p style="font-size:13px;color:#b892d6;">La versión analítica usa Claude Code instalado en esta Mac (tu suscripción Pro/Max, sin costo extra) y tarda unos minutos: no cierres esta ventana mientras genera.</p>
   <div id="status"></div>
 
   <div id="resultado" class="oculto">
@@ -47,19 +49,25 @@
 
 <script>
 const generarBtn = document.getElementById('generarBtn');
+const generarIaBtn = document.getElementById('generarIaBtn');
 const regenerarBtn = document.getElementById('regenerarBtn');
 const copyJsonBtn = document.getElementById('copyJsonBtn');
 const statusDiv = document.getElementById('status');
 const resultadoDiv = document.getElementById('resultado');
 const jsonWpBox = document.getElementById('jsonWp');
 let ultimoJson = '';
+let endpointActual = '/generar';
 
-async function generarHoroscopo(btnQueDisparo) {
+async function generarHoroscopo(endpoint) {
+  endpointActual = endpoint;
   generarBtn.disabled = true;
+  generarIaBtn.disabled = true;
   regenerarBtn.disabled = true;
-  statusDiv.textContent = 'Calculando posiciones planetarias y generando interpretación...';
+  statusDiv.textContent = endpoint === '/generar_analitico'
+    ? 'Consultando a Claude para cada signo (esto puede tardar varios minutos, no cierres la ventana)...'
+    : 'Calculando posiciones planetarias y generando interpretación...';
   try {
-    const resp = await fetch('/generar', { method: 'POST' });
+    const resp = await fetch(endpoint, { method: 'POST' });
     if (!resp.ok) throw new Error('Error del servidor');
     const data = await resp.json();
 
@@ -86,17 +94,20 @@ async function generarHoroscopo(btnQueDisparo) {
     copyJsonBtn.classList.remove('oculto');
     regenerarBtn.classList.remove('oculto');
     generarBtn.classList.add('oculto');
+    generarIaBtn.classList.add('oculto');
     statusDiv.textContent = `Listo. También se guardó una copia en ${data.archivo_guardado}`;
   } catch (err) {
     statusDiv.textContent = 'Error: ' + err.message;
   } finally {
     generarBtn.disabled = false;
+    generarIaBtn.disabled = false;
     regenerarBtn.disabled = false;
   }
 }
 
-generarBtn.addEventListener('click', () => generarHoroscopo());
-regenerarBtn.addEventListener('click', () => generarHoroscopo());
+generarBtn.addEventListener('click', () => generarHoroscopo('/generar'));
+generarIaBtn.addEventListener('click', () => generarHoroscopo('/generar_analitico'));
+regenerarBtn.addEventListener('click', () => generarHoroscopo(endpointActual));
 
 copyJsonBtn.addEventListener('click', async () => {
   jsonWpBox.select();
