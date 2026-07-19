@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Horóscopo Diario — Generador</title>
+<style>
+  body { font-family: -apple-system, Arial, sans-serif; max-width: 900px; margin: 30px auto; padding: 0 20px; background: #1b1024; color: #f0e9f7; }
+  h1 { color: #d9b3ff; }
+  button { background: #7b2ff7; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 15px; cursor: pointer; margin: 6px 6px 6px 0; }
+  button:hover { background: #9450ff; }
+  button:disabled { background: #555; cursor: not-allowed; }
+  pre { background: #120a1a; padding: 14px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; font-size: 13px; }
+  .signo-card { background: #241332; border: 1px solid #4a2a66; border-radius: 10px; padding: 14px 18px; margin-bottom: 12px; }
+  .signo-card h3 { margin: 0 0 8px 0; color: #ffd97a; }
+  .tabs { margin: 16px 0; }
+  .tabs button.active { background: #ffd97a; color: #241332; }
+  #status { margin: 10px 0; color: #b892d6; }
+  .oculto { display: none; }
+</style>
+</head>
+<body>
+  <h1>🔮 Horóscopo Diario — Generador local</h1>
+  <p>Calcula posiciones planetarias reales (Swiss Ephemeris) y genera la interpretación de los 12 signos para hoy y mañana.</p>
+
+  <button id="generarBtn">Generar horóscopo de hoy</button>
+  <button id="copyJsonBtn" class="oculto">Copiar JSON para WordPress</button>
+  <div id="status"></div>
+
+  <div id="resultado" class="oculto">
+    <h2>📡 Datos astronómicos reales</h2>
+    <pre id="astroHoy"></pre>
+    <pre id="astroManana"></pre>
+
+    <h2>🔮 Interpretación por signo</h2>
+    <div class="tabs">
+      <button id="tabHoy" class="active">Hoy</button>
+      <button id="tabManana">Mañana</button>
+    </div>
+    <div id="signosHoy"></div>
+    <div id="signosManana" class="oculto"></div>
+
+    <h2>📋 JSON para importar en WordPress</h2>
+    <p>Pega este bloque en el panel admin del plugin de tarot (sección Horóscopo → Importar).</p>
+    <pre id="jsonWp"></pre>
+  </div>
+
+<script>
+const generarBtn = document.getElementById('generarBtn');
+const copyJsonBtn = document.getElementById('copyJsonBtn');
+const statusDiv = document.getElementById('status');
+const resultadoDiv = document.getElementById('resultado');
+let ultimoJson = '';
+
+generarBtn.addEventListener('click', async () => {
+  generarBtn.disabled = true;
+  statusDiv.textContent = 'Calculando posiciones planetarias y generando interpretación...';
+  try {
+    const resp = await fetch('/generar', { method: 'POST' });
+    if (!resp.ok) throw new Error('Error del servidor');
+    const data = await resp.json();
+
+    document.getElementById('astroHoy').textContent = data.astronomia_hoy;
+    document.getElementById('astroManana').textContent = data.astronomia_manana;
+
+    const renderSignos = (signosObj, contenedorId) => {
+      const cont = document.getElementById(contenedorId);
+      cont.innerHTML = '';
+      data.signos.forEach(([key, nombre]) => {
+        const div = document.createElement('div');
+        div.className = 'signo-card';
+        div.innerHTML = `<h3>${nombre}</h3><p>${signosObj[key]}</p>`;
+        cont.appendChild(div);
+      });
+    };
+    renderSignos(data.hoy, 'signosHoy');
+    renderSignos(data.manana, 'signosManana');
+
+    ultimoJson = data.wp_import_json;
+    document.getElementById('jsonWp').textContent = ultimoJson;
+
+    resultadoDiv.classList.remove('oculto');
+    copyJsonBtn.classList.remove('oculto');
+    statusDiv.textContent = `Listo. También se guardó una copia en ${data.archivo_guardado}`;
+  } catch (err) {
+    statusDiv.textContent = 'Error: ' + err.message;
+  } finally {
+    generarBtn.disabled = false;
+  }
+});
+
+copyJsonBtn.addEventListener('click', async () => {
+  await navigator.clipboard.writeText(ultimoJson);
+  copyJsonBtn.textContent = '¡Copiado!';
+  setTimeout(() => { copyJsonBtn.textContent = 'Copiar JSON para WordPress'; }, 1500);
+});
+
+document.getElementById('tabHoy').addEventListener('click', () => {
+  document.getElementById('tabHoy').classList.add('active');
+  document.getElementById('tabManana').classList.remove('active');
+  document.getElementById('signosHoy').classList.remove('oculto');
+  document.getElementById('signosManana').classList.add('oculto');
+});
+document.getElementById('tabManana').addEventListener('click', () => {
+  document.getElementById('tabManana').classList.add('active');
+  document.getElementById('tabHoy').classList.remove('active');
+  document.getElementById('signosManana').classList.remove('oculto');
+  document.getElementById('signosHoy').classList.add('oculto');
+});
+</script>
+</body>
+</html>
