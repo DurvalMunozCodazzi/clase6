@@ -1,7 +1,9 @@
 import json
 import os
+import urllib.error
+import urllib.request
 
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 
 from generar_horoscopo import generar, _resumen_astronomico
 from core import SIGN_KEYS, SIGN_NAMES
@@ -96,6 +98,33 @@ def generar_analitico_endpoint():
         "wp_import_json": json.dumps(wp_import, ensure_ascii=False, indent=2),
         "archivo_guardado": out_path,
     })
+
+
+@app.route("/enviar_wordpress", methods=["POST"])
+def enviar_wordpress_endpoint():
+    data = request.json
+    site_url = (data.get("site_url") or "").strip().rstrip("/")
+    token = (data.get("token") or "").strip()
+    payload = data.get("payload")
+
+    if not site_url or not token:
+        return jsonify({"ok": False, "error": "Falta la URL del sitio o el token."}), 400
+
+    url = f"{site_url}/wp-json/tirada-de-tarot/v1/horoscopo"
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=body, method="POST", headers={
+        "Content-Type": "application/json",
+        "X-TDT-Token": token,
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            resultado = json.loads(resp.read().decode("utf-8"))
+        return jsonify({"ok": True, "resultado": resultado})
+    except urllib.error.HTTPError as e:
+        detalle = e.read().decode("utf-8", "ignore")
+        return jsonify({"ok": False, "error": f"El sitio respondió con error {e.code}: {detalle}"}), 502
+    except urllib.error.URLError as e:
+        return jsonify({"ok": False, "error": f"No se pudo conectar: {e.reason}"}), 502
 
 
 if __name__ == "__main__":

@@ -22,10 +22,19 @@
   <h1>🔮 Horóscopo Diario — Generador local</h1>
   <p>Calcula posiciones planetarias reales (Swiss Ephemeris) y genera la interpretación de los 12 signos para hoy y mañana.</p>
 
+  <details style="margin-bottom:14px;">
+    <summary style="cursor:pointer;color:#b892d6;">⚙️ Configuración de envío a WordPress (una sola vez)</summary>
+    <p style="font-size:13px;">Lo sacás del panel admin del plugin, sección "Conexión con las apps locales".</p>
+    <label>URL del sitio: <input type="text" id="siteUrlInput" placeholder="https://tusitio.com" style="width:300px;"></label><br><br>
+    <label>Token: <input type="text" id="tokenInput" placeholder="token" style="width:300px;"></label>
+    <button id="guardarConfigBtn" style="margin-left:10px;">Guardar</button>
+  </details>
+
   <button id="generarBtn">Generar horóscopo de hoy</button>
   <button id="generarIaBtn">✨ Generar versión analítica (con Claude)</button>
   <button id="regenerarBtn" class="oculto">🔄 Regenerar</button>
   <button id="copyJsonBtn" class="oculto">Copiar JSON para WordPress</button>
+  <button id="enviarWpBtn" class="oculto">🚀 Enviar directo a WordPress</button>
   <p style="font-size:13px;color:#b892d6;">La versión analítica usa Claude Code instalado en esta Mac (tu suscripción Pro/Max, sin costo extra) y tarda unos minutos: no cierres esta ventana mientras genera.</p>
   <div id="status"></div>
 
@@ -52,11 +61,22 @@ const generarBtn = document.getElementById('generarBtn');
 const generarIaBtn = document.getElementById('generarIaBtn');
 const regenerarBtn = document.getElementById('regenerarBtn');
 const copyJsonBtn = document.getElementById('copyJsonBtn');
+const enviarWpBtn = document.getElementById('enviarWpBtn');
+const siteUrlInput = document.getElementById('siteUrlInput');
+const tokenInput = document.getElementById('tokenInput');
 const statusDiv = document.getElementById('status');
 const resultadoDiv = document.getElementById('resultado');
 const jsonWpBox = document.getElementById('jsonWp');
 let ultimoJson = '';
 let endpointActual = '/generar';
+
+siteUrlInput.value = localStorage.getItem('tdt_site_url') || '';
+tokenInput.value = localStorage.getItem('tdt_token') || '';
+document.getElementById('guardarConfigBtn').addEventListener('click', () => {
+  localStorage.setItem('tdt_site_url', siteUrlInput.value.trim());
+  localStorage.setItem('tdt_token', tokenInput.value.trim());
+  statusDiv.textContent = 'Configuración guardada.';
+});
 
 async function generarHoroscopo(endpoint) {
   endpointActual = endpoint;
@@ -92,6 +112,7 @@ async function generarHoroscopo(endpoint) {
 
     resultadoDiv.classList.remove('oculto');
     copyJsonBtn.classList.remove('oculto');
+    enviarWpBtn.classList.remove('oculto');
     regenerarBtn.classList.remove('oculto');
     generarBtn.classList.add('oculto');
     generarIaBtn.classList.add('oculto');
@@ -119,6 +140,30 @@ copyJsonBtn.addEventListener('click', async () => {
   }
   copyJsonBtn.textContent = '¡Copiado!';
   setTimeout(() => { copyJsonBtn.textContent = 'Copiar JSON para WordPress'; }, 1500);
+});
+
+enviarWpBtn.addEventListener('click', async () => {
+  const siteUrl = localStorage.getItem('tdt_site_url') || '';
+  const token = localStorage.getItem('tdt_token') || '';
+  if (!siteUrl || !token) {
+    statusDiv.textContent = 'Falta configurar la URL del sitio y el token (arriba de todo).';
+    return;
+  }
+  enviarWpBtn.disabled = true;
+  statusDiv.textContent = 'Enviando a WordPress...';
+  try {
+    const resp = await fetch('/enviar_wordpress', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ site_url: siteUrl, token: token, payload: JSON.parse(ultimoJson) })
+    });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'Error desconocido');
+    statusDiv.textContent = `Enviado correctamente: ${data.resultado.fecha_hoy} (hoy) y ${data.resultado.fecha_manana} (mañana).`;
+  } catch (err) {
+    statusDiv.textContent = 'Error al enviar: ' + err.message;
+  } finally {
+    enviarWpBtn.disabled = false;
+  }
 });
 
 document.getElementById('tabHoy').addEventListener('click', () => {

@@ -1,5 +1,8 @@
 import json
 import os
+import urllib.error
+import urllib.parse
+import urllib.request
 
 from flask import Flask, render_template, jsonify, request
 
@@ -30,6 +33,35 @@ def importar_significados_endpoint():
         return jsonify({"error": "Ese texto no es un JSON válido."}), 400
     if not isinstance(data, dict):
         return jsonify({"error": "El JSON tiene que ser un objeto (carta -> significados)."}), 400
+
+    with open(cards_data.CURATED_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    cards_data.recargar_curados()
+
+    return jsonify({"ok": True, "cartas": len(data)})
+
+
+@app.route("/traer_significados", methods=["POST"])
+def traer_significados_endpoint():
+    body = request.json
+    site_url = (body.get("site_url") or "").strip().rstrip("/")
+    token = (body.get("token") or "").strip()
+
+    if not site_url or not token:
+        return jsonify({"error": "Falta la URL del sitio o el token."}), 400
+
+    url = f"{site_url}/wp-json/tirada-de-tarot/v1/meanings?token={urllib.parse.quote(token)}"
+    req = urllib.request.Request(url, headers={"X-TDT-Token": token})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        return jsonify({"error": f"El sitio respondió con error {e.code}"}), 502
+    except urllib.error.URLError as e:
+        return jsonify({"error": f"No se pudo conectar: {e.reason}"}), 502
+
+    if not isinstance(data, dict):
+        return jsonify({"error": "La respuesta del sitio no tiene el formato esperado."}), 502
 
     with open(cards_data.CURATED_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)

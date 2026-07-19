@@ -33,13 +33,18 @@
 
   <details style="margin-bottom:14px;">
     <summary style="cursor:pointer;color:#b892d6;">
-      Significados curados: <strong id="estadoCurados">{{ "cargados ✓" if hay_curados else "no cargados (usando genéricos)" }}</strong> — tocá para importar/actualizar
+      Significados curados: <strong id="estadoCurados">{{ "cargados ✓" if hay_curados else "no cargados (usando genéricos)" }}</strong> — tocá para configurar/actualizar
     </summary>
-    <p style="font-size:13px;">Pegá acá el JSON que copiaste del panel admin del plugin de WordPress
-      (sección "Exportar significados"), así las lecturas usan el contenido real que armaste ahí
-      en vez de las descripciones genéricas de cada carta.</p>
+    <p style="font-size:13px;">Config del sitio (una sola vez, se saca del panel admin del plugin,
+      sección "Conexión con las apps locales"):</p>
+    <label>URL del sitio: <input type="text" id="siteUrlInput" placeholder="https://tusitio.com" style="width:300px;"></label><br><br>
+    <label>Token: <input type="text" id="tokenInput" placeholder="token" style="width:300px;"></label>
+    <button id="guardarConfigBtn" style="margin-left:10px;">Guardar</button>
+    <br><br>
+    <button id="traerSignificadosBtn">📥 Traer significados desde WordPress</button>
+    <p style="font-size:13px;">O si preferís, pegalo a mano acá:</p>
     <textarea id="curadosInput" rows="6" style="width:100%;box-sizing:border-box;font-family:monospace;font-size:12px;"></textarea>
-    <button id="importarCuradosBtn">Importar significados</button>
+    <button id="importarCuradosBtn">Importar significados (pegado a mano)</button>
   </details>
 
   <fieldset>
@@ -227,6 +232,38 @@ generarBtn.addEventListener('click', async () => {
     statusDiv.textContent = 'Error: ' + err.message;
   } finally {
     generarBtn.disabled = false;
+  }
+});
+
+const siteUrlInput = document.getElementById('siteUrlInput');
+const tokenInput = document.getElementById('tokenInput');
+siteUrlInput.value = localStorage.getItem('tdt_site_url') || '';
+tokenInput.value = localStorage.getItem('tdt_token') || '';
+document.getElementById('guardarConfigBtn').addEventListener('click', () => {
+  localStorage.setItem('tdt_site_url', siteUrlInput.value.trim());
+  localStorage.setItem('tdt_token', tokenInput.value.trim());
+  statusDiv.textContent = 'Configuración guardada.';
+});
+
+document.getElementById('traerSignificadosBtn').addEventListener('click', async () => {
+  const siteUrl = localStorage.getItem('tdt_site_url') || '';
+  const token = localStorage.getItem('tdt_token') || '';
+  if (!siteUrl || !token) {
+    statusDiv.textContent = 'Falta configurar la URL del sitio y el token.';
+    return;
+  }
+  statusDiv.textContent = 'Trayendo significados desde WordPress...';
+  try {
+    const resp = await fetch('/traer_significados', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ site_url: siteUrl, token: token })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    document.getElementById('estadoCurados').textContent = `cargados ✓ (${data.cartas} cartas)`;
+    statusDiv.textContent = 'Significados traídos correctamente.';
+  } catch (err) {
+    statusDiv.textContent = 'Error: ' + err.message;
   }
 });
 
