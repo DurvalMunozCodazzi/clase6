@@ -37,7 +37,12 @@ PLANET_LABELS = {
     "sol": "Sol", "luna": "Luna", "mercurio": "Mercurio", "venus": "Venus",
     "marte": "Marte", "jupiter": "Júpiter", "saturno": "Saturno",
     "urano": "Urano", "neptuno": "Neptuno", "pluton": "Plutón",
+    "nodo_norte": "Nodo Norte", "nodo_sur": "Nodo Sur",
 }
+
+# Planetas para los que tiene sentido calcular "¿cuándo termina la retrogradación?"
+# (los que la gente busca activamente: Mercurio, Venus, Marte).
+PLANETAS_RETRO_RELEVANTES = ("mercurio", "venus", "marte")
 
 # Orbe (tolerancia en grados) para considerar válido un aspecto.
 MAJOR_ASPECTS = {
@@ -135,12 +140,44 @@ def compute_aspects(positions):
     return aspects
 
 
+def fecha_directo(planet_id, jd_inicio, max_days=150):
+    """Busca hacia adelante, día por día desde jd_inicio, la primera fecha en
+    que el planeta deja de estar retrógrado (velocidad >= 0). Es el dato real
+    que la gente busca cuando pregunta "¿cuándo termina el Mercurio retrógrado?"."""
+    for i in range(1, max_days + 1):
+        jd = jd_inicio + i
+        xx, _ = swe.calc_ut(jd, planet_id, FLAGS)
+        if xx[3] >= 0:
+            y, m, d,_h = swe.revjul(jd)
+            return {"fecha": f"{y:04d}-{m:02d}-{d:02d}", "dias_restantes": i}
+    return None
+
+
 def compute_day(dt):
     """Calcula todo el panorama astronómico real para un datetime (UTC, se usa el mediodía)."""
     jd = julian_day_utc(dt)
     positions = {name: planet_position(jd, pid) for name, pid in PLANETS.items()}
+
+    nodo_norte = planet_position(jd, swe.TRUE_NODE)
+    nodo_sur_lon = (nodo_norte["longitude"] + 180) % 360
+    sign_key, sign_name, degree = sign_of(nodo_sur_lon)
+    nodo_sur = {
+        "longitude": nodo_sur_lon,
+        "sign_key": sign_key,
+        "sign_name": sign_name,
+        "degree_in_sign": round(degree, 2),
+        "retrograde": nodo_norte["retrograde"],
+        "speed": nodo_norte["speed"],
+    }
+    positions["nodo_norte"] = nodo_norte
+    positions["nodo_sur"] = nodo_sur
+
+    for name in PLANETAS_RETRO_RELEVANTES:
+        if positions[name]["retrograde"]:
+            positions[name]["fin_retrogrado"] = fecha_directo(PLANETS[name], jd)
+
     phase = moon_phase(positions["sol"]["longitude"], positions["luna"]["longitude"])
-    aspects = compute_aspects(positions)
+    aspects = compute_aspects({k: v for k, v in positions.items() if k in PLANETS})
     return {
         "fecha": dt.strftime("%Y-%m-%d"),
         "posiciones": positions,

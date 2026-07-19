@@ -144,17 +144,30 @@ def interpretar_signo(sign_key, day_data):
     merc = posiciones["mercurio"]
     if merc["retrograde"] and ruler_key != "mercurio":
         n_merc, tema_merc = _casa(sign_key, merc["sign_key"])
+        fin = merc.get("fin_retrogrado")
+        fin_txt = f" (vuelve directo el {fin['fecha']})" if fin else ""
         partes.append(
-            f"Mercurio retrógrado cae en tu casa {n_merc} ({tema_merc}): evitá firmar o cerrar "
-            "algo importante ahí sin revisarlo dos veces."
+            f"Mercurio retrógrado cae en tu casa {n_merc} ({tema_merc}){fin_txt}: evitá firmar o "
+            "cerrar algo importante ahí sin revisarlo dos veces."
         )
     venus = posiciones["venus"]
     if venus["retrograde"] and ruler_key != "venus":
         n_venus, tema_venus = _casa(sign_key, venus["sign_key"])
+        fin = venus.get("fin_retrogrado")
+        fin_txt = f" (vuelve directo el {fin['fecha']})" if fin else ""
         partes.append(
-            f"Venus retrógrado está en tu casa {n_venus} ({tema_venus}): es momento de revisar, "
-            "no de decidir a las apuradas ahí."
+            f"Venus retrógrado está en tu casa {n_venus} ({tema_venus}){fin_txt}: es momento de "
+            "revisar, no de decidir a las apuradas ahí."
         )
+
+    nodo_norte = posiciones["nodo_norte"]
+    nodo_sur = posiciones["nodo_sur"]
+    n_nn, tema_nn = _casa(sign_key, nodo_norte["sign_key"])
+    n_ns, tema_ns = _casa(sign_key, nodo_sur["sign_key"])
+    partes.append(
+        f"Tu eje kármico hoy: soltar el patrón de tu casa {n_ns} ({tema_ns}) te abre paso hacia "
+        f"tu casa {n_nn} ({tema_nn}), la dirección de crecimiento del momento."
+    )
 
     partes.append(f"Como signo {modalidad}, {MODALIDAD_TONO[modalidad]}.")
 

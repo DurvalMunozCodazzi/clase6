@@ -21,9 +21,12 @@ def _resumen_astronomico(day_data):
     for key, pos in day_data["posiciones"].items():
         retro = " [RETRÓGRADO]" if pos["retrograde"] else ""
         lineas.append(
-            f"  {PLANET_LABELS[key]:9s}: {pos['sign_name']:12s} "
+            f"  {PLANET_LABELS[key]:11s}: {pos['sign_name']:12s} "
             f"{pos['degree_in_sign']:5.2f}°{retro}"
         )
+        if pos.get("fin_retrogrado"):
+            fr = pos["fin_retrogrado"]
+            lineas.append(f"      -> vuelve directo el {fr['fecha']} (en {fr['dias_restantes']} días)")
     fase = day_data["fase_lunar"]
     lineas.append(f"  Fase lunar: {fase['phase_name']} ({fase['illumination_pct']}% iluminada)")
     lineas.append("  Aspectos activos:")
@@ -36,16 +39,36 @@ def _resumen_astronomico(day_data):
 
 
 def _panorama_dia(day_data):
-    """Resumen compartido del día (mismo para los 12 signos): fase lunar y
-    retrógrados activos. Se muestra una sola vez en la web, en vez de repetirse
+    """Resumen compartido del día (mismo para los 12 signos): fase lunar,
+    retrógrados activos (con fecha real de cuándo vuelven directos) y eje
+    de nodos lunares. Se muestra una sola vez en la web, en vez de repetirse
     con las mismas palabras dentro de cada uno de los 12 textos personalizados."""
     fase = day_data["fase_lunar"]
-    retros = [PLANET_LABELS[k] for k, p in day_data["posiciones"].items() if p["retrograde"]]
+    posiciones = day_data["posiciones"]
+
     texto = f"Hoy la Luna está en {fase['phase_name']} ({fase['illumination_pct']}% de iluminación)."
-    if retros:
-        texto += f" Retrógrados activos: {', '.join(retros)}."
+
+    retro_frases = []
+    for key, pos in posiciones.items():
+        if key in ("nodo_norte", "nodo_sur") or not pos["retrograde"]:
+            continue
+        frase = PLANET_LABELS[key]
+        if pos.get("fin_retrogrado"):
+            fr = pos["fin_retrogrado"]
+            frase += f" (vuelve directo el {fr['fecha']}, en {fr['dias_restantes']} días)"
+        retro_frases.append(frase)
+
+    if retro_frases:
+        texto += f" Retrógrados activos: {', '.join(retro_frases)}."
     else:
         texto += " No hay planetas retrógrados hoy."
+
+    nodo_norte = posiciones["nodo_norte"]
+    nodo_sur = posiciones["nodo_sur"]
+    texto += (
+        f" Eje de Nodos Lunares: Nodo Norte en {nodo_norte['sign_name']} / "
+        f"Nodo Sur en {nodo_sur['sign_name']}."
+    )
     return texto
 
 
