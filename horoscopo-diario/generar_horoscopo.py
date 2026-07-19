@@ -35,6 +35,20 @@ def _resumen_astronomico(day_data):
     return "\n".join(lineas)
 
 
+def _panorama_dia(day_data):
+    """Resumen compartido del día (mismo para los 12 signos): fase lunar y
+    retrógrados activos. Se muestra una sola vez en la web, en vez de repetirse
+    con las mismas palabras dentro de cada uno de los 12 textos personalizados."""
+    fase = day_data["fase_lunar"]
+    retros = [PLANET_LABELS[k] for k, p in day_data["posiciones"].items() if p["retrograde"]]
+    texto = f"Hoy la Luna está en {fase['phase_name']} ({fase['illumination_pct']}% de iluminación)."
+    if retros:
+        texto += f" Retrógrados activos: {', '.join(retros)}."
+    else:
+        texto += " No hay planetas retrógrados hoy."
+    return texto
+
+
 def generar(fecha_base_utc=None):
     if fecha_base_utc is None:
         fecha_base_utc = datetime.now(timezone.utc)
@@ -47,11 +61,13 @@ def generar(fecha_base_utc=None):
         "hoy": {
             "fecha": hoy["fecha"],
             "astronomia": hoy,
+            "panorama": _panorama_dia(hoy),
             "signos": generar_horoscopos_dia(hoy),
         },
         "manana": {
             "fecha": manana["fecha"],
             "astronomia": manana,
+            "panorama": _panorama_dia(manana),
             "signos": generar_horoscopos_dia(manana),
         },
     }

@@ -51,6 +51,23 @@ HOUSE_THEMES = {
     12: "tu mundo interior, el descanso y lo que se está cerrando",
 }
 
+# Consejo del día: se elige según la casa donde cae el Sol hoy para cada signo
+# (el foco principal del día), para cerrar con una frase motivadora y concreta.
+CONSEJOS_CASA = {
+    1: "Hoy es un buen día para mostrarte tal cual sos, sin pedir permiso: tu energía personal es tu mejor herramienta.",
+    2: "Cuidá lo que ya conseguiste: hoy rinde más valorar lo que tenés que arriesgarlo de más.",
+    3: "Una palabra a tiempo puede destrabar algo hoy: animate a decir lo que estás pensando.",
+    4: "Volver a lo simple de tu hogar o tu familia te va a dar más paz hoy que cualquier plan de afuera.",
+    5: "Date el permiso de disfrutar: el amor y la creatividad piden protagonismo hoy.",
+    6: "Un pequeño ajuste en tu rutina o en tu salud hoy rinde más de lo que pensás.",
+    7: "Escuchar de verdad al otro es la clave hoy: tus vínculos piden presencia, no perfección.",
+    8: "Soltar lo que ya cumplió su ciclo te libera más de lo que imaginás.",
+    9: "Ampliá la mirada hoy: una idea, un viaje o un aprendizaje nuevo te puede cambiar el ánimo.",
+    10: "Tu esfuerzo de fondo empieza a notarse: seguí construyendo tu lugar, aunque sea despacio.",
+    11: "Rodeate de gente que sume: hoy un proyecto compartido vale más que uno en soledad.",
+    12: "Bajar un cambio y escucharte por dentro hoy no es perder el tiempo, es prepararte para lo que viene.",
+}
+
 
 def _house_of(base_sign_key, transit_sign_key):
     base_idx = SIGN_KEYS.index(base_sign_key)
@@ -95,8 +112,7 @@ def interpretar_signo(sign_key, day_data):
     n_luna, tema_luna = _casa(sign_key, luna_pos["sign_key"])
     animo = "con ganas de sumar y crecer" if fase["waxing"] else "con ganas de soltar y cerrar etapas"
     partes.append(
-        f"La Luna transita tu casa {n_luna} ({tema_luna}) en fase {fase['phase_name'].lower()} "
-        f"({fase['illumination_pct']}% de iluminación), {animo}."
+        f"La Luna ilumina tu casa {n_luna} ({tema_luna}), {animo}."
     )
 
     n_ruler, tema_ruler = _casa(sign_key, ruler_pos["sign_key"])
@@ -141,6 +157,8 @@ def interpretar_signo(sign_key, day_data):
         )
 
     partes.append(f"Como signo {modalidad}, {MODALIDAD_TONO[modalidad]}.")
+
+    partes.append(f"✨ Consejo del día: {CONSEJOS_CASA[n_sol]}")
 
     return " ".join(partes)
 

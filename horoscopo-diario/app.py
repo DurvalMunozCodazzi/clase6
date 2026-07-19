@@ -23,8 +23,16 @@ def generar_endpoint():
     signos_ordenados = list(zip(SIGN_KEYS, SIGN_NAMES))
 
     wp_import = {
-        "hoy": {"fecha": resultado["hoy"]["fecha"], "signos": resultado["hoy"]["signos"]},
-        "manana": {"fecha": resultado["manana"]["fecha"], "signos": resultado["manana"]["signos"]},
+        "hoy": {
+            "fecha": resultado["hoy"]["fecha"],
+            "panorama": resultado["hoy"]["panorama"],
+            "signos": resultado["hoy"]["signos"],
+        },
+        "manana": {
+            "fecha": resultado["manana"]["fecha"],
+            "panorama": resultado["manana"]["panorama"],
+            "signos": resultado["manana"]["signos"],
+        },
     }
 
     os.makedirs(DOWNLOADS_DIR, exist_ok=True)
