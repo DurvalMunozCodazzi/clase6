@@ -85,35 +85,48 @@ def _datos_reales_signo(sign_key, day_data):
 
 def _prompt_signo(sign_name, sign_key, day_data):
     datos = _datos_reales_signo(sign_key, day_data)
-    return f"""Sos un astrólogo profesional que escribe horóscopos diarios muy específicos, \
-cruzando varias señales reales para llegar a una conclusión útil (no una lista de datos sueltos).
+    return f"""Sos un astrólogo profesional que escribe horóscopos diarios muy analíticos, \
+cruzando varias señales reales para llegar a conclusiones útiles y específicas (no una lista de \
+datos sueltos ni frases genéricas de horóscopo de diario).
 
 Datos astronómicos reales de hoy para {sign_name}:
 {datos}
 
-Escribí el horóscopo de hoy para {sign_name} en español rioplatense (voseo), con este formato \
-exacto y estos títulos textuales:
+Escribí el horóscopo completo de hoy para {sign_name} en español rioplatense (voseo), con este \
+formato y estos títulos textuales EXACTOS, en este orden:
 
 💼 En el trabajo
-(2-4 oraciones. Explicá qué significa la combinación de datos de arriba para esta área, con un \
-consejo concreto y accionable.)
+(Un párrafo largo y denso, 4-6 oraciones. Desarrollá en detalle qué significa la combinación de \
+datos de arriba para esta área: el tránsito del regente, los aspectos, el retrógrado si aplica. \
+Dale contexto y un consejo concreto y accionable, con ejemplos de situaciones posibles.)
 
 ❤️ En el amor
-(2-4 oraciones. Mismo criterio, usando el eje kármico si aporta algo relevante acá.)
+(Mismo nivel de detalle y extensión que la sección anterior, 4-6 oraciones. Usá el eje kármico \
+para explicar hacia dónde conviene crecer en esta área. Dale ejemplos concretos según si la \
+persona está en pareja o soltera.)
 
-⚠️ Consejo del día
-(1-2 oraciones, un consejo concreto y accionable, no genérico.)
+⚠️ La advertencia final
+(2-3 oraciones combinando el consejo más importante del día con cualquier retrógrado activo: qué \
+hacer y qué evitar concretamente, con ejemplos de frases o situaciones.)
+
+🌟 Síntesis del día
+(Una tabla en formato markdown con columnas "Área", "Diagnóstico" y "Acción", con una fila para \
+Trabajo, una para Amor y una para General. Cada celda: una frase corta y concreta.)
+
+Al final, un renglón de cierre motivador de una sola oración con un emoji, distinto para cada \
+signo (no repitas siempre la misma frase).
 
 Reglas estrictas de formato (muy importante, no las rompas):
 - Tu respuesta tiene que EMPEZAR directamente con la línea "💼 En el trabajo", carácter por \
 carácter. Nada antes: ni el nombre del signo, ni un título, ni ningún comentario tuyo sobre lo \
 que vas a hacer (nunca escribas cosas como "voy a redactar" o "cruzando estos datos").
-- Las tres líneas de título van SIEMPRE, exactas: "💼 En el trabajo", "❤️ En el amor" y \
-"⚠️ Consejo del día". Nunca las omitas ni las cambies.
-- No repitas el nombre del signo en ningún lado del texto.
+- Los cuatro títulos van SIEMPRE, exactos: "💼 En el trabajo", "❤️ En el amor", \
+"⚠️ La advertencia final" y "🌟 Síntesis del día". Nunca los omitas ni los cambies.
+- No repitas el nombre del signo dentro del cuerpo del texto.
 - No inventes datos astronómicos que no estén arriba. No repitas un número de casa sin \
-explicar qué significa. No uses tablas ni bullets dentro de las secciones, son párrafos cortos.
-- Máximo 200 palabras en total. Nada de introducción ni cierre fuera de esas 3 secciones.
+explicar qué significa.
+- Nunca le hagas una pregunta al lector ni cierres pidiendo su opinión (esto no es una \
+conversación, es un texto para publicar).
 - Escribí siempre en español (ni una palabra en inglés)."""
 
 
