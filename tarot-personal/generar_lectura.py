@@ -6,7 +6,7 @@ en vez de elegir frases de una lista fija.
 """
 import subprocess
 
-from cards_data import CARDS_BY_ID, meaning
+from cards_data import CARDS_BY_ID, meaning_rica
 
 CLAUDE_PATH = "/Users/edgardomunozcodazzi/Downloads/node-v24.14.1-darwin-x64/bin/claude"
 TIMEOUT_SEGUNDOS = 90
@@ -16,7 +16,7 @@ def _linea_carta(tirada_item):
     pos = tirada_item["position"]
     card = CARDS_BY_ID[tirada_item["card_id"]]
     orientacion = "invertida" if tirada_item["reversed"] else "derecha"
-    sig = meaning(tirada_item["card_id"], tirada_item["reversed"])
+    sig = meaning_rica(tirada_item["card_id"], tirada_item["reversed"])
     return f"- {pos['label']}: {card['name']} ({orientacion}) — {sig}"
 
 

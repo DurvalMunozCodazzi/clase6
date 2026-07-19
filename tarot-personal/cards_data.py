@@ -97,3 +97,47 @@ CARD_NAMES = [(c["id"], c["name"]) for c in ALL_CARDS]
 def meaning(card_id, reversed_):
     card = CARDS_BY_ID[card_id]
     return card["rev"] if reversed_ else card["up"]
+
+
+# --- Significados curados (opcional), exportados desde el panel admin del
+# plugin de WordPress (los que armaste a partir de las transcripciones de
+# YouTube). Si existen para una carta, se usan en vez de la etiqueta
+# genérica de arriba.
+import json
+import os
+import random
+
+CURATED_PATH = os.path.join(os.path.dirname(__file__), "card-meanings.json")
+
+
+def _cargar_curados():
+    if not os.path.exists(CURATED_PATH):
+        return {}
+    try:
+        with open(CURATED_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+CURATED = _cargar_curados()
+
+
+def recargar_curados():
+    global CURATED
+    CURATED = _cargar_curados()
+    return CURATED
+
+
+def meaning_rica(card_id, reversed_):
+    """Significado real (curado) si existe para esta carta, si no, la
+    etiqueta genérica tradicional."""
+    entry = CURATED.get(card_id)
+    pool = entry.get("rev" if reversed_ else "up") if entry else None
+    if pool:
+        return random.choice(pool)
+    return meaning(card_id, reversed_)
+
+
+def hay_significados_curados():
+    return bool(CURATED)

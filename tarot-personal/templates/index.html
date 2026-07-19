@@ -31,6 +31,17 @@
   <h1>🔮 Tarot Personal — Lecturas con Claude</h1>
   <p>Uso personal y local. Consulta puntual (3 cartas) o lectura ampliada (10 cartas: Amor + Trabajo).</p>
 
+  <details style="margin-bottom:14px;">
+    <summary style="cursor:pointer;color:#b892d6;">
+      Significados curados: <strong id="estadoCurados">{{ "cargados ✓" if hay_curados else "no cargados (usando genéricos)" }}</strong> — tocá para importar/actualizar
+    </summary>
+    <p style="font-size:13px;">Pegá acá el JSON que copiaste del panel admin del plugin de WordPress
+      (sección "Exportar significados"), así las lecturas usan el contenido real que armaste ahí
+      en vez de las descripciones genéricas de cada carta.</p>
+    <textarea id="curadosInput" rows="6" style="width:100%;box-sizing:border-box;font-family:monospace;font-size:12px;"></textarea>
+    <button id="importarCuradosBtn">Importar significados</button>
+  </details>
+
   <fieldset>
     <legend>1. Tipo de lectura</legend>
     <label><input type="radio" name="spread" value="puntual" checked> Consulta puntual (3 cartas)</label>
@@ -216,6 +227,24 @@ generarBtn.addEventListener('click', async () => {
     statusDiv.textContent = 'Error: ' + err.message;
   } finally {
     generarBtn.disabled = false;
+  }
+});
+
+document.getElementById('importarCuradosBtn').addEventListener('click', async () => {
+  const raw = document.getElementById('curadosInput').value.trim();
+  if (!raw) return;
+  statusDiv.textContent = 'Importando...';
+  try {
+    const resp = await fetch('/importar_significados', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ json: raw })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    document.getElementById('estadoCurados').textContent = `cargados ✓ (${data.cartas} cartas)`;
+    statusDiv.textContent = 'Significados importados correctamente.';
+  } catch (err) {
+    statusDiv.textContent = 'Error: ' + err.message;
   }
 });
 

@@ -42,3 +42,11 @@ saltar el aviso de macOS). Se abre el navegador en `http://localhost:5065`.
 3. Apretá "Generar lectura con Claude" y esperá (puede tardar hasta un minuto).
 
 Cada lectura se guarda automáticamente como archivo de texto en `~/Downloads/`.
+
+## Significados curados (opcional, recomendado)
+
+Por defecto, esta herramienta usa descripciones genéricas de cada carta. Para que use el
+contenido real que armaste en el plugin de WordPress (a partir de las transcripciones de
+YouTube), andá al panel admin del plugin → sección **"Exportar significados"** → copiá el
+bloque de texto → volvé acá, abrí **"Significados curados"** (arriba de todo) → pegalo →
+**Importar significados**. Se guarda en `card-meanings.json` en esta misma carpeta.

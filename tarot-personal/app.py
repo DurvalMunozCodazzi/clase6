@@ -3,6 +3,7 @@ import os
 
 from flask import Flask, render_template, jsonify, request
 
+import cards_data
 from cards_data import CARD_NAMES, CARDS_BY_ID
 from spreads import SPREADS, tirar_digital
 from generar_lectura import generar_lectura_puntual, generar_lectura_ampliada
@@ -14,7 +15,27 @@ DOWNLOADS_DIR = os.path.expanduser("~/Downloads")
 
 @app.route("/")
 def index():
-    return render_template("index.html", card_names=CARD_NAMES, spreads=SPREADS)
+    return render_template(
+        "index.html", card_names=CARD_NAMES, spreads=SPREADS,
+        hay_curados=cards_data.hay_significados_curados(),
+    )
+
+
+@app.route("/importar_significados", methods=["POST"])
+def importar_significados_endpoint():
+    raw = request.json.get("json", "")
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return jsonify({"error": "Ese texto no es un JSON válido."}), 400
+    if not isinstance(data, dict):
+        return jsonify({"error": "El JSON tiene que ser un objeto (carta -> significados)."}), 400
+
+    with open(cards_data.CURATED_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    cards_data.recargar_curados()
+
+    return jsonify({"ok": True, "cartas": len(data)})
 
 
 @app.route("/tirar_digital", methods=["POST"])
