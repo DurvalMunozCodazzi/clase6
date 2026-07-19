@@ -104,29 +104,62 @@ consejo concreto y accionable.)
 ⚠️ Consejo del día
 (1-2 oraciones, un consejo concreto y accionable, no genérico.)
 
-Reglas: no inventes datos astronómicos que no estén arriba. No repitas un número de casa sin \
-explicar qué significa. No uses tablas ni bullets dentro de las secciones, son párrafos cortos. \
-Máximo 200 palabras en total. No agregues ninguna introducción ni cierre fuera de esas 3 \
-secciones."""
+Reglas estrictas de formato (muy importante, no las rompas):
+- Tu respuesta tiene que EMPEZAR directamente con la línea "💼 En el trabajo", carácter por \
+carácter. Nada antes: ni el nombre del signo, ni un título, ni ningún comentario tuyo sobre lo \
+que vas a hacer (nunca escribas cosas como "voy a redactar" o "cruzando estos datos").
+- Las tres líneas de título van SIEMPRE, exactas: "💼 En el trabajo", "❤️ En el amor" y \
+"⚠️ Consejo del día". Nunca las omitas ni las cambies.
+- No repitas el nombre del signo en ningún lado del texto.
+- No inventes datos astronómicos que no estén arriba. No repitas un número de casa sin \
+explicar qué significa. No uses tablas ni bullets dentro de las secciones, son párrafos cortos.
+- Máximo 200 palabras en total. Nada de introducción ni cierre fuera de esas 3 secciones.
+- Escribí siempre en español (ni una palabra en inglés)."""
 
 
-def generar_analisis_signo(sign_name, sign_key, day_data):
-    prompt = _prompt_signo(sign_name, sign_key, day_data)
+def _llamar_claude(prompt):
     try:
         resultado = subprocess.run(
             [CLAUDE_PATH, "-p", prompt],
             capture_output=True, text=True, timeout=TIMEOUT_SEGUNDOS,
         )
     except subprocess.TimeoutExpired:
-        return "(No se pudo generar: Claude tardó demasiado en responder. Probá de nuevo.)"
+        return None, "Claude tardó demasiado en responder."
     except FileNotFoundError:
-        return "(No se encontró Claude Code en la ruta configurada. Revisá CLAUDE_PATH.)"
+        return None, "No se encontró Claude Code en la ruta configurada (revisá CLAUDE_PATH)."
 
     if resultado.returncode != 0:
-        error = (resultado.stderr or "error desconocido").strip()
+        return None, (resultado.stderr or "error desconocido").strip()
+    return resultado.stdout.strip(), None
+
+
+def generar_analisis_signo(sign_name, sign_key, day_data):
+    prompt = _prompt_signo(sign_name, sign_key, day_data)
+
+    texto, error = _llamar_claude(prompt)
+    if error:
         return f"(No se pudo generar: {error})"
 
-    return resultado.stdout.strip()
+    if "💼 En el trabajo" not in texto:
+        # No respetó el formato: un reintento con el recordatorio reforzado.
+        texto_reintento, error = _llamar_claude(
+            prompt + "\n\nIMPORTANTE: tu respuesta tiene que empezar EXACTO con "
+            "'💼 En el trabajo', sin nada antes."
+        )
+        if not error and "💼 En el trabajo" in texto_reintento:
+            texto = texto_reintento
+
+    return _recortar_preambulo(texto)
+
+
+def _recortar_preambulo(texto):
+    """Red de seguridad: si Claude se manda algún comentario antes del primer
+    título pese a las reglas del prompt, lo descarta y arranca desde ahí."""
+    marcador = "💼 En el trabajo"
+    idx = texto.find(marcador)
+    if idx > 0:
+        return texto[idx:].strip()
+    return texto
 
 
 def generar_analitico_dia(day_data, sign_keys, sign_names, max_workers=4):
