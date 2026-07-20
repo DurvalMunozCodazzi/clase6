@@ -41,8 +41,17 @@ def importar_significados_endpoint():
     return jsonify({"ok": True, "cartas": len(data)})
 
 
+NAVEGADOR_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "application/json",
+}
+
+
 def _get_json(url, token, timeout=15):
-    req = urllib.request.Request(url, headers={"X-TDT-Token": token})
+    headers = dict(NAVEGADOR_HEADERS)
+    headers["X-TDT-Token"] = token
+    req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return json.loads(resp.read().decode("utf-8"))
 

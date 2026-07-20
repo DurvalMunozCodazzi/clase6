@@ -1,6 +1,7 @@
 import json
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
 
 from flask import Flask, render_template, jsonify, request
@@ -100,12 +101,19 @@ def generar_analitico_endpoint():
     })
 
 
+NAVEGADOR_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "application/json",
+}
+
+
 def _post_json(url, token, payload, timeout=15):
     body = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(url, data=body, method="POST", headers={
-        "Content-Type": "application/json",
-        "X-TDT-Token": token,
-    })
+    headers = dict(NAVEGADOR_HEADERS)
+    headers["Content-Type"] = "application/json"
+    headers["X-TDT-Token"] = token
+    req = urllib.request.Request(url, data=body, method="POST", headers=headers)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
@@ -122,9 +130,11 @@ def enviar_wordpress_endpoint():
 
     # Primero la URL "linda" (requiere enlaces permanentes no-simples en WP);
     # si da 404, WordPress también entiende esta otra forma siempre, sin
-    # depender de esa configuración.
-    url_linda = f"{site_url}/wp-json/tirada-de-tarot/v1/horoscopo"
-    url_alternativa = f"{site_url}/index.php?rest_route=/tirada-de-tarot/v1/horoscopo"
+    # depender de esa configuración. El token va también en la URL (no solo
+    # en la cabecera), igual que en la prueba manual que sí funciona.
+    token_q = urllib.parse.quote(token)
+    url_linda = f"{site_url}/wp-json/tirada-de-tarot/v1/horoscopo?token={token_q}"
+    url_alternativa = f"{site_url}/index.php?rest_route=/tirada-de-tarot/v1/horoscopo&token={token_q}"
 
     try:
         resultado = _post_json(url_linda, token, payload)
