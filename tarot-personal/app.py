@@ -41,6 +41,12 @@ def importar_significados_endpoint():
     return jsonify({"ok": True, "cartas": len(data)})
 
 
+def _get_json(url, token, timeout=15):
+    req = urllib.request.Request(url, headers={"X-TDT-Token": token})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
 @app.route("/traer_significados", methods=["POST"])
 def traer_significados_endpoint():
     body = request.json
@@ -50,15 +56,28 @@ def traer_significados_endpoint():
     if not site_url or not token:
         return jsonify({"error": "Falta la URL del sitio o el token."}), 400
 
-    url = f"{site_url}/wp-json/tirada-de-tarot/v1/meanings?token={urllib.parse.quote(token)}"
-    req = urllib.request.Request(url, headers={"X-TDT-Token": token})
+    # Primero la URL "linda" (requiere enlaces permanentes no-simples en WP);
+    # si da 404, WordPress también entiende esta otra forma siempre.
+    token_q = urllib.parse.quote(token)
+    url_linda = f"{site_url}/wp-json/tirada-de-tarot/v1/meanings?token={token_q}"
+    url_alternativa = f"{site_url}/index.php?rest_route=/tirada-de-tarot/v1/meanings&token={token_q}"
+
+    data = None
     try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
+        data = _get_json(url_linda, token)
     except urllib.error.HTTPError as e:
-        return jsonify({"error": f"El sitio respondió con error {e.code}"}), 502
+        if e.code != 404:
+            return jsonify({"error": f"El sitio respondió con error {e.code}"}), 502
     except urllib.error.URLError as e:
         return jsonify({"error": f"No se pudo conectar: {e.reason}"}), 502
+
+    if data is None:
+        try:
+            data = _get_json(url_alternativa, token)
+        except urllib.error.HTTPError as e:
+            return jsonify({"error": f"El sitio respondió con error {e.code}"}), 502
+        except urllib.error.URLError as e:
+            return jsonify({"error": f"No se pudo conectar: {e.reason}"}), 502
 
     if not isinstance(data, dict):
         return jsonify({"error": "La respuesta del sitio no tiene el formato esperado."}), 502

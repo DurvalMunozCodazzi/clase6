@@ -100,6 +100,16 @@ def generar_analitico_endpoint():
     })
 
 
+def _post_json(url, token, payload, timeout=15):
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=body, method="POST", headers={
+        "Content-Type": "application/json",
+        "X-TDT-Token": token,
+    })
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
 @app.route("/enviar_wordpress", methods=["POST"])
 def enviar_wordpress_endpoint():
     data = request.json
@@ -110,15 +120,24 @@ def enviar_wordpress_endpoint():
     if not site_url or not token:
         return jsonify({"ok": False, "error": "Falta la URL del sitio o el token."}), 400
 
-    url = f"{site_url}/wp-json/tirada-de-tarot/v1/horoscopo"
-    body = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(url, data=body, method="POST", headers={
-        "Content-Type": "application/json",
-        "X-TDT-Token": token,
-    })
+    # Primero la URL "linda" (requiere enlaces permanentes no-simples en WP);
+    # si da 404, WordPress también entiende esta otra forma siempre, sin
+    # depender de esa configuración.
+    url_linda = f"{site_url}/wp-json/tirada-de-tarot/v1/horoscopo"
+    url_alternativa = f"{site_url}/index.php?rest_route=/tirada-de-tarot/v1/horoscopo"
+
     try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            resultado = json.loads(resp.read().decode("utf-8"))
+        resultado = _post_json(url_linda, token, payload)
+        return jsonify({"ok": True, "resultado": resultado})
+    except urllib.error.HTTPError as e:
+        if e.code != 404:
+            detalle = e.read().decode("utf-8", "ignore")
+            return jsonify({"ok": False, "error": f"El sitio respondió con error {e.code}: {detalle}"}), 502
+    except urllib.error.URLError as e:
+        return jsonify({"ok": False, "error": f"No se pudo conectar: {e.reason}"}), 502
+
+    try:
+        resultado = _post_json(url_alternativa, token, payload)
         return jsonify({"ok": True, "resultado": resultado})
     except urllib.error.HTTPError as e:
         detalle = e.read().decode("utf-8", "ignore")
