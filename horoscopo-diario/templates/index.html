@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Horóscopo Diario — Generador</title>
+<style>
+  body { font-family: -apple-system, Arial, sans-serif; max-width: 900px; margin: 30px auto; padding: 0 20px; background: #1b1024; color: #f0e9f7; }
+  h1 { color: #d9b3ff; }
+  button { background: #7b2ff7; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 15px; cursor: pointer; margin: 6px 6px 6px 0; }
+  button:hover { background: #9450ff; }
+  button:disabled { background: #555; cursor: not-allowed; }
+  pre { background: #120a1a; padding: 14px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; font-size: 13px; }
+  .signo-card { background: #241332; border: 1px solid #4a2a66; border-radius: 10px; padding: 14px 18px; margin-bottom: 12px; }
+  .signo-card h3 { margin: 0 0 8px 0; color: #ffd97a; }
+  .signo-card h4 { margin: 14px 0 4px 0; color: #ffd97a; font-size: 15px; }
+  .signo-card h4:first-of-type { margin-top: 4px; }
+  .signo-card p { margin: 0 0 8px 0; line-height: 1.5; }
+  .sintesis-table { border-collapse: collapse; width: 100%; margin: 6px 0 10px 0; font-size: 13px; }
+  .sintesis-table th, .sintesis-table td { border: 1px solid #4a2a66; padding: 6px 8px; text-align: left; vertical-align: top; }
+  .sintesis-table th { background: #2f1a45; color: #ffd97a; }
+  .tabs { margin: 16px 0; }
+  .tabs button.active { background: #ffd97a; color: #241332; }
+  #status { margin: 10px 0; color: #b892d6; }
+  .oculto { display: none; }
+</style>
+</head>
+<body>
+  <h1>🔮 Horóscopo Diario — Generador local</h1>
+  <p>Calcula posiciones planetarias reales (Swiss Ephemeris) y genera la interpretación de los 12 signos para hoy y mañana.</p>
+
+  <details style="margin-bottom:14px;">
+    <summary style="cursor:pointer;color:#b892d6;">⚙️ Configuración de envío a WordPress (una sola vez)</summary>
+    <p style="font-size:13px;">Lo sacás del panel admin del plugin, sección "Conexión con las apps locales".</p>
+    <label>URL del sitio: <input type="text" id="siteUrlInput" placeholder="https://tusitio.com" style="width:300px;"></label><br><br>
+    <label>Token: <input type="text" id="tokenInput" placeholder="token" style="width:300px;"></label>
+    <button id="guardarConfigBtn" style="margin-left:10px;">Guardar</button>
+  </details>
+
+  <button id="generarBtn">Generar horóscopo de hoy</button>
+  <button id="generarIaBtn">✨ Generar versión analítica (con Claude)</button>
+  <button id="regenerarBtn" class="oculto">🔄 Regenerar</button>
+  <button id="copyJsonBtn" class="oculto">Copiar JSON para WordPress</button>
+  <button id="enviarWpBtn" class="oculto">🚀 Enviar directo a WordPress</button>
+  <p style="font-size:13px;color:#b892d6;">La versión analítica usa Claude Code instalado en esta Mac (tu suscripción Pro/Max, sin costo extra) y tarda unos minutos: no cierres esta ventana mientras genera.</p>
+  <div id="status"></div>
+
+  <div id="resultado" class="oculto">
+    <h2>📡 Datos astronómicos reales</h2>
+    <pre id="astroHoy"></pre>
+    <pre id="astroManana"></pre>
+
+    <h2>🔮 Interpretación por signo</h2>
+    <div class="tabs">
+      <button id="tabHoy" class="active">Hoy</button>
+      <button id="tabManana">Mañana</button>
+    </div>
+    <div id="signosHoy"></div>
+    <div id="signosManana" class="oculto"></div>
+
+    <h2>📋 JSON para importar en WordPress</h2>
+    <p>Pega este bloque en el panel admin del plugin de tarot (sección Horóscopo → Importar). Apretá "Copiar JSON" — es más seguro que seleccionarlo a mano.</p>
+    <textarea id="jsonWp" readonly rows="14" style="width:100%;font-family:monospace;font-size:12px;background:#120a1a;color:#f0e9f7;border:1px solid #4a2a66;border-radius:8px;padding:10px;box-sizing:border-box;"></textarea>
+  </div>
+
+<script>
+const generarBtn = document.getElementById('generarBtn');
+const generarIaBtn = document.getElementById('generarIaBtn');
+const regenerarBtn = document.getElementById('regenerarBtn');
+const copyJsonBtn = document.getElementById('copyJsonBtn');
+const enviarWpBtn = document.getElementById('enviarWpBtn');
+const siteUrlInput = document.getElementById('siteUrlInput');
+const tokenInput = document.getElementById('tokenInput');
+const statusDiv = document.getElementById('status');
+const resultadoDiv = document.getElementById('resultado');
+const jsonWpBox = document.getElementById('jsonWp');
+let ultimoJson = '';
+let endpointActual = '/generar';
+
+siteUrlInput.value = localStorage.getItem('tdt_site_url') || '';
+tokenInput.value = localStorage.getItem('tdt_token') || '';
+document.getElementById('guardarConfigBtn').addEventListener('click', () => {
+  localStorage.setItem('tdt_site_url', siteUrlInput.value.trim());
+  localStorage.setItem('tdt_token', tokenInput.value.trim());
+  statusDiv.textContent = 'Configuración guardada.';
+});
+
+const SECCIONES_HOROSCOPO = ['💼 En el trabajo', '❤️ En el amor', '⚠️ La advertencia final', '🌟 Síntesis del día'];
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderSintesis(bloque) {
+  const lineas = bloque.split('\n').map(l => l.trim()).filter(Boolean);
+  const lineasTabla = lineas.filter(l => l.startsWith('|'));
+  const lineasTexto = lineas.filter(l => !l.startsWith('|'));
+  let html = '';
+  if (lineasTabla.length >= 2) {
+    const parsearFila = (linea) => linea.split('|').map(c => c.trim()).filter((c, i, arr) => !(i === 0 && c === '') && !(i === arr.length - 1 && c === ''));
+    const encabezado = parsearFila(lineasTabla[0]);
+    const filas = lineasTabla.slice(2).map(parsearFila);
+    html += '<table class="sintesis-table"><thead><tr>' +
+      encabezado.map(h => `<th>${escapeHtml(h)}</th>`).join('') +
+      '</tr></thead><tbody>' +
+      filas.map(f => '<tr>' + f.map(c => `<td>${escapeHtml(c)}</td>`).join('') + '</tr>').join('') +
+      '</tbody></table>';
+  }
+  if (lineasTexto.length) {
+    html += `<p>${escapeHtml(lineasTexto.join(' '))}</p>`;
+  }
+  return html;
+}
+
+function renderHoroscopoTexto(texto) {
+  const posiciones = SECCIONES_HOROSCOPO
+    .map(marcador => ({ marcador, idx: texto.indexOf(marcador) }))
+    .filter(p => p.idx !== -1)
+    .sort((a, b) => a.idx - b.idx);
+
+  if (posiciones.length === 0) {
+    return `<p>${escapeHtml(texto)}</p>`;
+  }
+
+  let html = '';
+  posiciones.forEach((p, i) => {
+    const inicio = p.idx + p.marcador.length;
+    const fin = i + 1 < posiciones.length ? posiciones[i + 1].idx : texto.length;
+    const cuerpo = texto.slice(inicio, fin).trim();
+    html += `<h4>${p.marcador}</h4>`;
+    html += p.marcador.includes('Síntesis') ? renderSintesis(cuerpo) : `<p>${escapeHtml(cuerpo)}</p>`;
+  });
+  return html;
+}
+
+async function generarHoroscopo(endpoint) {
+  endpointActual = endpoint;
+  generarBtn.disabled = true;
+  generarIaBtn.disabled = true;
+  regenerarBtn.disabled = true;
+  statusDiv.textContent = endpoint === '/generar_analitico'
+    ? 'Consultando a Claude para cada signo (esto puede tardar varios minutos, no cierres la ventana)...'
+    : 'Calculando posiciones planetarias y generando interpretación...';
+  try {
+    const resp = await fetch(endpoint, { method: 'POST' });
+    if (!resp.ok) throw new Error('Error del servidor');
+    const data = await resp.json();
+
+    document.getElementById('astroHoy').textContent = data.astronomia_hoy;
+    document.getElementById('astroManana').textContent = data.astronomia_manana;
+
+    const renderSignos = (signosObj, contenedorId) => {
+      const cont = document.getElementById(contenedorId);
+      cont.innerHTML = '';
+      data.signos.forEach(([key, nombre]) => {
+        const div = document.createElement('div');
+        div.className = 'signo-card';
+        div.innerHTML = `<h3>${nombre}</h3>` + renderHoroscopoTexto(signosObj[key]);
+        cont.appendChild(div);
+      });
+    };
+    renderSignos(data.hoy, 'signosHoy');
+    renderSignos(data.manana, 'signosManana');
+
+    ultimoJson = data.wp_import_json;
+    jsonWpBox.value = ultimoJson;
+
+    resultadoDiv.classList.remove('oculto');
+    copyJsonBtn.classList.remove('oculto');
+    enviarWpBtn.classList.remove('oculto');
+    regenerarBtn.classList.remove('oculto');
+    generarBtn.classList.add('oculto');
+    generarIaBtn.classList.add('oculto');
+    statusDiv.textContent = `Listo. También se guardó una copia en ${data.archivo_guardado}`;
+  } catch (err) {
+    statusDiv.textContent = 'Error: ' + err.message;
+  } finally {
+    generarBtn.disabled = false;
+    generarIaBtn.disabled = false;
+    regenerarBtn.disabled = false;
+  }
+}
+
+generarBtn.addEventListener('click', () => generarHoroscopo('/generar'));
+generarIaBtn.addEventListener('click', () => generarHoroscopo('/generar_analitico'));
+regenerarBtn.addEventListener('click', () => generarHoroscopo(endpointActual));
+
+copyJsonBtn.addEventListener('click', async () => {
+  jsonWpBox.select();
+  jsonWpBox.setSelectionRange(0, 999999);
+  try {
+    await navigator.clipboard.writeText(ultimoJson);
+  } catch (err) {
+    document.execCommand('copy');
+  }
+  copyJsonBtn.textContent = '¡Copiado!';
+  setTimeout(() => { copyJsonBtn.textContent = 'Copiar JSON para WordPress'; }, 1500);
+});
+
+enviarWpBtn.addEventListener('click', async () => {
+  const siteUrl = localStorage.getItem('tdt_site_url') || '';
+  const token = localStorage.getItem('tdt_token') || '';
+  if (!siteUrl || !token) {
+    statusDiv.textContent = 'Falta configurar la URL del sitio y el token (arriba de todo).';
+    return;
+  }
+  enviarWpBtn.disabled = true;
+  statusDiv.textContent = 'Enviando a WordPress...';
+  try {
+    const resp = await fetch('/enviar_wordpress', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ site_url: siteUrl, token: token, payload: JSON.parse(ultimoJson) })
+    });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'Error desconocido');
+    statusDiv.textContent = `Enviado correctamente: ${data.resultado.fecha_hoy} (hoy) y ${data.resultado.fecha_manana} (mañana).`;
+  } catch (err) {
+    statusDiv.textContent = 'Error al enviar: ' + err.message;
+  } finally {
+    enviarWpBtn.disabled = false;
+  }
+});
+
+document.getElementById('tabHoy').addEventListener('click', () => {
+  document.getElementById('tabHoy').classList.add('active');
+  document.getElementById('tabManana').classList.remove('active');
+  document.getElementById('signosHoy').classList.remove('oculto');
+  document.getElementById('signosManana').classList.add('oculto');
+});
+document.getElementById('tabManana').addEventListener('click', () => {
+  document.getElementById('tabManana').classList.add('active');
+  document.getElementById('tabHoy').classList.remove('active');
+  document.getElementById('signosManana').classList.remove('oculto');
+  document.getElementById('signosHoy').classList.add('oculto');
+});
+</script>
+</body>
+</html>
