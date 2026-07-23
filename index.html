@@ -1,268 +1,435 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es-AR">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Favicon -->
+    <title>Cabañas El Minguito | Alquiler de Cabañas en Goya, Corrientes</title>
+    <meta
+      name="description"
+      content="Cabañas El Minguito: alojamiento a orillas del río Paraná en Goya, Corrientes. Rampas propias para botes, quincho con WiFi, generador eléctrico. El lugar ideal para la pesca del dorado y el descanso en familia."
+    />
+    <meta name="keywords" content="cabañas Goya Corrientes, alquiler de cabañas, pesca del dorado, Río Paraná, El Minguito, turismo Corrientes" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://elminguito.com.ar/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Cabañas El Minguito" />
+    <meta property="og:title" content="Cabañas El Minguito | Tu refugio a orillas del Paraná" />
+    <meta property="og:description" content="Alquiler de cabañas en Goya, Corrientes. Pesca del dorado, descanso y naturaleza a metros del Río Paraná." />
+    <meta property="og:locale" content="es_AR" />
+
+    <!-- Favicon (pez dorado, sin dependencias externas) -->
     <link
       rel="icon"
-      type="image/png"
-      sizes="32x32"
-      href="https://renderer-v2.vercel.app/_next/image?url=https%3A%2F%2Fapi.typedream.com%2Fv0%2Fdocument%2Fpublic%2Fac4f6f0d-8160-4e58-9d18-cb5e7c880fb6_Recurso_32_png.png&w=384&q=75"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230b3d3e'/%3E%3Ctext x='50' y='66' font-size='55' text-anchor='middle'%3E%F0%9F%90%9F%3C/text%3E%3C/svg%3E"
     />
-    <!-- Estilos Base -->
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
-      href="https://res.cloudinary.com/dcatzxqqf/raw/upload/v1659451742/coding/Dise%C3%B1oWebCDN/cdn_1_sjhqe3.css"
     />
-    <!-- Estilos Clase -->
+
     <link rel="stylesheet" href="style.css" />
-    <title>CSS - CSS II</title>
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "LodgingBusiness",
+        "name": "Cabañas El Minguito",
+        "url": "https://elminguito.com.ar/",
+        "telephone": "+54 9 11 5181-2027",
+        "priceRange": "$$",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Av. de los Primeros Concejales",
+          "addressLocality": "Goya",
+          "addressRegion": "Corrientes",
+          "addressCountry": "AR"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.6",
+          "reviewCount": "36"
+        }
+      }
+    </script>
   </head>
 
   <body>
-    <main class="max-width">
-      <h1>
-        1.6 CSS II
-        <img
-          src="https://renderer-v2.vercel.app/_next/image?url=https%3A%2F%2Fapi.typedream.com%2Fv0%2Fdocument%2Fpublic%2Fac4f6f0d-8160-4e58-9d18-cb5e7c880fb6_Recurso_32_png.png&w=384&q=75"
-          alt="logo"
-          class="logo"
-        />
-      </h1>
-      <p>
-        En esta clase vamos a ver el Modelo de Caja (Box Model) Importantisimo
-        para entender como podemos posicionar y ordenar nuestros elementos
-      </p>
-      <h2>Objetivos</h2>
-      <p class="my">Conocer las propiedades del box model y layout</p>
-      <a href="#" class="btn">Ver más</a>
-      <h2>Recursos de la clase:</h2>
-      <ul>
-        <li>
-          <a
-            href="https://developer.mozilla.org/es/docs/Learn/CSS/Building_blocks/The_box_model"
-            >https://developer.mozilla.org/es/docs/Learn/CSS/Building_blocks/The_box_model</a
-          >
-        </li>
+    <!-- ============ HEADER ============ -->
+    <header class="site-header" id="header">
+      <div class="wrap header-inner">
+        <a href="#inicio" class="brand">
+          <span class="brand-mark">🐟</span>
+          <span class="brand-name">El Minguito</span>
+        </a>
 
-        <li>
-          <a href="https://developer.mozilla.org/es/docs/Web/CSS/position"
-            >https://developer.mozilla.org/es/docs/Web/CSS/position</a
-          >
-        </li>
-        <li>
-          <a href="https://developer.mozilla.org/es/docs/Web/CSS/display"
-            >https://developer.mozilla.org/es/docs/Web/CSS/display</a
-          >
-        </li>
-        <li>
+        <nav class="nav" id="nav">
+          <a href="#nosotros">Nosotros</a>
+          <a href="#cabanas">Cabañas</a>
+          <a href="#servicios">Servicios</a>
+          <a href="#pesca">Pesca &amp; Naturaleza</a>
+          <a href="#galeria">Galería</a>
+          <a href="#ubicacion">Ubicación</a>
+          <a href="#contacto">Contacto</a>
+        </nav>
+
+        <div class="header-actions">
           <a
-            href="https://developer.mozilla.org/es/docs/Web/HTML/Inline_elements#elementos"
-            >https://developer.mozilla.org/es/docs/Web/HTML/Inline_elements#elementos</a
+            class="btn btn-whatsapp btn-sm"
+            href="https://wa.me/5491151812027?text=Hola%20Minguito%2C%20quiero%20consultar%20disponibilidad%20de%20caba%C3%B1as"
+            target="_blank"
+            rel="noopener"
+            >Reservar</a
           >
-        </li>
-        <li>
-          <a
-            href="https://developer.mozilla.org/es/docs/Web/HTML/Block-level_elements#elementos"
-            >https://developer.mozilla.org/es/docs/Web/HTML/Block-level_elements#elementos</a
-          >
-        </li>
-      </ul>
-      <hr class="hr" />
-      <section class="info-clase">
-        <div class="modelo-de-caja">
-          <h2>Modelo de caja</h2>
-          <p>
-            <b>¿De donde viene el nombre box-model o modelo de caja?</b>
-          </p>
-          <p class="my">
-            Viene a partir de que en los navegadores, todo se construye a base
-            de cajas. Lo primero que hay que entender es que cada elemento que
-            escribamos en un HTML se va a mostrar en el navegador como una caja
-            rectangular, que es la forma en que se representan TODOS los
-            elementos. No existe elementos redondos, triangulares, etc
-          </p>
+          <button class="nav-toggle" id="navToggle" aria-label="Abrir menú" aria-expanded="false">
+            <span></span><span></span><span></span>
+          </button>
         </div>
-        <hr class="hr" />
-        <div class="caja">
-          <div class="ej-1">
-            <p class="my caja-ej">Texto para mostrar que ocupa un p</p>
-            <p class="my">
-              El parrafo, como otras etiquetas, por defecto ocupan el 100% del
-              espacio disponible, ya vamos a ir viendo como podemos modificar
-              esto
+      </div>
+    </header>
+
+    <main>
+      <!-- ============ HERO ============ -->
+      <section class="hero" id="inicio">
+        <div class="hero-bg" aria-hidden="true"></div>
+        <div class="wrap hero-inner">
+          <p class="eyebrow">Goya, Corrientes · A orillas del Río Paraná</p>
+          <h1>Tu refugio de pesca y descanso a orillas del Paraná</h1>
+          <p class="hero-sub">
+            Cabañas rústicas en el corazón de la <strong>Capital Nacional del Dorado</strong>. El punto de
+            encuentro perfecto entre una jornada de pesca inolvidable y el descanso en familia o con amigos.
+          </p>
+          <div class="hero-cta">
+            <a
+              class="btn btn-primary"
+              href="https://wa.me/5491151812027?text=Hola%20Minguito%2C%20quiero%20consultar%20disponibilidad%20de%20caba%C3%B1as"
+              target="_blank"
+              rel="noopener"
+              >Reservar por WhatsApp</a
+            >
+            <a class="btn btn-ghost" href="#cabanas">Conocé las cabañas</a>
+          </div>
+          <div class="hero-trust">
+            <span>⭐ 4.6/5 en Google · +35 huéspedes</span>
+            <span>🎣 Pesca de dorado, surubí, pacú y patí</span>
+            <span>🚤 Rampas propias para botes</span>
+          </div>
+        </div>
+        <svg class="hero-wave" viewBox="0 0 1440 100" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0,40 C240,100 480,0 720,30 C960,60 1200,100 1440,50 L1440,100 L0,100 Z"></path>
+        </svg>
+      </section>
+
+      <!-- ============ NOSOTROS ============ -->
+      <section class="about" id="nosotros">
+        <div class="wrap about-grid">
+          <div class="about-media" aria-hidden="true">
+            <div class="ph ph-lg">
+              <span class="ph-icon">🏕️</span>
+              <span class="ph-label">Vista de las cabañas</span>
+            </div>
+          </div>
+          <div class="about-copy">
+            <p class="eyebrow">Bienvenidos a El Minguito</p>
+            <h2>Un rincón del litoral hecho para desconectar</h2>
+            <p>
+              Sobre la costa del río Paraná, en la ciudad de Goya, Cabañas El Minguito recibe cada año a
+              pescadores en busca del dorado, familias que quieren unos días de tranquilidad y grupos de
+              amigos que disfrutan del río. Combinamos la calidez de lo rústico con las comodidades justas
+              para que tu estadía sea simple y placentera.
+            </p>
+            <ul class="quick-facts">
+              <li><span>🚤</span> Rampas propias para botes</li>
+              <li><span>📶</span> WiFi en el quincho</li>
+              <li><span>⚡</span> Generador eléctrico</li>
+              <li><span>🌅</span> A metros del Paraná</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ CABAÑAS ============ -->
+      <section class="cabins" id="cabanas">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="eyebrow">Alojamiento</p>
+            <h2>Nuestras cabañas</h2>
+            <p class="section-sub">
+              Pensadas para el descanso después de un día a pura pesca y aire libre. Contanos cuántos son
+              y te ayudamos a elegir la que mejor se adapte a tu grupo.
             </p>
           </div>
-          <hr class="hr" />
-          <!-- ej 2 para eplicar box sizing -->
-          <div class="ej-2">
-            <div class="box-sizing">
-              <h2>Box Sizing</h2>
-              <p>
-                La propiedad box-sizing (tamaño de caja) establece como se
-                calcula el ancho y alto total de un elemento. Recuerden que en
-                HTML todos los elementos son una caja y es muy importante
-                comprender que es el box-model (modelo de caja) antes de pasar
-                con el box-sizing. Tenemos dos tipos content-box (por defecto) y
-                border-box (solucion)
-              </p>
-              <div class="caja-ej2"></div>
-              <p>
-                Creamos un div con ancho y alto de 200px, al agregar padding y
-                border, esto se suma a nuestra caja dando un total de 260px de
-                alto y ancho
-              </p>
-              <b>¿Como solucionamos esto?</b>
-              <p class="code">
-                * { box-sizing:border-box; padding:0; margin:0; };
-              </p>
+
+          <div class="cards-3">
+            <article class="card">
+              <div class="ph ph-card">
+                <span class="ph-icon">🛏️</span>
+                <span class="ph-label">Cabaña grupal</span>
+              </div>
+              <h3>Para grupos y amigos</h3>
+              <p>Cabañas equipadas con 4 camas individuales, ideales para cuadrillas de pesca o grupos de amigos.</p>
+            </article>
+            <article class="card">
+              <div class="ph ph-card">
+                <span class="ph-icon">🛌</span>
+                <span class="ph-label">Cabaña matrimonial</span>
+              </div>
+              <h3>Para parejas y familias</h3>
+              <p>Algunas de nuestras unidades cuentan con cama matrimonial, pensadas para parejas y familias.</p>
+            </article>
+            <article class="card">
+              <div class="ph ph-card">
+                <span class="ph-icon">🌳</span>
+                <span class="ph-label">Entorno natural</span>
+              </div>
+              <h3>Rodeadas de naturaleza</h3>
+              <p>Vegetación, lagunas y bañados típicos del litoral correntino, a pocos metros de la costa.</p>
+            </article>
+          </div>
+
+          <div class="cabins-cta">
+            <a
+              class="btn btn-primary"
+              href="https://wa.me/5491151812027?text=Hola%20Minguito%2C%20quiero%20consultar%20capacidad%20y%20disponibilidad%20de%20caba%C3%B1as"
+              target="_blank"
+              rel="noopener"
+              >Consultar disponibilidad</a
+            >
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SERVICIOS ============ -->
+      <section class="amenities" id="servicios">
+        <div class="wrap">
+          <div class="section-head light">
+            <p class="eyebrow">Comodidades</p>
+            <h2>Todo lo que necesitás para tu estadía</h2>
+          </div>
+
+          <div class="cards-grid">
+            <div class="amenity">
+              <span class="amenity-icon">🚤</span>
+              <h3>Rampas de acceso al río</h3>
+              <p>Dos rampas de cemento propias para que tu bote o embarcación entre y salga con facilidad.</p>
+            </div>
+            <div class="amenity">
+              <span class="amenity-icon">🏕️</span>
+              <h3>Quincho techado y cerrado</h3>
+              <p>Un espacio compartido protegido del clima, ideal para el asado post-pesca o una tarde de mate.</p>
+            </div>
+            <div class="amenity">
+              <span class="amenity-icon">📶</span>
+              <h3>WiFi</h3>
+              <p>Conectividad disponible en las áreas comunes para lo que necesites resolver a distancia.</p>
+            </div>
+            <div class="amenity">
+              <span class="amenity-icon">⚡</span>
+              <h3>Generador eléctrico</h3>
+              <p>Para que un corte de luz nunca arruine tu estadía.</p>
+            </div>
+            <div class="amenity">
+              <span class="amenity-icon">🌳</span>
+              <h3>Entorno natural</h3>
+              <p>Lagunas y bañados del litoral correntino, a metros del Paraná.</p>
+            </div>
+            <div class="amenity">
+              <span class="amenity-icon">🐟</span>
+              <h3>Zona de pesca</h3>
+              <p>Salí a pescar dorado, surubí, pacú y patí sin moverte del lugar.</p>
             </div>
           </div>
         </div>
-        <hr class="hr" />
-        <!-- Overflow -->
-        <div class="overflow">
-          <h2>Overflow</h2>
-          <p>
-            La propiedad overflow nos permite regular la visibilidad de los
-            contenidos que sobresalen de una caja
+      </section>
+
+      <!-- ============ PESCA & NATURALEZA ============ -->
+      <section class="fishing" id="pesca">
+        <div class="wrap fishing-grid">
+          <div class="fishing-copy">
+            <p class="eyebrow">Goya, Capital Nacional del Dorado</p>
+            <h2>Pesca y naturaleza en el litoral correntino</h2>
+            <p>
+              Goya está bañada por el río Paraná y sus riachos, un escenario de excepción para la pesca
+              deportiva. La ciudad es sede de la <strong>Fiesta Nacional del Surubí</strong>, uno de los
+              eventos de pesca más importantes del país, y punto de encuentro de pescadores de todo el
+              mundo en busca del dorado.
+            </p>
+            <p>
+              A pocos minutos de las cabañas podés visitar la Isla Las Damas y la Reserva Natural Isoró,
+              ideales para quienes además de pescar quieren disfrutar de caminatas y observación de fauna.
+            </p>
+          </div>
+          <div class="fishing-stats">
+            <div class="stat">
+              <span class="stat-icon">🎣</span>
+              <div>
+                <strong>Especies</strong>
+                <p>Dorado, surubí, pacú y patí</p>
+              </div>
+            </div>
+            <div class="stat">
+              <span class="stat-icon">📅</span>
+              <div>
+                <strong>Mejor temporada</strong>
+                <p>Primavera y verano, con pico en enero y febrero</p>
+              </div>
+            </div>
+            <div class="stat">
+              <span class="stat-icon">🏆</span>
+              <div>
+                <strong>Sede de</strong>
+                <p>La Fiesta Nacional del Surubí</p>
+              </div>
+            </div>
+            <div class="stat">
+              <span class="stat-icon">🗺️</span>
+              <div>
+                <strong>Cerca de</strong>
+                <p>Isla Las Damas y Reserva Natural Isoró</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ GALERÍA ============ -->
+      <section class="gallery" id="galeria">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="eyebrow">Galería</p>
+            <h2>Un vistazo a El Minguito</h2>
+            <p class="section-sub">Muy pronto vas a poder ver fotos reales de las cabañas en esta sección.</p>
+          </div>
+          <div class="gallery-grid">
+            <div class="ph ph-gallery"><span class="ph-icon">🏡</span><span class="ph-label">Exterior de las cabañas</span></div>
+            <div class="ph ph-gallery"><span class="ph-icon">🚤</span><span class="ph-label">Rampa de botes</span></div>
+            <div class="ph ph-gallery"><span class="ph-icon">🌇</span><span class="ph-label">Atardecer en el Paraná</span></div>
+            <div class="ph ph-gallery"><span class="ph-icon">🏕️</span><span class="ph-label">Quincho y zona común</span></div>
+            <div class="ph ph-gallery"><span class="ph-icon">🐟</span><span class="ph-label">Pesca del dorado</span></div>
+            <div class="ph ph-gallery"><span class="ph-icon">🛏️</span><span class="ph-label">Interior de la cabaña</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ RESEÑAS ============ -->
+      <section class="reviews">
+        <div class="wrap reviews-inner">
+          <div class="rating-badge">
+            <span class="rating-number">4.6</span>
+            <div>
+              <div class="stars">★★★★★</div>
+              <p>+35 reseñas en Google</p>
+            </div>
+          </div>
+          <p class="reviews-copy">
+            Nuestros huéspedes destacan la tranquilidad del lugar, la comodidad de las rampas propias para
+            botes y la calidez de la atención.
           </p>
-          <ul class="list">
-            <li>👉 <b>visible:</b> Por defecto, el excedente se ve</li>
-            <li>👉 <b>hidden:</b> El excedente se oculta</li>
-            <li>👉 <b>scroll:</b> Crea una barra de scroll (X/Y)</li>
-            <li>👉 <b>auto:</b> Crea Scroll donde sea necesario</li>
-          </ul>
+          <a class="link-arrow" href="https://www.facebook.com/cabanasminguito/" target="_blank" rel="noopener"
+            >Ver reseñas en Facebook →</a
+          >
         </div>
+      </section>
 
-        <div class="bg-secondary my flex">
-          <!-- visible -->
-          <p>visible</p>
-
-          <div class="overflow-box my">
-            <p>Lorem ipsum dolor, sit amet consectetur adipisicing elit</p>
+      <!-- ============ UBICACIÓN ============ -->
+      <section class="location" id="ubicacion">
+        <div class="wrap location-grid">
+          <div class="location-copy">
+            <p class="eyebrow">Cómo llegar</p>
+            <h2>Ubicación</h2>
+            <p><strong>Av. de los Primeros Concejales</strong><br />Goya, Corrientes, Argentina</p>
+            <p>A orillas del río Paraná, en una de las ciudades más importantes del litoral correntino.</p>
+            <a
+              class="btn btn-ghost"
+              href="https://www.google.com/maps/search/?api=1&query=Ca%C3%B1abas%20El%20Minguito%20Goya%20Corrientes"
+              target="_blank"
+              rel="noopener"
+              >Abrir en Google Maps</a
+            >
           </div>
-
-          <!-- hidden -->
-          <p>hidden</p>
-
-          <div class="overflow-box my hidden">
-            <p>Lorem ipsum dolor sit, amet consectetur adipisicing elit</p>
-          </div>
-
-          <!-- scroll -->
-          <p>scroll</p>
-
-          <div class="overflow-box my scroll">
-            <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit</p>
-          </div>
-
-          <!-- auto -->
-          <p>auto</p>
-
-          <div class="overflow-box my auto">
-            <p>Lorem ipsum dolor sit amet consectetur adipisicing elit</p>
+          <div class="location-map">
+            <iframe
+              title="Ubicación de Cabañas El Minguito en Goya, Corrientes"
+              src="https://www.google.com/maps?q=Goya,+Corrientes,+Argentina&output=embed"
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+            ></iframe>
           </div>
         </div>
+      </section>
 
-        <hr class="hr" />
-
-        <!-- Padding -->
-        <h2>Padding</h2>
-        <p>
-          Es el area del contenido, separacion entre contenido y el borde de la
-          caja
-        </p>
-        <h3>Shorthand Padding</h3>
-        <p class="code">padding: 10px 5px 20px 15px;</p>
-        <div class="bg-secondary-fit">
-          <p class="padding">Texto</p>
-        </div>
-        <p class="my">
-          Para acordarse donde va cada valor, pensar en el sentido de las agujas
-          del reloj (Tambien sirve para el margin)
-        </p>
-        <hr class="hr" />
-        <!-- Border -->
-        <h2>Border</h2>
-        <p>Nos permite modificar el aspecto de los bordes</p>
-        <div class="bg-secondary my">
-          <p class="border">Solid</p>
-          <p class="dashed">Dashed</p>
-          <p class="dotted">Dotted</p>
-          <p class="double">Double</p>
-        </div>
-        <hr class="hr" />
-        <!-- Margin -->
-        <h2>Margin</h2>
-        <p>Es la separacion entre una caja y otra</p>
-        <h3>Shorthand Margin</h3>
-        <p class="code">margin: 10px 5px 20px 15px;</p>
-        <div class="bg-secondary my">
-          <div class="box margin"></div>
-          <div class="box"></div>
-        </div>
-        <hr class="hr" />
-        <!-- CSS Layout -->
-        <h2>CSS Layout</h2>
-        <p>Tenemos dos grupos: <b>En linea (inline) y bloque (block)</b></p>
-        <h2>En Bloque</h2>
-
-        <p class="caja-ej">Un p es una etiqueta de bloque por ejemplo</p>
-
-        <p class="my">
-          Ocupan todo el espacio disponible (100%), ver el ejemplo del p que
-          hicimos al principio.
-        </p>
-        <h2 class="my">En Linea</h2>
-        <a class="inline" href="#">Una etiqueta a es inline</a>
-        <a class="inline" href="#"
-          >Si tenemos otra etiqueta en linea se posiciona al lado</a>
-        <p class="my">
-          Ocupan solo el espacio necesario para mostrar su contenido
-        </p>
-        <h2>Position</h2>
-        <p class="my">
-          Con position especificamos como un elemento es posicionado.Esto nos
-          habilita las propiedades de top, right, bottom y left
-        </p>
-        <b>Importante:</b> Cuando veamos Flex, Position lo vamos a usar para
-        casos puntuales
-        <h2>Valores posibles</h2>
-        <ul class="list">
-          <li>👉 <b>static</b> Valor por defecto</li>
-          <li>👉 <b>relative</b> Se posiciona relativamente al Flujo Normal</li>
-          <div class="bg-secondary my flex">
-            <div class="box"></div>
-            <div class="box relative"></div>
-            <div class="box"></div>
+      <!-- ============ CONTACTO ============ -->
+      <section class="contact" id="contacto">
+        <div class="wrap contact-inner">
+          <p class="eyebrow light">Reservas</p>
+          <h2>¿Listo para tu escapada al Paraná?</h2>
+          <p class="contact-sub">Escribinos y coordinamos tu estadía en Cabañas El Minguito.</p>
+          <div class="contact-actions">
+            <a
+              class="btn btn-whatsapp btn-lg"
+              href="https://wa.me/5491151812027?text=Hola%20Minguito%2C%20quiero%20consultar%20disponibilidad%20de%20caba%C3%B1as"
+              target="_blank"
+              rel="noopener"
+              >💬 Escribinos por WhatsApp</a
+            >
+            <a class="btn btn-outline-light" href="tel:+541151812027">📞 Llamar</a>
+            <a class="btn btn-outline-light" href="https://www.facebook.com/cabanasminguito/" target="_blank" rel="noopener"
+              >📘 Facebook</a
+            >
           </div>
-          <li>
-            👉 <b>absolute</b> Se posiciona respecto a su contenedor mas
-            cercano, si no encuentra ninguno se posiciona respecto el viewport
-          </li>
-          <div class="bg-secondary my flex">
-            <div class="absolute-container flex">
-              <div class="box"></div>
-              <div class="box absolute"></div>
-              <div class="box"></div>
-            </div>
-          </div>
-          <li>
-            👉 <b>fixed</b> Se posiciona respecto al viewport y queda fijo.
-          </li>
-          <div class="bg-secondary my flex">
-            <div class="box"></div>
-            <div class="box fixed"></div>
-          </div>
-          <li>
-            👉 <b>sticky</b> Hibrido entre relative y fixed (Proximas clases)
-          </li>
-        </ul>
+        </div>
       </section>
     </main>
-    <footer>Hecho por DMC</footer>
+
+    <!-- ============ FOOTER ============ -->
+    <footer class="site-footer">
+      <div class="wrap footer-inner">
+        <div class="footer-brand">
+          <span class="brand-mark">🐟</span>
+          <span class="brand-name">El Minguito</span>
+          <p>Cabañas en Goya, Corrientes — a orillas del río Paraná.</p>
+        </div>
+        <nav class="footer-nav">
+          <a href="#nosotros">Nosotros</a>
+          <a href="#cabanas">Cabañas</a>
+          <a href="#servicios">Servicios</a>
+          <a href="#pesca">Pesca &amp; Naturaleza</a>
+          <a href="#ubicacion">Ubicación</a>
+          <a href="#contacto">Contacto</a>
+        </nav>
+        <div class="footer-contact">
+          <a href="https://wa.me/5491151812027" target="_blank" rel="noopener">WhatsApp</a>
+          <a href="https://www.facebook.com/cabanasminguito/" target="_blank" rel="noopener">Facebook</a>
+        </div>
+      </div>
+      <div class="wrap footer-bottom">
+        <p>© <span id="year"></span> Cabañas El Minguito · Goya, Corrientes, Argentina</p>
+      </div>
+    </footer>
+
+    <a
+      class="whatsapp-float"
+      href="https://wa.me/5491151812027?text=Hola%20Minguito%2C%20quiero%20consultar%20disponibilidad%20de%20caba%C3%B1as"
+      target="_blank"
+      rel="noopener"
+      aria-label="Escribinos por WhatsApp"
+    >
+      <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
+        <path
+          fill="#fff"
+          d="M16 3C9 3 3.3 8.6 3.3 15.5c0 2.5.7 4.8 1.9 6.8L3 29l6.9-2.1c1.9 1 4 1.6 6.1 1.6 7 0 12.7-5.6 12.7-12.5S23 3 16 3zm0 22.7c-2 0-3.9-.5-5.5-1.5l-.4-.2-4.1 1.3 1.3-4-.3-.4c-1.1-1.7-1.7-3.7-1.7-5.8 0-5.9 4.9-10.7 11-10.7 6 0 10.9 4.8 10.9 10.7S22.2 25.7 16 25.7z"
+        />
+        <path
+          fill="#fff"
+          d="M22.1 18.4c-.3-.2-1.9-1-2.2-1.1-.3-.1-.5-.2-.7.2-.2.3-.8 1.1-1 1.3-.2.2-.4.2-.7.1-.3-.2-1.3-.5-2.5-1.6-.9-.8-1.5-1.9-1.7-2.2-.2-.3 0-.5.1-.6.1-.1.3-.4.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.2-.7-1.7-1-2.3-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1.1 2.8 1.2 3c.1.2 2.1 3.3 5.1 4.5.7.3 1.3.5 1.7.6.7.2 1.3.2 1.8.1.6-.1 1.9-.8 2.1-1.5.3-.7.3-1.3.2-1.5-.1-.1-.3-.2-.6-.4z"
+        />
+      </svg>
+    </a>
+
+    <script src="script.js"></script>
   </body>
 </html>
