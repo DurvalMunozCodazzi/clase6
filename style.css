@@ -274,7 +274,10 @@ section {
   inset: 0;
   z-index: -2;
   background: radial-gradient(circle at 15% 20%, rgba(217, 164, 65, 0.35), transparent 45%),
-    linear-gradient(135deg, var(--river-deep) 0%, var(--river) 55%, var(--sunset-dark) 130%);
+    linear-gradient(120deg, rgba(11, 61, 62, 0.92) 0%, rgba(18, 85, 79, 0.82) 45%, rgba(201, 100, 32, 0.55) 130%),
+    url("https://upload.wikimedia.org/wikipedia/commons/d/de/Atardecer-RioParana-Candelaria-Misiones.jpg");
+  background-size: cover;
+  background-position: center 65%;
 }
 
 .hero-inner {
@@ -338,8 +341,10 @@ section {
   fill: var(--sand);
 }
 
-/* ---------- placeholders (galería / imágenes) ---------- */
+/* ---------- photo frames (con imagen real + fallback elegante) ---------- */
 .ph {
+  position: relative;
+  overflow: hidden;
   border-radius: var(--radius);
   background: linear-gradient(145deg, var(--sand-2), #e4d6b8);
   border: 1px dashed rgba(11, 61, 62, 0.25);
@@ -365,6 +370,15 @@ section {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--ink-soft);
+  padding: 0 0.5rem;
+}
+
+.ph img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .ph-lg {
@@ -377,8 +391,70 @@ section {
   margin-bottom: 1rem;
 }
 
-.ph-gallery {
+/* ---------- galería con foto + leyenda superpuesta ---------- */
+.gallery-tile {
+  position: relative;
   aspect-ratio: 1 / 1;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: linear-gradient(145deg, var(--sand-2), #e4d6b8);
+  box-shadow: var(--shadow);
+}
+
+.gallery-tile img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.gallery-tile:hover img {
+  transform: scale(1.08);
+}
+
+.gallery-tile figcaption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 1.6rem 1rem 0.9rem;
+  background: linear-gradient(to top, rgba(11, 38, 38, 0.88), transparent);
+  color: var(--white);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.gallery-tile.ph-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px dashed rgba(11, 61, 62, 0.25);
+  color: var(--river-deep);
+  text-align: center;
+}
+
+.gallery-tile.ph-fallback img {
+  display: none;
+}
+
+.gallery-tile.ph-fallback figcaption {
+  position: static;
+  background: none;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.img-credit-note {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  margin-top: 1.5rem;
+  opacity: 0.8;
 }
 
 /* ---------- about ---------- */
@@ -488,6 +564,12 @@ section {
 
 .fishing-copy p {
   margin-bottom: 1rem;
+}
+
+.fishing-photo {
+  aspect-ratio: 4 / 3;
+  margin-bottom: 1.2rem;
+  box-shadow: var(--shadow);
 }
 
 .fishing-stats {
