@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Tirada de Tarot — 3 Cartas
  * Description: Widget de tirada de tarot de 3 cartas (Pasado / Presente / Futuro) con modo digital (baraja mezclada al azar) y modo físico (registro de una tirada real hecha en mesa). Insértalo con el shortcode [tirada_tarot].
- * Version: 1.0.4
+ * Version: 1.1.0
  * Requires at least: 5.0
  * Requires PHP: 7.0
  * Author: Durval Muñoz Codazzi
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('TDT_VERSION', '1.0.4');
+define('TDT_VERSION', '1.1.0');
 define('TDT_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('TDT_PLUGIN_PATH', plugin_dir_path(__FILE__));
 
@@ -48,3 +48,5 @@ function tdt_shortcode() {
     return ob_get_clean();
 }
 add_shortcode('tirada_tarot', 'tdt_shortcode');
+
+require_once TDT_PLUGIN_PATH . 'includes/horoscopo.php';

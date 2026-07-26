@@ -4,13 +4,13 @@ Tags: tarot, tirada, cartas, adivinacion, shortcode
 Requires at least: 5.0
 Tested up to: 6.6
 Requires PHP: 7.0
-Stable tag: 1.0.4
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Author: Durval Muñoz Codazzi
 Author URI: https://websobreruedas.com
 
-Widget de tirada de tarot de 3 cartas (Pasado / Presente / Futuro), con modo digital y modo físico, para insertar en cualquier página o entrada con un shortcode.
+Widget de tirada de tarot de 3 cartas (Pasado / Presente / Futuro), con modo digital y modo físico, más un horóscopo diario de los 12 signos importado desde la app local de horóscopos.
 
 == Description ==
 
@@ -26,6 +26,8 @@ En ambos casos, al completar las 3 cartas se genera automáticamente una lectura
 Todo el motor de interpretación funciona localmente — no depende de ninguna API externa ni tiene costo por uso.
 
 Incluye las 78 ilustraciones clásicas del mazo Rider-Waite-Smith (edición de 1909, dominio público en EE. UU.).
+
+**Horóscopo diario**: el shortcode `[horoscopo]` muestra el horóscopo de los 12 signos (hoy y mañana), con un selector de signo y pestañas Hoy/Mañana. Los datos se cargan desde la app local `horoscopo-diario` (Mac), que los envía a la ruta REST `tirada-de-tarot/v1/horoscopo` autenticada con un token — o se pueden pegar a mano en el panel de administración (**Tirada de Tarot** en el menú de WordPress) si el envío directo no funciona.
 
 == Installation ==
 
@@ -48,6 +50,9 @@ El plugin está pensado para un solo widget por página. Si necesitás varias ti
 No. Toda la interpretación se genera localmente en el navegador del visitante.
 
 == Changelog ==
+
+= 1.1.0 =
+* Nuevo: módulo de horóscopo diario. Ruta REST `tirada-de-tarot/v1/horoscopo` (con token) para recibir los datos desde la app local, panel de administración (**Tirada de Tarot**) con el token, estado del último envío e importación manual por si el envío directo falla, y shortcode `[horoscopo]` con selector de los 12 signos y pestañas Hoy/Mañana.
 
 = 1.0.4 =
 * Reemplaza los íconos de emoji por un abanico de 3 cartas reales del propio mazo (El Mago, La Estrella, El Sol), en el título principal, "Tirada digital", "Tirada física", "Tu lectura" y "Síntesis de la tirada".

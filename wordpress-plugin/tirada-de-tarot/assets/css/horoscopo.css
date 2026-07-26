@@ -1,0 +1,62 @@
+#tdtHoroscopo, #tdtHoroscopo * { box-sizing: border-box; }
+#tdtHoroscopo [hidden] { display: none !important; }
+#tdtHoroscopo {
+  --h-bg-deep: #120a1f;
+  --h-bg-panel: #1c1230;
+  --h-gold: #d4af37;
+  --h-gold-soft: #f1d98b;
+  --h-purple: #6b3fa0;
+  --h-text: #f3ecff;
+  --h-text-dim: #b9a9d9;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 2rem;
+  background: radial-gradient(circle at 50% 0%, var(--h-bg-panel), var(--h-bg-deep) 70%);
+  color: var(--h-text) !important;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  border-radius: 1rem;
+}
+#tdtHoroscopo h3, #tdtHoroscopo h4 { font-family: Georgia, 'Times New Roman', serif; margin: 0 0 0.5rem; color: var(--h-text) !important; }
+#tdtHoroscopo h3 { color: var(--h-gold-soft) !important; font-size: 1.2rem; }
+#tdtHoroscopo h4 { color: var(--h-gold-soft) !important; font-size: 0.95rem; margin-top: 1rem; }
+#tdtHoroscopo h4:first-of-type { margin-top: 0; }
+#tdtHoroscopo p { margin: 0 0 0.7rem; line-height: 1.55; color: var(--h-text) !important; }
+
+#tdtHoroscopo .tdt-horoscopo-tabs { display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1rem; }
+#tdtHoroscopo .tdt-tab {
+  font-size: 0.95rem; padding: 0.5rem 1.2rem; border-radius: 2rem; border: 1px solid var(--h-purple);
+  background: transparent; color: var(--h-text-dim) !important; cursor: pointer; font-weight: 600;
+}
+#tdtHoroscopo .tdt-tab.active { background: linear-gradient(135deg, var(--h-gold-soft), var(--h-gold)); color: #241533 !important; border-color: transparent; }
+
+#tdtHoroscopo .tdt-panorama { display: none; text-align: center; font-style: italic; color: var(--h-text-dim) !important; font-size: 0.88rem; margin-bottom: 1rem; }
+#tdtHoroscopo .tdt-panorama.active { display: block; }
+
+#tdtHoroscopo .tdt-signos-selector {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 0.5rem;
+  margin-bottom: 1.2rem;
+}
+#tdtHoroscopo .tdt-signo-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+  padding: 0.6rem 0.4rem; border-radius: 0.6rem; border: 1px solid var(--h-purple);
+  background: rgba(255,255,255,0.04); color: var(--h-text-dim) !important; cursor: pointer; font-size: 0.8rem;
+}
+#tdtHoroscopo .tdt-signo-simbolo { font-size: 1.3rem; }
+#tdtHoroscopo .tdt-signo-btn.active { background: linear-gradient(135deg, var(--h-gold-soft), var(--h-gold)); color: #241533 !important; border-color: transparent; }
+#tdtHoroscopo .tdt-signo-btn.active .tdt-signo-simbolo { color: #241533 !important; }
+
+#tdtHoroscopo .tdt-signo-contenido-wrap { background: rgba(255,255,255,0.04); border-radius: 0.8rem; padding: 1.2rem; }
+#tdtHoroscopo .tdt-signo-contenido { display: none; }
+#tdtHoroscopo .tdt-signo-contenido.active { display: block; }
+
+#tdtHoroscopo .tdt-sintesis-table { border-collapse: collapse; width: 100%; margin: 0.4rem 0 0.8rem; font-size: 0.85rem; }
+#tdtHoroscopo .tdt-sintesis-table th, #tdtHoroscopo .tdt-sintesis-table td {
+  border: 1px solid var(--h-purple); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top;
+}
+#tdtHoroscopo .tdt-sintesis-table th { background: rgba(212,175,55,0.12); color: var(--h-gold-soft) !important; }
+
+#tdtHoroscopo .tdt-horoscopo-vacio { color: var(--h-text-dim) !important; text-align: center; padding: 1.5rem; }
+
+@media (max-width: 560px) {
+  #tdtHoroscopo .tdt-signos-selector { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
+}
