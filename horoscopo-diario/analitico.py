@@ -16,6 +16,10 @@ from interpretar import (
 )
 
 CLAUDE_PATH = "/Users/edgardomunozcodazzi/Downloads/node-v24.14.1-darwin-x64/bin/claude"
+CLAUDE_MODEL = "opus"  # fijo a propósito: si no se especifica, Claude Code usa el default
+                        # de tu plan, y ese default puede cambiar (por ejemplo al pasar de
+                        # Pro a Max), variando la extensión/estilo del texto sin que este
+                        # código haya cambiado. Cambiá este valor si preferís otro modelo.
 TIMEOUT_SEGUNDOS = 90
 
 
@@ -133,7 +137,7 @@ conversación, es un texto para publicar).
 def _llamar_claude(prompt):
     try:
         resultado = subprocess.run(
-            [CLAUDE_PATH, "-p", prompt],
+            [CLAUDE_PATH, "-p", prompt, "--model", CLAUDE_MODEL],
             capture_output=True, text=True, timeout=TIMEOUT_SEGUNDOS,
         )
     except subprocess.TimeoutExpired:
@@ -162,7 +166,7 @@ def generar_analisis_signo(sign_name, sign_key, day_data):
         if not error and "💼 En el trabajo" in texto_reintento:
             texto = texto_reintento
 
-    return _recortar_preambulo(texto)
+    return _normalizar_saltos(_recortar_preambulo(texto))
 
 
 def _recortar_preambulo(texto):
@@ -173,6 +177,18 @@ def _recortar_preambulo(texto):
     if idx > 0:
         return texto[idx:].strip()
     return texto
+
+
+SECCIONES = ["💼 En el trabajo", "❤️ En el amor", "⚠️ La advertencia final", "🌟 Síntesis del día"]
+
+
+def _normalizar_saltos(texto):
+    """Garantiza un salto de línea en blanco antes de cada título de sección,
+    aunque Claude no lo haya puesto. Así el texto se lee bien se muestre donde
+    se muestre (no depende de que el visor tenga el parser de trabajo/amor/etc.)."""
+    for marcador in SECCIONES:
+        texto = texto.replace(marcador, "\n\n" + marcador)
+    return texto.strip()
 
 
 def generar_analitico_dia(day_data, sign_keys, sign_names, max_workers=4):
