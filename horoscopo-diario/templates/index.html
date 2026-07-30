@@ -172,7 +172,7 @@ async function generarHoroscopo(endpoint) {
     regenerarBtn.classList.remove('oculto');
     generarBtn.classList.add('oculto');
     generarIaBtn.classList.add('oculto');
-    statusDiv.textContent = `Listo. También se guardó una copia en ${data.archivo_guardado}`;
+    statusDiv.textContent = `Listo — ${endpoint === '/generar_analitico' ? '✨ VERSIÓN ANALÍTICA (con Claude)' : 'versión simple (plantillas, texto corto)'}. Copia guardada en ${data.archivo_guardado}`;
   } catch (err) {
     statusDiv.textContent = 'Error: ' + err.message;
   } finally {

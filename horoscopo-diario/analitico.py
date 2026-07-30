@@ -16,14 +16,15 @@ from interpretar import (
     RULER, RULER_TRADICIONAL, _casa, _aspectos_de, _texto_aspecto,
 )
 
-VERSION = "1.8.5"
+VERSION = "1.8.6"
 
 CLAUDE_PATH = "/Users/edgardomunozcodazzi/Downloads/node-v24.14.1-darwin-x64/bin/claude"
 CLAUDE_MODEL = "opus"  # fijo a propósito: si no se especifica, Claude Code usa el default
                         # de tu plan, y ese default puede cambiar (por ejemplo al pasar de
                         # Pro a Max), variando la extensión/estilo del texto sin que este
                         # código haya cambiado. Cambiá este valor si preferís otro modelo.
-TIMEOUT_SEGUNDOS = 90
+TIMEOUT_SEGUNDOS = 300  # Opus es más lento que otros modelos: 4 secciones densas
+                        # pueden superar con comodidad los 90s que había antes.
 
 # Debajo de esta cantidad de caracteres, la respuesta se considera "resumida"
 # y se pide una vez más recordando la extensión mínima.
