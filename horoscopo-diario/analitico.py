@@ -16,7 +16,7 @@ from interpretar import (
     RULER, RULER_TRADICIONAL, _casa, _aspectos_de, _texto_aspecto,
 )
 
-VERSION = "1.8.7"
+VERSION = "1.8.8"
 
 CLAUDE_PATH = "/Users/edgardomunozcodazzi/Downloads/node-v24.14.1-darwin-x64/bin/claude"
 CLAUDE_MODEL = "opus"  # fijo a propósito: si no se especifica, Claude Code usa el default

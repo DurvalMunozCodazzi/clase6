@@ -36,8 +36,7 @@
     <button id="guardarConfigBtn" style="margin-left:10px;">Guardar</button>
   </details>
 
-  <button id="generarIaBtn" style="font-size:17px;padding:14px 24px;">✨ Generar versión analítica COMPLETA (con Claude, tarda minutos)</button>
-  <button id="generarBtn" style="background:#3a2a52;font-size:13px;">Versión simple (plantillas, texto corto)</button>
+  <button id="generarIaBtn" style="font-size:17px;padding:14px 24px;">✨ Generar horóscopo del día (con Claude, tarda minutos)</button>
   <button id="copyJsonBtn" class="oculto">Copiar JSON para WordPress</button>
   <button id="enviarWpBtn" class="oculto">🚀 Enviar directo a WordPress</button>
   <p style="font-size:13px;color:#b892d6;">La versión analítica usa Claude Code instalado en esta Mac (tu suscripción Pro/Max, sin costo extra) y tarda unos minutos: no cierres esta ventana mientras genera.</p>
@@ -62,7 +61,6 @@
   </div>
 
 <script>
-const generarBtn = document.getElementById('generarBtn');
 const generarIaBtn = document.getElementById('generarIaBtn');
 const copyJsonBtn = document.getElementById('copyJsonBtn');
 const enviarWpBtn = document.getElementById('enviarWpBtn');
@@ -134,7 +132,6 @@ function renderHoroscopoTexto(texto) {
 
 async function generarHoroscopo(endpoint) {
   endpointActual = endpoint;
-  generarBtn.disabled = true;
   generarIaBtn.disabled = true;
   statusDiv.textContent = endpoint === '/generar_analitico'
     ? 'Consultando a Claude para cada signo (esto puede tardar varios minutos, no cierres la ventana)...'
@@ -170,12 +167,10 @@ async function generarHoroscopo(endpoint) {
   } catch (err) {
     statusDiv.textContent = 'Error: ' + err.message;
   } finally {
-    generarBtn.disabled = false;
     generarIaBtn.disabled = false;
   }
 }
 
-generarBtn.addEventListener('click', () => generarHoroscopo('/generar'));
 generarIaBtn.addEventListener('click', () => generarHoroscopo('/generar_analitico'));
 
 copyJsonBtn.addEventListener('click', async () => {
