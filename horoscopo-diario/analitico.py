@@ -8,6 +8,7 @@ cruza varias señales (trabajo / amor / consejo).
 Requiere tener Claude Code instalado y logueado en la máquina (ver README).
 """
 import subprocess
+import sys
 from concurrent.futures import ThreadPoolExecutor
 
 from core import PLANET_LABELS
@@ -15,12 +16,18 @@ from interpretar import (
     RULER, RULER_TRADICIONAL, _casa, _aspectos_de, _texto_aspecto,
 )
 
+VERSION = "1.8.5"
+
 CLAUDE_PATH = "/Users/edgardomunozcodazzi/Downloads/node-v24.14.1-darwin-x64/bin/claude"
 CLAUDE_MODEL = "opus"  # fijo a propósito: si no se especifica, Claude Code usa el default
                         # de tu plan, y ese default puede cambiar (por ejemplo al pasar de
                         # Pro a Max), variando la extensión/estilo del texto sin que este
                         # código haya cambiado. Cambiá este valor si preferís otro modelo.
 TIMEOUT_SEGUNDOS = 90
+
+# Debajo de esta cantidad de caracteres, la respuesta se considera "resumida"
+# y se pide una vez más recordando la extensión mínima.
+LARGO_MINIMO = 1400
 
 
 def _datos_reales_signo(sign_key, day_data):
@@ -100,14 +107,15 @@ Escribí el horóscopo completo de hoy para {sign_name} en español rioplatense 
 formato y estos títulos textuales EXACTOS, en este orden:
 
 💼 En el trabajo
-(Un párrafo largo y denso, 4-6 oraciones. Desarrollá en detalle qué significa la combinación de \
-datos de arriba para esta área: el tránsito del regente, los aspectos, el retrógrado si aplica. \
-Dale contexto y un consejo concreto y accionable, con ejemplos de situaciones posibles.)
+(Un párrafo largo y denso, de 5 a 7 oraciones y MÍNIMO 130 palabras. Desarrollá en detalle qué \
+significa la combinación de datos de arriba para esta área: el tránsito del regente, los aspectos, \
+el retrógrado si aplica. Dale contexto y un consejo concreto y accionable, con ejemplos de \
+situaciones posibles — una llamada, un mail, una negociación puntual.)
 
 ❤️ En el amor
-(Mismo nivel de detalle y extensión que la sección anterior, 4-6 oraciones. Usá el eje kármico \
-para explicar hacia dónde conviene crecer en esta área. Dale ejemplos concretos según si la \
-persona está en pareja o soltera.)
+(Mismo nivel de detalle y extensión que la sección anterior: 5 a 7 oraciones y MÍNIMO 130 \
+palabras. Usá el eje kármico para explicar hacia dónde conviene crecer en esta área. Dale \
+ejemplos concretos y separados según si la persona está en pareja o soltera.)
 
 ⚠️ La advertencia final
 (2-3 oraciones combinando el consejo más importante del día con cualquier retrógrado activo: qué \
@@ -131,7 +139,10 @@ que vas a hacer (nunca escribas cosas como "voy a redactar" o "cruzando estos da
 explicar qué significa.
 - Nunca le hagas una pregunta al lector ni cierres pidiendo su opinión (esto no es una \
 conversación, es un texto para publicar).
-- Escribí siempre en español (ni una palabra en inglés)."""
+- Escribí siempre en español (ni una palabra en inglés).
+- La extensión NO es negociable: las secciones de trabajo y amor tienen que ser párrafos \
+largos y desarrollados (mínimo 130 palabras cada una). Un texto corto o resumido se considera \
+una respuesta incorrecta."""
 
 
 def _llamar_claude(prompt):
@@ -165,6 +176,21 @@ def generar_analisis_signo(sign_name, sign_key, day_data):
         )
         if not error and "💼 En el trabajo" in texto_reintento:
             texto = texto_reintento
+
+    if len(texto) < LARGO_MINIMO:
+        # Salió resumido pese al prompt: un reintento recordando la extensión.
+        print(f"  [{sign_name}] salió corto ({len(texto)} caracteres), reintentando...",
+              file=sys.stderr, flush=True)
+        texto_reintento, error = _llamar_claude(
+            prompt + "\n\nIMPORTANTE: tu respuesta anterior fue demasiado corta. Las "
+            "secciones de trabajo y amor tienen que tener MÍNIMO 130 palabras cada una, "
+            "con ejemplos concretos. Escribí la versión completa y desarrollada."
+        )
+        if not error and len(texto_reintento) > len(texto):
+            texto = texto_reintento
+
+    print(f"  [{sign_name}] generado: {len(texto)} caracteres (modelo: {CLAUDE_MODEL})",
+          file=sys.stderr, flush=True)
 
     return _normalizar_saltos(_recortar_preambulo(texto))
 

@@ -8,7 +8,7 @@ from flask import Flask, render_template, jsonify, request
 
 from generar_horoscopo import generar, _resumen_astronomico
 from core import SIGN_KEYS, SIGN_NAMES
-from analitico import generar_analitico_dia
+from analitico import generar_analitico_dia, VERSION, CLAUDE_MODEL
 
 app = Flask(__name__)
 
@@ -17,7 +17,7 @@ DOWNLOADS_DIR = os.path.expanduser("~/Downloads")
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", version=VERSION, claude_model=CLAUDE_MODEL)
 
 
 @app.route("/generar", methods=["POST"])
