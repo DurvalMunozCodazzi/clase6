@@ -265,7 +265,7 @@ function tdt_admin_page() {
         return;
     }
 
-    $mensaje = '';
+    $mensaje = tdt_significados_admin_procesar();
 
     if (isset($_POST['tdt_regenerar_token']) && check_admin_referer('tdt_regenerar_token_action')) {
         tdt_horoscopo_regenerar_token();
@@ -332,6 +332,8 @@ function tdt_admin_page() {
       <?php endif; ?>
 
       <hr>
+
+      <?php tdt_significados_admin_section(); ?>
 
       <h2>Conexión con las apps locales</h2>
       <p>Pegá estos dos datos en la app <code>horoscopo-diario</code> de tu Mac, sección "Configuración de envío a WordPress".</p>

@@ -38,6 +38,7 @@ function tdt_enqueue_assets() {
 
     wp_localize_script('tdt-script', 'TDT_CONFIG', array(
         'imageBaseUrl' => TDT_PLUGIN_URL . 'assets/images/cards/',
+        'significados' => tdt_significados(),
     ));
 }
 
@@ -63,4 +64,5 @@ function tdt_shortcode() {
 }
 add_shortcode('tirada_tarot', 'tdt_shortcode');
 
+require_once TDT_PLUGIN_PATH . 'includes/significados.php';
 require_once TDT_PLUGIN_PATH . 'includes/horoscopo.php';

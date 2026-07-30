@@ -637,11 +637,25 @@
     });
   }
 
+  // Si el sitio tiene cargada la Base de significados curados (vía TDT_CONFIG),
+  // se usa ese contenido real en vez de las palabras clave genéricas.
+  function significadoCurado(card, reversed) {
+    var base = (typeof TDT_CONFIG !== "undefined" && TDT_CONFIG.significados) ? TDT_CONFIG.significados : null;
+    if (!base || !base[card.id]) return null;
+    var lista = reversed ? base[card.id].rev : base[card.id].up;
+    if (!lista || !lista.length) return null;
+    return lista[Math.floor(Math.random() * lista.length)];
+  }
+
+  function textoCarta(card, reversed) {
+    return significadoCurado(card, reversed) || (reversed ? card.rev : card.up);
+  }
+
   function renderRevealVisual() {
     var card = CARDS_BY_ID[state.pendingCardId];
     $("revealCardVisual").innerHTML = cardFaceHTML(card, state.pendingReversed);
     $("revealCardName").textContent = card.name + (state.pendingReversed ? " (invertida)" : "");
-    $("revealCardOrientation").textContent = state.pendingReversed ? card.rev : card.up;
+    $("revealCardOrientation").textContent = textoCarta(card, state.pendingReversed);
   }
 
   function revealCard(cardId) {
@@ -811,12 +825,15 @@
 
     state.picks.forEach(function (pick_, i) {
       var label = POSITIONS[i].label;
-      var keywords = escapeHtml(inlinePhrase(pick_.reversed ? pick_.card.rev : pick_.card.up));
       var intro = pick(POSITION_INTROS[label]);
+      var curado = significadoCurado(pick_.card, pick_.reversed);
+      var cuerpo = curado
+        ? intro + ". " + escapeHtml(curado)
+        : intro + ": " + escapeHtml(inlinePhrase(pick_.reversed ? pick_.card.rev : pick_.card.up)) + ".";
       html +=
         '<div class="reading-line">' +
           "<h3>" + POSITIONS[i].icon + " " + label + ": " + escapeHtml(pick_.card.name) + (pick_.reversed ? " (invertida)" : "") + "</h3>" +
-          "<p>" + intro + ": " + keywords + ".</p>" +
+          "<p>" + cuerpo + "</p>" +
         "</div>";
     });
 

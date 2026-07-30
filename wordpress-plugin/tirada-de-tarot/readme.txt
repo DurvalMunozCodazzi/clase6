@@ -53,6 +53,8 @@ No. Toda la interpretación se genera localmente en el navegador del visitante.
 
 = 1.5.0 =
 * Nuevo: sección **Ajustes** en el panel de administración, con los dos shortcodes listos para copiar (para pegar en un módulo de Código/Texto de Divi o cualquier editor) y un campo de **imagen de cabecera**: pegás la URL de una imagen de tu Biblioteca de medios y aparece arriba de ambos widgets ([tirada_tarot] y [horoscopo]).
+* Nuevo: **Base de significados** reconstruida en el panel (agregar significado por carta, importación masiva por JSON, exportación para la herramienta "Tarot Personal" de la Mac, y ruta REST GET `tirada-de-tarot/v1/significados` con token). Viene sembrada con los 78 significados curados exportados de la versión anterior.
+* Las lecturas del widget [tirada_tarot] ahora usan los significados curados cuando la carta los tiene, en lugar de las palabras clave genéricas.
 
 = 1.1.0 =
 * Nuevo: módulo de horóscopo diario. Ruta REST `tirada-de-tarot/v1/horoscopo` (con token) para recibir los datos desde la app local, panel de administración (**Tirada de Tarot**) con el token, estado del último envío e importación manual por si el envío directo falla, y shortcode `[horoscopo]` con selector de los 12 signos y pestañas Hoy/Mañana.
