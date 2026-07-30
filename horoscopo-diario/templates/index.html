@@ -36,9 +36,8 @@
     <button id="guardarConfigBtn" style="margin-left:10px;">Guardar</button>
   </details>
 
-  <button id="generarBtn">Generar horóscopo de hoy</button>
-  <button id="generarIaBtn">✨ Generar versión analítica (con Claude)</button>
-  <button id="regenerarBtn" class="oculto">🔄 Regenerar</button>
+  <button id="generarIaBtn" style="font-size:17px;padding:14px 24px;">✨ Generar versión analítica COMPLETA (con Claude, tarda minutos)</button>
+  <button id="generarBtn" style="background:#3a2a52;font-size:13px;">Versión simple (plantillas, texto corto)</button>
   <button id="copyJsonBtn" class="oculto">Copiar JSON para WordPress</button>
   <button id="enviarWpBtn" class="oculto">🚀 Enviar directo a WordPress</button>
   <p style="font-size:13px;color:#b892d6;">La versión analítica usa Claude Code instalado en esta Mac (tu suscripción Pro/Max, sin costo extra) y tarda unos minutos: no cierres esta ventana mientras genera.</p>
@@ -65,7 +64,6 @@
 <script>
 const generarBtn = document.getElementById('generarBtn');
 const generarIaBtn = document.getElementById('generarIaBtn');
-const regenerarBtn = document.getElementById('regenerarBtn');
 const copyJsonBtn = document.getElementById('copyJsonBtn');
 const enviarWpBtn = document.getElementById('enviarWpBtn');
 const siteUrlInput = document.getElementById('siteUrlInput');
@@ -74,7 +72,7 @@ const statusDiv = document.getElementById('status');
 const resultadoDiv = document.getElementById('resultado');
 const jsonWpBox = document.getElementById('jsonWp');
 let ultimoJson = '';
-let endpointActual = '/generar';
+let endpointActual = '/generar';  // solo informativo
 
 siteUrlInput.value = localStorage.getItem('tdt_site_url') || '';
 tokenInput.value = localStorage.getItem('tdt_token') || '';
@@ -138,7 +136,6 @@ async function generarHoroscopo(endpoint) {
   endpointActual = endpoint;
   generarBtn.disabled = true;
   generarIaBtn.disabled = true;
-  regenerarBtn.disabled = true;
   statusDiv.textContent = endpoint === '/generar_analitico'
     ? 'Consultando a Claude para cada signo (esto puede tardar varios minutos, no cierres la ventana)...'
     : 'Calculando posiciones planetarias y generando interpretación...';
@@ -169,22 +166,17 @@ async function generarHoroscopo(endpoint) {
     resultadoDiv.classList.remove('oculto');
     copyJsonBtn.classList.remove('oculto');
     enviarWpBtn.classList.remove('oculto');
-    regenerarBtn.classList.remove('oculto');
-    generarBtn.classList.add('oculto');
-    generarIaBtn.classList.add('oculto');
     statusDiv.textContent = `Listo — ${endpoint === '/generar_analitico' ? '✨ VERSIÓN ANALÍTICA (con Claude)' : 'versión simple (plantillas, texto corto)'}. Copia guardada en ${data.archivo_guardado}`;
   } catch (err) {
     statusDiv.textContent = 'Error: ' + err.message;
   } finally {
     generarBtn.disabled = false;
     generarIaBtn.disabled = false;
-    regenerarBtn.disabled = false;
   }
 }
 
 generarBtn.addEventListener('click', () => generarHoroscopo('/generar'));
 generarIaBtn.addEventListener('click', () => generarHoroscopo('/generar_analitico'));
-regenerarBtn.addEventListener('click', () => generarHoroscopo(endpointActual));
 
 copyJsonBtn.addEventListener('click', async () => {
   jsonWpBox.select();
