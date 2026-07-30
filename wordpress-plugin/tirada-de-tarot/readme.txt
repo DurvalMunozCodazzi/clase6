@@ -4,7 +4,7 @@ Tags: tarot, tirada, cartas, adivinacion, shortcode
 Requires at least: 5.0
 Tested up to: 6.6
 Requires PHP: 7.0
-Stable tag: 1.2.0
+Stable tag: 1.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Author: Durval Muñoz Codazzi
@@ -51,7 +51,7 @@ No. Toda la interpretación se genera localmente en el navegador del visitante.
 
 == Changelog ==
 
-= 1.2.0 =
+= 1.5.0 =
 * Nuevo: sección **Ajustes** en el panel de administración, con los dos shortcodes listos para copiar (para pegar en un módulo de Código/Texto de Divi o cualquier editor) y un campo de **imagen de cabecera**: pegás la URL de una imagen de tu Biblioteca de medios y aparece arriba de ambos widgets ([tirada_tarot] y [horoscopo]).
 
 = 1.1.0 =
