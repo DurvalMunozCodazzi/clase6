@@ -206,6 +206,7 @@ function tdt_horoscopo_shortcode() {
     $primer_signo = array_key_first(TDT_HOROSCOPO_SIGNOS);
 
     ob_start();
+    echo tdt_header_image_html();
     ?>
     <div class="tdt-horoscopo" id="tdtHoroscopo">
       <div class="tdt-horoscopo-tabs">
@@ -271,6 +272,14 @@ function tdt_admin_page() {
         $mensaje = '<div class="notice notice-success"><p>Token regenerado. Actualizalo en la app de Mac.</p></div>';
     }
 
+    if (isset($_POST['tdt_guardar_ajustes']) && check_admin_referer('tdt_guardar_ajustes_action')) {
+        $imagen = esc_url_raw(wp_unslash($_POST['tdt_header_image'] ?? ''));
+        update_option('tdt_header_image', $imagen);
+        $mensaje = $imagen
+            ? '<div class="notice notice-success"><p>Imagen de cabecera guardada. Ya se muestra arriba de ambos widgets.</p></div>'
+            : '<div class="notice notice-success"><p>Imagen de cabecera quitada.</p></div>';
+    }
+
     if (isset($_POST['tdt_importar_json']) && check_admin_referer('tdt_importar_json_action')) {
         $json_crudo = wp_unslash($_POST['tdt_json'] ?? '');
         $payload = json_decode($json_crudo, true);
@@ -295,6 +304,34 @@ function tdt_admin_page() {
     <div class="wrap">
       <h1>🔮 Tirada de Tarot</h1>
       <?php echo $mensaje; ?>
+
+      <h2>Ajustes</h2>
+
+      <h3>Shortcodes para insertar en tu web (Divi, Gutenberg o cualquier editor)</h3>
+      <p>Copiá el shortcode y pegalo en un módulo de <strong>Código</strong> o <strong>Texto</strong> de Divi, en la página donde quieras que aparezca.</p>
+      <table class="form-table">
+        <tr>
+          <th scope="row">Tirada de tarot (3 cartas)</th>
+          <td><input type="text" readonly value="[tirada_tarot]" style="width:250px;font-family:monospace;" onclick="this.select();document.execCommand('copy');"> <em>clic para copiar</em></td>
+        </tr>
+        <tr>
+          <th scope="row">Horóscopo diario (12 signos)</th>
+          <td><input type="text" readonly value="[horoscopo]" style="width:250px;font-family:monospace;" onclick="this.select();document.execCommand('copy');"> <em>clic para copiar</em></td>
+        </tr>
+      </table>
+
+      <h3>Imagen de cabecera</h3>
+      <p>Se muestra arriba de ambos widgets. Subí tu imagen a <strong>Medios → Añadir nuevo</strong>, copiá su URL (botón "Copiar URL al portapapeles" en la biblioteca) y pegala acá. Dejá el campo vacío y guardá para quitarla.</p>
+      <form method="post">
+        <?php wp_nonce_field('tdt_guardar_ajustes_action'); ?>
+        <input type="url" name="tdt_header_image" value="<?php echo esc_attr(get_option('tdt_header_image', '')); ?>" placeholder="https://tusitio.com/wp-content/uploads/2026/07/mi-imagen.jpg" style="width:520px;">
+        <button type="submit" name="tdt_guardar_ajustes" value="1" class="button button-primary">Guardar ajustes</button>
+      </form>
+      <?php $imagen_actual = get_option('tdt_header_image'); if ($imagen_actual): ?>
+        <p style="margin-top:10px;"><img src="<?php echo esc_url($imagen_actual); ?>" alt="Vista previa de la cabecera" style="max-width:420px;height:auto;border-radius:8px;"></p>
+      <?php endif; ?>
+
+      <hr>
 
       <h2>Conexión con las apps locales</h2>
       <p>Pegá estos dos datos en la app <code>horoscopo-diario</code> de tu Mac, sección "Configuración de envío a WordPress".</p>

@@ -4,7 +4,7 @@ Tags: tarot, tirada, cartas, adivinacion, shortcode
 Requires at least: 5.0
 Tested up to: 6.6
 Requires PHP: 7.0
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Author: Durval Muñoz Codazzi
@@ -50,6 +50,9 @@ El plugin está pensado para un solo widget por página. Si necesitás varias ti
 No. Toda la interpretación se genera localmente en el navegador del visitante.
 
 == Changelog ==
+
+= 1.2.0 =
+* Nuevo: sección **Ajustes** en el panel de administración, con los dos shortcodes listos para copiar (para pegar en un módulo de Código/Texto de Divi o cualquier editor) y un campo de **imagen de cabecera**: pegás la URL de una imagen de tu Biblioteca de medios y aparece arriba de ambos widgets ([tirada_tarot] y [horoscopo]).
 
 = 1.1.0 =
 * Nuevo: módulo de horóscopo diario. Ruta REST `tirada-de-tarot/v1/horoscopo` (con token) para recibir los datos desde la app local, panel de administración (**Tirada de Tarot**) con el token, estado del último envío e importación manual por si el envío directo falla, y shortcode `[horoscopo]` con selector de los 12 signos y pestañas Hoy/Mañana.
