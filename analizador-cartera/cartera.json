@@ -2,33 +2,55 @@
   "titular": "Cartera personal - Balanz",
   "broker": "Balanz (balanz.com)",
   "moneda_referencia": "ARS",
-  "fecha_carga_inicial": "2026-07-30",
+  "fecha_ultimo_dato": "2026-07-31",
   "posiciones": [
     {
       "ticker": "BCAHA",
       "nombre": "Ahorro Corto Plazo Clase A",
       "moneda": "ARS",
       "cuotapartes": 81006.28,
-      "precio_cuotaparte_inicial": 240.711691,
-      "valor_inicial_ars": 19499159,
-      "rendimiento_acumulado_pct": 55.44,
+      "precio_promedio_compra": 229.57,
+      "precio_cuotaparte": 240.711691,
+      "fecha_precio": "2026-07-30",
+      "valor_inicial_ars": 18596800,
+      "valor_actual_ars": 19499159,
+      "rendimiento_ars": 902359,
+      "rendimiento_acumulado_pct": 55.41,
+      "rendimiento_periodo_pct": 4.85,
+      "dias_posicion": 84,
+      "tna_pct": 21.08,
       "perfil": "Conservador",
       "tipo": "Renta Fija corto plazo",
-      "liquidez": "24hs",
-      "notas": "Mejor fondo conservador en ARS de la grilla Balanz (mensual ~1.55%, anual ~44.68% al 30/07/2026)"
+      "liquidez": "24hs"
     },
     {
       "ticker": "BAHUSDA",
       "nombre": "Corporativo Clase A (Balanz Ahorro en Dolares)",
       "moneda": "USD",
-      "cuotapartes": 18339.53,
-      "precio_cuotaparte_inicial": 1.430573,
-      "valor_inicial_usd": 21150,
-      "rendimiento_acumulado_pct": 44.56,
+      "cuotapartes": 7242.09,
+      "precio_promedio_compra": 1.43,
+      "precio_cuotaparte": 1.430573,
+      "fecha_precio": "2026-07-30",
+      "valor_inicial_usd": 10378,
+      "valor_actual_usd": 10360,
+      "rendimiento_usd": -18,
+      "rendimiento_acumulado_pct": 44.59,
+      "rendimiento_periodo_pct": -0.17,
+      "dias_posicion": 4,
       "perfil": "Moderado",
       "tipo": "Renta Fija - ONs en USD",
       "liquidez": "24hs",
-      "notas": "Posicion original u$s 10.360 (+44,56%) + canje total desde Dolar Corto Plazo (ESTRA1A, u$s 10.795) el 31/07/2026. Cuotapartes estimadas post-canje: ajustar con el dato real de la app."
+      "nota_importante": "El % de T. (44,59%) es rendimiento historico del fondo; la posicion actual tiene solo 4 dias (entrada reciente a PPC 1,43, por eso rendimiento -0,17% = ruido diario normal)."
+    }
+  ],
+  "movimientos_pendientes": [
+    {
+      "fecha_orden": "2026-07-31",
+      "tipo": "canje",
+      "origen": "ESTRA1A Dolar Corto Plazo (9.252,45 cuotapartes, ~u$s 10.795)",
+      "destino": "BAHUSDA Corporativo Clase A",
+      "estado": "PENDIENTE DE ACREDITACION - al acreditarse, BAHUSDA debe sumar ~7.545 cuotapartes (total ~14.787) y ~u$s 10.795 de valor",
+      "accion": "actualizar cuotapartes y valor_inicial de BAHUSDA con el dato real del panel Balanz"
     }
   ],
   "objetivos": {
@@ -40,7 +62,8 @@
       "Alertar si la variacion mensual de un fondo propio se vuelve negativa",
       "Alertar si la brecha cambiaria (CCL vs oficial) se amplia mas de 5 puntos en una semana",
       "Alertar si la tasa de caucion/Lecaps cae por debajo de la devaluacion mensual esperada (fin del carry)",
-      "No sobre-reaccionar a variaciones diarias; decidir con tendencias semanales/mensuales"
+      "No sobre-reaccionar a variaciones diarias; decidir con tendencias semanales/mensuales",
+      "Verificar en cada informe si el canje pendiente ya se acredito y pedir al titular el dato real"
     ]
   }
 }
