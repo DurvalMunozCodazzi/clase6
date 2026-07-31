@@ -39,7 +39,9 @@ jobs:
           html = markdown.markdown(texto, extensions=["tables"])
           titulo = f"Informe de cartera — {fecha}"
 
-          base = os.environ["WP_URL"].rstrip("/") + "/wp-json/wp/v2"
+          raiz = os.environ["WP_URL"].rstrip("/")
+          def ruta(recurso):
+              return f"{raiz}/index.php?rest_route=/wp/v2/{recurso}"
           auth = (os.environ["WP_USER"], os.environ["WP_APP_PASSWORD"])
           cab = {"User-Agent": "Mozilla/5.0 (compatible; AnalizadorCartera/1.0)"}
 
@@ -51,16 +53,16 @@ jobs:
                   sys.exit(f"Fallo en el paso: {paso}")
 
           # Si ya existe una entrada con este titulo, actualizarla (evita duplicados)
-          r = requests.get(f"{base}/posts", params={"search": titulo, "status": "publish,draft"},
+          r = requests.get(ruta("posts"), params={"search": titulo, "status": "publish,draft"},
                            auth=auth, headers=cab, timeout=30)
           verificar(r, "buscar entradas existentes")
           existente = next((p for p in r.json() if p["title"]["rendered"].startswith(titulo)), None)
 
           cuerpo = {"title": titulo, "content": html, "status": "publish"}
           if existente:
-              r = requests.post(f"{base}/posts/{existente['id']}", json=cuerpo, auth=auth, headers=cab, timeout=30)
+              r = requests.post(ruta(f"posts/{existente['id']}"), json=cuerpo, auth=auth, headers=cab, timeout=30)
           else:
-              r = requests.post(f"{base}/posts", json=cuerpo, auth=auth, headers=cab, timeout=30)
+              r = requests.post(ruta("posts"), json=cuerpo, auth=auth, headers=cab, timeout=30)
           verificar(r, "publicar entrada")
           print("Publicado:", r.json().get("link"))
           PY
