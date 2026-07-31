@@ -53,6 +53,7 @@
   <div class="tabs">
     <button id="tab-informes" class="activo" onclick="verTab('informes')">Informes diarios</button>
     <button id="tab-simulador" onclick="verTab('simulador')">Simulador (ABM)</button>
+    <button id="btn-claude" style="margin-left:auto; background:var(--accent); color:#fff; border-color:var(--accent); border-radius:8px;" onclick="consultarClaude()">✨ Consultar a Claude ahora</button>
   </div>
 </header>
 
@@ -93,6 +94,20 @@ const REPO = "DurvalMunozCodazzi/clase6";
 const RAMA = "main";
 const API_INFORMES = `https://api.github.com/repos/${REPO}/contents/analizador-cartera/informes?ref=${RAMA}`;
 const URL_CARTERA = `https://raw.githubusercontent.com/${REPO}/${RAMA}/analizador-cartera/cartera.json`;
+
+/* ---------- Botón "Consultar a Claude" ---------- */
+function consultarClaude(){
+  let resumen = "";
+  if(carteraReal){
+    resumen = carteraReal.posiciones.map(p =>
+      `${p.ticker} ${p.nombre}: ${p.moneda==="USD" ? "u$s "+(p.valor_actual_usd||0).toLocaleString("es-AR") : "$ "+(p.valor_actual_ars||0).toLocaleString("es-AR")} (${p.cuotapartes} cuotapartes)`
+    ).join("; ");
+  }
+  const prompt =
+`Sos mi analista de cartera (fondos Balanz, Argentina). Mi cartera real HOY: ${resumen || "leela de https://raw.githubusercontent.com/${REPO}/main/analizador-cartera/cartera.json"}.
+Busca en la web los datos REALES de ahora del mercado argentino (dolar oficial/MEP/CCL/blue y brecha, tasas de caucion y Lecaps, riesgo pais, novedades BCRA/Tesoro) y dame un informe breve con: 1) estado estimado de mi cartera, 2) semaforo de senales (carry en pesos, brecha, momentum de mis fondos, contexto macro) con VERDE/AMARILLO/ROJO, 3) novedades de hoy que me afecten con fuentes, 4) recomendacion concreta: MANTENER / AJUSTAR (que y cuanto) / ATENCION. No inventes datos; si algo no lo pudiste verificar, decilo. Al final aclara que no es asesoramiento regulado.`;
+  window.open("https://claude.ai/new?q=" + encodeURIComponent(prompt), "_blank");
+}
 
 /* ---------- Pestañas ---------- */
 function verTab(cual){
