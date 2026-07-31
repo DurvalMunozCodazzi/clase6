@@ -47,6 +47,25 @@ Una corrida diaria con búsqueda web cuesta del orden de u$s 0,05–0,15 por dí
 Editá `cartera.json` cuando hagas un movimiento (suscripción, rescate, canje).
 El campo `cuotapartes` y `precio_cuotaparte_inicial` deben reflejar lo que ves en Balanz.
 
+## Página web (para tu dominio o GitHub Pages)
+
+La carpeta `web/` contiene una página autocontenida (`index.html`) que lista y muestra
+todos los informes leyéndolos directamente del repo. Dos formas de publicarla:
+
+- **GitHub Pages (gratis, sin dominio propio)**: en GitHub → Settings → Pages →
+  Source: "Deploy from a branch" → Branch `main`, carpeta `/ (root)` → Save.
+  La página queda en `https://durvalmunozcodazzi.github.io/clase6/analizador-cartera/web/`.
+- **Tu propio dominio**: subí el archivo `web/index.html` a tu hosting tal cual
+  (no necesita servidor ni base de datos; lee los informes desde GitHub).
+  Requiere que el repo sea público.
+
+## Comando /analizar-cartera
+
+Con Claude Code (incluido en tu suscripción Max) podés ejecutar el análisis a demanda,
+sin API key: abrí Claude Code en este repo y escribí `/analizar-cartera`.
+Hace todo el ciclo (datos reales → informe → commit) y la página web lo muestra al instante.
+La Rutina diaria de las 18:30 hace exactamente lo mismo de forma automática.
+
 ## Aviso
 
 Los informes son análisis educativos sobre datos públicos. No constituyen

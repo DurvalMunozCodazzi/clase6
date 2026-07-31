@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi Cartera — Informes diarios</title>
+<style>
+  :root { color-scheme: light dark; --bg:#f6f4ef; --card:#fff; --fg:#1c1c1c; --muted:#6b6b6b; --accent:#0f6b3f; --border:#e3ded4; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14161a; --card:#1e2126; --fg:#e8e8e8; --muted:#9a9a9a; --accent:#4cc98a; --border:#2c3038; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Georgia,'Times New Roman',serif; background:var(--bg); color:var(--fg); }
+  header { padding:1.2rem 1.5rem; border-bottom:1px solid var(--border); display:flex; flex-wrap:wrap; gap:.8rem; align-items:baseline; }
+  header h1 { margin:0; font-size:1.35rem; }
+  header .sub { color:var(--muted); font-size:.9rem; font-family:system-ui,sans-serif; }
+  .layout { display:flex; flex-wrap:wrap; max-width:1100px; margin:0 auto; }
+  nav { flex:0 0 240px; padding:1rem 1.5rem; }
+  nav h2 { font-size:.8rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-family:system-ui,sans-serif; }
+  nav a { display:block; padding:.45rem .6rem; margin:.15rem 0; border-radius:6px; text-decoration:none; color:var(--fg); font-family:system-ui,sans-serif; font-size:.92rem; }
+  nav a:hover, nav a.activo { background:var(--card); border:1px solid var(--border); }
+  main { flex:1 1 480px; min-width:0; padding:1rem 1.5rem 3rem; }
+  article { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1.5rem 1.8rem; overflow-x:auto; }
+  article h1 { font-size:1.4rem; } article h2 { font-size:1.1rem; margin-top:1.6em; color:var(--accent); }
+  table { border-collapse:collapse; width:100%; font-family:system-ui,sans-serif; font-size:.9rem; }
+  th,td { border:1px solid var(--border); padding:.45rem .6rem; text-align:left; }
+  code { background:var(--bg); padding:.1em .35em; border-radius:4px; font-size:.9em; }
+  .estado { font-family:system-ui,sans-serif; color:var(--muted); padding:2rem; text-align:center; }
+  footer { text-align:center; color:var(--muted); font-size:.78rem; font-family:system-ui,sans-serif; padding:1.5rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📊 Mi Cartera — Informes diarios</h1>
+  <span class="sub">Fondos Balanz · generado por Claude · datos reales de mercado</span>
+</header>
+<div class="layout">
+  <nav><h2>Informes</h2><div id="lista"><p class="estado">Cargando…</p></div></nav>
+  <main><article id="contenido"><p class="estado">Elegí un informe…</p></article></main>
+</div>
+<footer>Análisis educativo sobre datos públicos — no constituye asesoramiento financiero regulado.</footer>
+<script>
+const REPO = "DurvalMunozCodazzi/clase6";
+const CARPETA = "analizador-cartera/informes";
+const API = `https://api.github.com/repos/${REPO}/contents/${CARPETA}?ref=main`;
+
+// Mini-renderizador de Markdown (títulos, tablas, listas, negrita, links, código)
+function md(src){
+  const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const inline = s => esc(s)
+    .replace(/`([^`]+)`/g,"<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g,"<em>$1</em>")
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  const lineas = src.split(/\r?\n/); let html="", enLista=false, tabla=[];
+  const cerrarLista=()=>{ if(enLista){html+="</ul>"; enLista=false;} };
+  const volcarTabla=()=>{ if(!tabla.length) return;
+    const filas = tabla.filter(f=>!/^\s*\|?[\s:|-]+\|?\s*$/.test(f));
+    html+="<table>"+filas.map((f,i)=>{
+      const celdas=f.replace(/^\||\|$/g,"").split("|").map(c=>inline(c.trim()));
+      const t=i===0?"th":"td"; return "<tr>"+celdas.map(c=>`<${t}>${c}</${t}>`).join("")+"</tr>";
+    }).join("")+"</table>"; tabla=[]; };
+  for(const l of lineas){
+    if(/^\s*\|.*\|/.test(l)){ cerrarLista(); tabla.push(l); continue; } volcarTabla();
+    const h=l.match(/^(#{1,4})\s+(.*)/);
+    if(h){ cerrarLista(); html+=`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`; continue; }
+    const li=l.match(/^\s*[-*]\s+(.*)/);
+    if(li){ if(!enLista){html+="<ul>"; enLista=true;} html+=`<li>${inline(li[1])}</li>`; continue; }
+    cerrarLista();
+    if(l.trim()==="") continue;
+    if(/^---+$/.test(l.trim())){ html+="<hr>"; continue; }
+    html+=`<p>${inline(l)}</p>`;
+  }
+  cerrarLista(); volcarTabla(); return html;
+}
+
+async function cargarInforme(item, enlace){
+  document.querySelectorAll("nav a").forEach(a=>a.classList.remove("activo"));
+  if(enlace) enlace.classList.add("activo");
+  const cont = document.getElementById("contenido");
+  cont.innerHTML = '<p class="estado">Cargando informe…</p>';
+  try{
+    const r = await fetch(item.download_url); cont.innerHTML = md(await r.text());
+  }catch(e){ cont.innerHTML = '<p class="estado">No se pudo cargar el informe.</p>'; }
+}
+
+(async ()=>{
+  const lista = document.getElementById("lista");
+  try{
+    const r = await fetch(API);
+    if(!r.ok) throw new Error(r.status);
+    const items = (await r.json()).filter(i=>i.name.endsWith(".md")).sort((a,b)=>b.name.localeCompare(a.name));
+    if(!items.length){ lista.innerHTML='<p class="estado">Todavía no hay informes. El primero aparece tras la primera corrida diaria.</p>'; return; }
+    lista.innerHTML="";
+    items.forEach((item,idx)=>{
+      const a=document.createElement("a"); a.href="#"+item.name;
+      a.textContent = item.name.replace("informe_","").replace(".md","");
+      a.onclick=(e)=>{e.preventDefault(); cargarInforme(item,a);};
+      lista.appendChild(a);
+      if(idx===0) cargarInforme(item,a);
+    });
+  }catch(e){ lista.innerHTML='<p class="estado">Error consultando GitHub ('+e.message+'). Si el repo es privado, hacelo público o usá un token.</p>'; }
+})();
+</script>
+</body>
+</html>
