@@ -3,46 +3,204 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mi Cartera — Informes diarios</title>
+<title>Mi Cartera — Informes y Simulador</title>
 <style>
-  :root { color-scheme: light dark; --bg:#f6f4ef; --card:#fff; --fg:#1c1c1c; --muted:#6b6b6b; --accent:#0f6b3f; --border:#e3ded4; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#14161a; --card:#1e2126; --fg:#e8e8e8; --muted:#9a9a9a; --accent:#4cc98a; --border:#2c3038; } }
+  :root { color-scheme: light dark; --bg:#f6f4ef; --card:#fff; --fg:#1c1c1c; --muted:#6b6b6b; --accent:#0f6b3f; --rojo:#b3382c; --border:#e3ded4; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14161a; --card:#1e2126; --fg:#e8e8e8; --muted:#9a9a9a; --accent:#4cc98a; --rojo:#e07b6e; --border:#2c3038; } }
   * { box-sizing:border-box; }
   body { margin:0; font-family:Georgia,'Times New Roman',serif; background:var(--bg); color:var(--fg); }
-  header { padding:1.2rem 1.5rem; border-bottom:1px solid var(--border); display:flex; flex-wrap:wrap; gap:.8rem; align-items:baseline; }
-  header h1 { margin:0; font-size:1.35rem; }
+  header { padding:1.2rem 1.5rem .6rem; border-bottom:1px solid var(--border); }
+  header h1 { margin:0 0 .2rem; font-size:1.35rem; }
   header .sub { color:var(--muted); font-size:.9rem; font-family:system-ui,sans-serif; }
+  .tabs { display:flex; gap:.4rem; padding:.7rem 1.5rem 0; }
+  .tabs button { font-family:system-ui,sans-serif; font-size:.95rem; padding:.5rem 1rem; border:1px solid var(--border); border-bottom:none; border-radius:8px 8px 0 0; background:transparent; color:var(--muted); cursor:pointer; }
+  .tabs button.activo { background:var(--card); color:var(--fg); font-weight:600; }
+  .panel { display:none; } .panel.activo { display:block; }
   .layout { display:flex; flex-wrap:wrap; max-width:1100px; margin:0 auto; }
   nav { flex:0 0 240px; padding:1rem 1.5rem; }
   nav h2 { font-size:.8rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-family:system-ui,sans-serif; }
   nav a { display:block; padding:.45rem .6rem; margin:.15rem 0; border-radius:6px; text-decoration:none; color:var(--fg); font-family:system-ui,sans-serif; font-size:.92rem; }
   nav a:hover, nav a.activo { background:var(--card); border:1px solid var(--border); }
   main { flex:1 1 480px; min-width:0; padding:1rem 1.5rem 3rem; }
-  article { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1.5rem 1.8rem; overflow-x:auto; }
+  article, .caja { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:1.5rem 1.8rem; overflow-x:auto; }
   article h1 { font-size:1.4rem; } article h2 { font-size:1.1rem; margin-top:1.6em; color:var(--accent); }
   table { border-collapse:collapse; width:100%; font-family:system-ui,sans-serif; font-size:.9rem; }
   th,td { border:1px solid var(--border); padding:.45rem .6rem; text-align:left; }
   code { background:var(--bg); padding:.1em .35em; border-radius:4px; font-size:.9em; }
   .estado { font-family:system-ui,sans-serif; color:var(--muted); padding:2rem; text-align:center; }
   footer { text-align:center; color:var(--muted); font-size:.78rem; font-family:system-ui,sans-serif; padding:1.5rem; }
+  /* Simulador */
+  .sim { max-width:1100px; margin:0 auto; padding:1rem 1.5rem 3rem; font-family:system-ui,sans-serif; }
+  .sim h2 { font-size:1.05rem; color:var(--accent); }
+  .sim .aviso { color:var(--muted); font-size:.85rem; margin:.3rem 0 1rem; }
+  .sim input, .sim select { font:inherit; padding:.4rem .5rem; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--fg); width:100%; }
+  .sim input[type=number] { text-align:right; }
+  .sim button { font:inherit; padding:.45rem .9rem; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--fg); cursor:pointer; }
+  .sim button.primario { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .sim button.peligro { color:var(--rojo); }
+  .sim .acciones { display:flex; gap:.5rem; flex-wrap:wrap; margin:.8rem 0 1.2rem; }
+  .sim td.num, .sim th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .sim .pos { color:var(--accent); } .sim .neg { color:var(--rojo); }
+  .sim .totales td { font-weight:700; background:var(--bg); }
+  .sim .delta { font-size:.82rem; color:var(--muted); }
+  @media (max-width:700px){ .sim td,.sim th{padding:.3rem .35rem; font-size:.8rem;} }
 </style>
 </head>
 <body>
 <header>
-  <h1>📊 Mi Cartera — Informes diarios</h1>
-  <span class="sub">Fondos Balanz · generado por Claude · datos reales de mercado</span>
+  <h1>📊 Mi Cartera</h1>
+  <span class="sub">Fondos Balanz · informes generados por Claude · datos reales de mercado</span>
+  <div class="tabs">
+    <button id="tab-informes" class="activo" onclick="verTab('informes')">Informes diarios</button>
+    <button id="tab-simulador" onclick="verTab('simulador')">Simulador (ABM)</button>
+  </div>
 </header>
-<div class="layout">
-  <nav><h2>Informes</h2><div id="lista"><p class="estado">Cargando…</p></div></nav>
-  <main><article id="contenido"><p class="estado">Elegí un informe…</p></article></main>
+
+<div id="panel-informes" class="panel activo">
+  <div class="layout">
+    <nav><h2>Informes</h2><div id="lista"><p class="estado">Cargando…</p></div></nav>
+    <main><article id="contenido"><p class="estado">Elegí un informe…</p></article></main>
+  </div>
 </div>
+
+<div id="panel-simulador" class="panel">
+  <div class="sim">
+    <h2>Simulador de inversión — ¿qué pasa si cambio los montos?</h2>
+    <p class="aviso">Arranca desde tu cartera <strong>real</strong> (leída del repo). Agregá, modificá o quitá posiciones simuladas y se recalcula al instante. Nada de esto toca tu cartera real ni tu cuenta Balanz — se guarda solo en este navegador.</p>
+    <div class="acciones">
+      <button class="primario" onclick="agregarFila()">➕ Agregar posición</button>
+      <button onclick="restablecer()">↺ Restablecer a mi cartera real</button>
+    </div>
+    <div style="overflow-x:auto">
+    <table id="tabla-sim">
+      <thead><tr>
+        <th>Fondo</th><th>Mon.</th><th class="num">Monto invertido</th><th class="num">% mensual</th>
+        <th class="num">A 1 mes</th><th class="num">A 6 meses</th><th class="num">A 12 meses</th><th></th>
+      </tr></thead>
+      <tbody id="cuerpo-sim"></tbody>
+      <tbody id="totales-sim"></tbody>
+    </table>
+    </div>
+    <p class="aviso" id="comparacion"></p>
+    <p class="aviso">Proyecciones = interés compuesto del rendimiento mensual actual de cada fondo (dato de la grilla Balanz al 30/07/2026, editable en la columna “% mensual”). Los rendimientos pasados no garantizan resultados futuros — es una herramienta para comparar escenarios, no una promesa.</p>
+  </div>
+</div>
+
 <footer>Análisis educativo sobre datos públicos — no constituye asesoramiento financiero regulado.</footer>
+
 <script>
 const REPO = "DurvalMunozCodazzi/clase6";
-const CARPETA = "analizador-cartera/informes";
-const API = `https://api.github.com/repos/${REPO}/contents/${CARPETA}?ref=main`;
+const RAMA = "main";
+const API_INFORMES = `https://api.github.com/repos/${REPO}/contents/analizador-cartera/informes?ref=${RAMA}`;
+const URL_CARTERA = `https://raw.githubusercontent.com/${REPO}/${RAMA}/analizador-cartera/cartera.json`;
 
-// Mini-renderizador de Markdown (títulos, tablas, listas, negrita, links, código)
+/* ---------- Pestañas ---------- */
+function verTab(cual){
+  for(const t of ["informes","simulador"]){
+    document.getElementById("panel-"+t).classList.toggle("activo", t===cual);
+    document.getElementById("tab-"+t).classList.toggle("activo", t===cual);
+  }
+}
+
+/* ---------- Catálogo de fondos (grilla Balanz, mensual % al 30/07/2026) ---------- */
+const CATALOGO = [
+  {nombre:"Ahorro Corto Plazo (BCAHA)", mon:"ARS", mensual:1.55},
+  {nombre:"Money Market Pesos", mon:"ARS", mensual:1.40},
+  {nombre:"Lecaps", mon:"ARS", mensual:1.44},
+  {nombre:"Crédito Privado", mon:"ARS", mensual:1.95},
+  {nombre:"ON's", mon:"ARS", mensual:1.96},
+  {nombre:"Inflation Linked", mon:"ARS", mensual:1.66},
+  {nombre:"Opportunity", mon:"ARS", mensual:1.05},
+  {nombre:"Acciones", mon:"ARS", mensual:4.02},
+  {nombre:"Equity Selection", mon:"ARS", mensual:4.57},
+  {nombre:"Corporativo (BAHUSDA)", mon:"USD", mensual:1.08},
+  {nombre:"Dólar Corto Plazo", mon:"USD", mensual:0.29},
+  {nombre:"Money Market Dólares", mon:"USD", mensual:0.06},
+  {nombre:"Latam", mon:"USD", mensual:0.67},
+  {nombre:"Otro (personalizado)", mon:"ARS", mensual:1.00},
+];
+
+let carteraReal = null;   // desde el repo
+let filas = [];           // estado del simulador
+
+const fmt = (n, mon) => (mon==="USD" ? "u$s " : "$ ") +
+  n.toLocaleString("es-AR", {maximumFractionDigits:0});
+const proy = (monto, mensualPct, meses) => monto * Math.pow(1 + mensualPct/100, meses);
+
+function filasDesdeCarteraReal(){
+  if(!carteraReal) return [];
+  return carteraReal.posiciones.map(p => ({
+    nombre: p.ticker==="BCAHA" ? "Ahorro Corto Plazo (BCAHA)" : "Corporativo (BAHUSDA)",
+    mon: p.moneda,
+    monto: p.moneda==="USD" ? (p.valor_actual_usd ?? 0) : (p.valor_actual_ars ?? 0),
+    mensual: p.ticker==="BCAHA" ? 1.55 : 1.08,
+  }));
+}
+
+function guardar(){ localStorage.setItem("sim_cartera", JSON.stringify(filas)); render(); }
+function cargarGuardado(){
+  try{ const g = JSON.parse(localStorage.getItem("sim_cartera")); if(Array.isArray(g) && g.length) filas = g; }catch(e){}
+}
+
+function agregarFila(){ filas.push({nombre:"Otro (personalizado)", mon:"ARS", monto:1000000, mensual:1.0}); guardar(); }
+function quitarFila(i){ filas.splice(i,1); guardar(); }
+function restablecer(){ filas = filasDesdeCarteraReal(); guardar(); }
+
+function cambiar(i, campo, valor){
+  if(campo==="nombre"){
+    filas[i].nombre = valor;
+    const c = CATALOGO.find(x=>x.nombre===valor);
+    if(c){ filas[i].mon = c.mon; filas[i].mensual = c.mensual; }
+  } else if(campo==="monto" || campo==="mensual"){
+    filas[i][campo] = parseFloat(valor) || 0;
+  } else { filas[i][campo] = valor; }
+  guardar();
+}
+
+function render(){
+  const cuerpo = document.getElementById("cuerpo-sim");
+  cuerpo.innerHTML = "";
+  filas.forEach((f,i)=>{
+    const opciones = CATALOGO.map(c=>`<option ${c.nombre===f.nombre?"selected":""}>${c.nombre}</option>`).join("");
+    const g1=proy(f.monto,f.mensual,1)-f.monto, g6=proy(f.monto,f.mensual,6)-f.monto, g12=proy(f.monto,f.mensual,12)-f.monto;
+    cuerpo.insertAdjacentHTML("beforeend", `<tr>
+      <td style="min-width:190px"><select onchange="cambiar(${i},'nombre',this.value)">${opciones}</select></td>
+      <td><select onchange="cambiar(${i},'mon',this.value)"><option ${f.mon==="ARS"?"selected":""}>ARS</option><option ${f.mon==="USD"?"selected":""}>USD</option></select></td>
+      <td class="num" style="min-width:130px"><input type="number" step="1000" value="${f.monto}" onchange="cambiar(${i},'monto',this.value)"></td>
+      <td class="num" style="min-width:80px"><input type="number" step="0.01" value="${f.mensual}" onchange="cambiar(${i},'mensual',this.value)"></td>
+      <td class="num ${g1>=0?'pos':'neg'}">${fmt(proy(f.monto,f.mensual,1),f.mon)}<div class="delta">${g1>=0?"+":""}${fmt(g1,f.mon)}</div></td>
+      <td class="num ${g6>=0?'pos':'neg'}">${fmt(proy(f.monto,f.mensual,6),f.mon)}<div class="delta">${g6>=0?"+":""}${fmt(g6,f.mon)}</div></td>
+      <td class="num ${g12>=0?'pos':'neg'}">${fmt(proy(f.monto,f.mensual,12),f.mon)}<div class="delta">${g12>=0?"+":""}${fmt(g12,f.mon)}</div></td>
+      <td><button class="peligro" title="Eliminar" onclick="quitarFila(${i})">✕</button></td>
+    </tr>`);
+  });
+
+  // Totales por moneda
+  const tot = document.getElementById("totales-sim"); tot.innerHTML="";
+  for(const mon of ["ARS","USD"]){
+    const fs = filas.filter(f=>f.mon===mon);
+    if(!fs.length) continue;
+    const s = m => fs.reduce((a,f)=>a+proy(f.monto,f.mensual,m),0);
+    const s0 = fs.reduce((a,f)=>a+f.monto,0);
+    tot.insertAdjacentHTML("beforeend", `<tr class="totales">
+      <td colspan="2">TOTAL ${mon}</td><td class="num">${fmt(s0,mon)}</td><td></td>
+      <td class="num">${fmt(s(1),mon)}</td><td class="num">${fmt(s(6),mon)}</td><td class="num">${fmt(s(12),mon)}</td><td></td>
+    </tr>`);
+  }
+
+  // Comparación contra la cartera real
+  const comp = document.getElementById("comparacion");
+  if(carteraReal){
+    const realARS = carteraReal.posiciones.filter(p=>p.moneda==="ARS").reduce((a,p)=>a+(p.valor_actual_ars||0),0);
+    const realUSD = carteraReal.posiciones.filter(p=>p.moneda==="USD").reduce((a,p)=>a+(p.valor_actual_usd||0),0);
+    const simARS = filas.filter(f=>f.mon==="ARS").reduce((a,f)=>a+f.monto,0);
+    const simUSD = filas.filter(f=>f.mon==="USD").reduce((a,f)=>a+f.monto,0);
+    const dA = simARS-realARS, dU = simUSD-realUSD;
+    comp.innerHTML = `<strong>Simulado vs. tu cartera real:</strong> ARS ${dA===0?"igual":(dA>0?"+":"")+fmt(dA,"ARS")} · USD ${dU===0?"igual":(dU>0?"+":"")+fmt(dU,"USD")} (real: ${fmt(realARS,"ARS")} + ${fmt(realUSD,"USD")}, al ${carteraReal.fecha_ultimo_dato||"último dato"})`;
+  }
+}
+
+/* ---------- Informes (visor Markdown) ---------- */
 function md(src){
   const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   const inline = s => esc(s)
@@ -53,8 +211,8 @@ function md(src){
   const lineas = src.split(/\r?\n/); let html="", enLista=false, tabla=[];
   const cerrarLista=()=>{ if(enLista){html+="</ul>"; enLista=false;} };
   const volcarTabla=()=>{ if(!tabla.length) return;
-    const filas = tabla.filter(f=>!/^\s*\|?[\s:|-]+\|?\s*$/.test(f));
-    html+="<table>"+filas.map((f,i)=>{
+    const filasT = tabla.filter(f=>!/^\s*\|?[\s:|-]+\|?\s*$/.test(f));
+    html+="<table>"+filasT.map((f,i)=>{
       const celdas=f.replace(/^\||\|$/g,"").split("|").map(c=>inline(c.trim()));
       const t=i===0?"th":"td"; return "<tr>"+celdas.map(c=>`<${t}>${c}</${t}>`).join("")+"</tr>";
     }).join("")+"</table>"; tabla=[]; };
@@ -82,22 +240,35 @@ async function cargarInforme(item, enlace){
   }catch(e){ cont.innerHTML = '<p class="estado">No se pudo cargar el informe.</p>'; }
 }
 
+/* ---------- Inicio ---------- */
 (async ()=>{
+  // Informes
   const lista = document.getElementById("lista");
   try{
-    const r = await fetch(API);
+    const r = await fetch(API_INFORMES);
     if(!r.ok) throw new Error(r.status);
     const items = (await r.json()).filter(i=>i.name.endsWith(".md")).sort((a,b)=>b.name.localeCompare(a.name));
-    if(!items.length){ lista.innerHTML='<p class="estado">Todavía no hay informes. El primero aparece tras la primera corrida diaria.</p>'; return; }
-    lista.innerHTML="";
-    items.forEach((item,idx)=>{
-      const a=document.createElement("a"); a.href="#"+item.name;
-      a.textContent = item.name.replace("informe_","").replace(".md","");
-      a.onclick=(e)=>{e.preventDefault(); cargarInforme(item,a);};
-      lista.appendChild(a);
-      if(idx===0) cargarInforme(item,a);
-    });
-  }catch(e){ lista.innerHTML='<p class="estado">Error consultando GitHub ('+e.message+'). Si el repo es privado, hacelo público o usá un token.</p>'; }
+    if(!items.length){ lista.innerHTML='<p class="estado">Todavía no hay informes.</p>'; }
+    else{
+      lista.innerHTML="";
+      items.forEach((item,idx)=>{
+        const a=document.createElement("a"); a.href="#"+item.name;
+        a.textContent = item.name.replace("informe_","").replace(".md","");
+        a.onclick=(e)=>{e.preventDefault(); cargarInforme(item,a);};
+        lista.appendChild(a);
+        if(idx===0) cargarInforme(item,a);
+      });
+    }
+  }catch(e){ lista.innerHTML='<p class="estado">Error consultando GitHub ('+e.message+'). Si el repo es privado, hacelo público.</p>'; }
+
+  // Cartera real → simulador
+  try{
+    const r = await fetch(URL_CARTERA);
+    if(r.ok) carteraReal = await r.json();
+  }catch(e){}
+  cargarGuardado();
+  if(!filas.length) filas = filasDesdeCarteraReal();
+  render();
 })();
 </script>
 </body>
