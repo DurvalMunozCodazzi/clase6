@@ -41,18 +41,26 @@ jobs:
 
           base = os.environ["WP_URL"].rstrip("/") + "/wp-json/wp/v2"
           auth = (os.environ["WP_USER"], os.environ["WP_APP_PASSWORD"])
+          cab = {"User-Agent": "Mozilla/5.0 (compatible; AnalizadorCartera/1.0)"}
+
+          def verificar(r, paso):
+              if r.status_code >= 400 or "json" not in r.headers.get("content-type", ""):
+                  print(f"[{paso}] HTTP {r.status_code} | content-type: {r.headers.get('content-type')}")
+                  print("Primeros 500 caracteres de la respuesta del servidor:")
+                  print(r.text[:500])
+                  sys.exit(f"Fallo en el paso: {paso}")
 
           # Si ya existe una entrada con este titulo, actualizarla (evita duplicados)
           r = requests.get(f"{base}/posts", params={"search": titulo, "status": "publish,draft"},
-                           auth=auth, timeout=30)
-          r.raise_for_status()
+                           auth=auth, headers=cab, timeout=30)
+          verificar(r, "buscar entradas existentes")
           existente = next((p for p in r.json() if p["title"]["rendered"].startswith(titulo)), None)
 
           cuerpo = {"title": titulo, "content": html, "status": "publish"}
           if existente:
-              r = requests.post(f"{base}/posts/{existente['id']}", json=cuerpo, auth=auth, timeout=30)
+              r = requests.post(f"{base}/posts/{existente['id']}", json=cuerpo, auth=auth, headers=cab, timeout=30)
           else:
-              r = requests.post(f"{base}/posts", json=cuerpo, auth=auth, timeout=30)
-          r.raise_for_status()
+              r = requests.post(f"{base}/posts", json=cuerpo, auth=auth, headers=cab, timeout=30)
+          verificar(r, "publicar entrada")
           print("Publicado:", r.json().get("link"))
           PY
