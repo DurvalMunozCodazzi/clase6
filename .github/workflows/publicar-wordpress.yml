@@ -1,0 +1,58 @@
+# Publica automaticamente cada informe nuevo en WordPress (codazzi.com.ar)
+# Requiere 3 secrets en GitHub (Settings > Secrets and variables > Actions):
+#   WP_URL           ej: https://codazzi.com.ar
+#   WP_USER          ej: Durval
+#   WP_APP_PASSWORD  la contrasena de aplicacion de WordPress
+
+name: Publicar informe en WordPress
+
+on:
+  push:
+    branches: [main]
+    paths: ["analizador-cartera/informes/**"]
+  workflow_dispatch: {}
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q markdown requests
+      - name: Publicar ultimo informe
+        env:
+          WP_URL: ${{ secrets.WP_URL }}
+          WP_USER: ${{ secrets.WP_USER }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+        run: |
+          python - <<'PY'
+          import glob, os, sys, markdown, requests
+
+          informes = sorted(glob.glob("analizador-cartera/informes/informe_*.md"))
+          if not informes:
+              sys.exit("No hay informes para publicar")
+          ruta = informes[-1]
+          fecha = os.path.basename(ruta).replace("informe_", "").replace(".md", "")
+          texto = open(ruta, encoding="utf-8").read()
+          html = markdown.markdown(texto, extensions=["tables"])
+          titulo = f"Informe de cartera — {fecha}"
+
+          base = os.environ["WP_URL"].rstrip("/") + "/wp-json/wp/v2"
+          auth = (os.environ["WP_USER"], os.environ["WP_APP_PASSWORD"])
+
+          # Si ya existe una entrada con este titulo, actualizarla (evita duplicados)
+          r = requests.get(f"{base}/posts", params={"search": titulo, "status": "publish,draft"},
+                           auth=auth, timeout=30)
+          r.raise_for_status()
+          existente = next((p for p in r.json() if p["title"]["rendered"].startswith(titulo)), None)
+
+          cuerpo = {"title": titulo, "content": html, "status": "publish"}
+          if existente:
+              r = requests.post(f"{base}/posts/{existente['id']}", json=cuerpo, auth=auth, timeout=30)
+          else:
+              r = requests.post(f"{base}/posts", json=cuerpo, auth=auth, timeout=30)
+          r.raise_for_status()
+          print("Publicado:", r.json().get("link"))
+          PY
