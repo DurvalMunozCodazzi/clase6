@@ -1,0 +1,22 @@
+{
+  "fecha": "2026-07-31",
+  "dolares": {
+    "oficial": {"compra": 1460, "venta": 1510},
+    "mep": {"venta": 1508.43},
+    "contadoconliqui": {"venta": 1568.50},
+    "blue": {"compra": 1545, "venta": 1565}
+  },
+  "brecha_ccl_pct": 4.6,
+  "brecha_mep_pct": 1.4,
+  "riesgo_pais_pb": 445,
+  "tasas": {
+    "lecap_nueva_oct2026_tem_pct": 2.05,
+    "bono_ao29_usd_tna_pct": 8.02,
+    "caucion_cierre": null
+  },
+  "fondos": {
+    "BCAHA": {"precio": 240.71, "fecha_dato": "2026-07-30", "diaria_pct": -0.06, "mensual_pct": 1.55},
+    "BAHUSDA": {"precio": 1.430573, "fecha_dato": "2026-07-30", "mensual_pct": 1.08}
+  },
+  "notas": "Liquidacion licitacion Tesoro (renovo 144,5%; AO29 USD 309M al 8,02% TNA). Volatilidad de caucion de la semana considerada tecnica. Canje ESTRA1A->BAHUSDA en acreditacion."
+}
