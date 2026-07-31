@@ -1,0 +1,46 @@
+{
+  "titular": "Cartera personal - Balanz",
+  "broker": "Balanz (balanz.com)",
+  "moneda_referencia": "ARS",
+  "fecha_carga_inicial": "2026-07-30",
+  "posiciones": [
+    {
+      "ticker": "BCAHA",
+      "nombre": "Ahorro Corto Plazo Clase A",
+      "moneda": "ARS",
+      "cuotapartes": 81006.28,
+      "precio_cuotaparte_inicial": 240.711691,
+      "valor_inicial_ars": 19499159,
+      "rendimiento_acumulado_pct": 55.44,
+      "perfil": "Conservador",
+      "tipo": "Renta Fija corto plazo",
+      "liquidez": "24hs",
+      "notas": "Mejor fondo conservador en ARS de la grilla Balanz (mensual ~1.55%, anual ~44.68% al 30/07/2026)"
+    },
+    {
+      "ticker": "BAHUSDA",
+      "nombre": "Corporativo Clase A (Balanz Ahorro en Dolares)",
+      "moneda": "USD",
+      "cuotapartes": 18339.53,
+      "precio_cuotaparte_inicial": 1.430573,
+      "valor_inicial_usd": 21150,
+      "rendimiento_acumulado_pct": 44.56,
+      "perfil": "Moderado",
+      "tipo": "Renta Fija - ONs en USD",
+      "liquidez": "24hs",
+      "notas": "Posicion original u$s 10.360 (+44,56%) + canje total desde Dolar Corto Plazo (ESTRA1A, u$s 10.795) el 31/07/2026. Cuotapartes estimadas post-canje: ajustar con el dato real de la app."
+    }
+  ],
+  "objetivos": {
+    "horizonte": "corto y mediano plazo",
+    "prioridad": "preservar capital y hacerlo crecer",
+    "tolerancia_riesgo": "conservadora a moderada",
+    "reglas": [
+      "Mantener diversificacion aproximada 50% ARS / 50% USD",
+      "Alertar si la variacion mensual de un fondo propio se vuelve negativa",
+      "Alertar si la brecha cambiaria (CCL vs oficial) se amplia mas de 5 puntos en una semana",
+      "Alertar si la tasa de caucion/Lecaps cae por debajo de la devaluacion mensual esperada (fin del carry)",
+      "No sobre-reaccionar a variaciones diarias; decidir con tendencias semanales/mensuales"
+    ]
+  }
+}
